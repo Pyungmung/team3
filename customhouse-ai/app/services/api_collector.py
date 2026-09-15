@@ -173,6 +173,7 @@ def _normalize_building(item: dict, region_name: str) -> dict | None:
         "dong": item.get("umdNm", ""),
         "deposit": round(deposit),
         "monthly_rent": round(monthly_rent),
+        "lease_type": "전세" if round(monthly_rent) == 0 else "월세",
         "exclusive_area": area,
         "floor": item.get("floor", ""),
         "deal_date": f"{deal_year}.{deal_month}" if deal_year and deal_month else "",
@@ -184,7 +185,8 @@ def fetch_candidate_buildings(lawd_cds: tuple[str, ...], region_name: str) -> li
     """지역(법정동코드 튜플)의 최근 실거래 내역을 개별 '건물(매물)' 후보 리스트로 반환한다.
     calculator.py가 이 중에서 예산에 맞는 후보를 골라 추천한다.
 
-    전세(월세 0원) 거래는 이 앱이 월세 기준 계산을 하므로 제외한다.
+    전세(월세 0원)와 월세 거래 모두 포함한다 - calculator.py가 lease_type("전세"/"월세")으로
+    갈라서 각각 따로 추천 목록을 만든다.
     """
     items = []
     for lawd_cd in lawd_cds:
@@ -196,7 +198,7 @@ def fetch_candidate_buildings(lawd_cds: tuple[str, ...], region_name: str) -> li
     buildings = []
     for item in items:
         building = _normalize_building(item, region_name)
-        if building and building["monthly_rent"] > 0:
+        if building:
             buildings.append(building)
 
     return buildings

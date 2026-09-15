@@ -26,6 +26,14 @@ def _age_ok(conditions: dict, age: int | None) -> bool:
     return conditions.get("min_age", 0) <= age <= conditions.get("max_age", 200)
 
 
+def _asset_ok(conditions: dict, assets: int | None) -> bool:
+    """실제 청년 정책(청년월세지원, 버팀목대출 등)은 소득뿐 아니라 순자산 기준도 함께 본다.
+    자산 미입력 시 나이와 동일하게 일단 후보로 포함(보수적으로 탈락시키지 않음)."""
+    if assets is None:
+        return True
+    return assets <= conditions.get("max_asset", 10 ** 9)
+
+
 def find_eligible_loan_policy(request) -> dict | None:
     """자격 조건을 만족하는 저금리 정책 대출을 찾는다. (버팀목대출 등)"""
     for policy in load_policies():
@@ -34,6 +42,8 @@ def find_eligible_loan_policy(request) -> dict | None:
         conditions = policy["conditions"]
 
         if not _age_ok(conditions, request.age):
+            continue
+        if not _asset_ok(conditions, request.assets):
             continue
         if request.monthly_income > conditions.get("max_monthly_income", 10_000):
             continue
@@ -53,6 +63,8 @@ def match_policies(request, rent: int, policy_loan: dict | None) -> list[dict]:
 
         if policy["type"] == "SUBSIDY":
             if not _age_ok(conditions, request.age):
+                continue
+            if not _asset_ok(conditions, request.assets):
                 continue
             if request.monthly_income > conditions.get("max_monthly_income", 10_000):
                 continue

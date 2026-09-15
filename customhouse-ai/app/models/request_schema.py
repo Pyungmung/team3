@@ -13,12 +13,32 @@ from pydantic import BaseModel, Field, field_validator
 
 class DiagnosisRequest(BaseModel):
     monthly_income: int = Field(..., ge=0, description="월급 (만원)", alias="monthlyIncome")
-    deposit: int = Field(..., ge=0, description="보유 보증금 (만원)", alias="deposit")
-    desired_rent: int | None = Field(None, ge=0, description="희망 월세 (만원, 선택)", alias="desiredRent")
+    deposit: int = Field(..., ge=0, description="현재 보유 보증금 (만원, 지금 수중에 있는 현금)", alias="deposit")
+    desired_deposit: int | None = Field(
+        None,
+        ge=0,
+        description="희망 보증금/전세액 (만원, 선택). 입력하면 그 금액 이하(실거래 보증금 <= 입력값)인 "
+        "매물만 검색 대상으로 삼고, 보증금 전환/대출 계산에서도 deposit 대신 이 값을 쓴다.",
+        alias="desiredDeposit",
+    )
+    desired_rent: int | None = Field(
+        None,
+        ge=0,
+        description="희망 월세 (만원, 선택). 입력하면 그 금액 이하(실거래 월세 <= 입력값)인 매물만 "
+        "검색 대상으로 삼고, 비교 기준(baseline) 월세로도 쓴다.",
+        alias="desiredRent",
+    )
     work_location: str = Field(..., min_length=1, description="직장 위치 (예: 강남구)", alias="workLocation")
+    work_lat: float | None = Field(
+        None, description="직장 정확한 위도 (선택). 카카오 주소검색으로 얻은 좌표. 있으면 26개 구 "
+        "단위 대표좌표 대신 이 좌표로 통근시간을 계산한다 (work_lon과 함께 와야 함).",
+        alias="workLat",
+    )
+    work_lon: float | None = Field(None, description="직장 정확한 경도 (선택, work_lat 참고)", alias="workLon")
     max_commute_minutes: int = Field(40, ge=10, description="희망 최대 통근시간(분)", alias="maxCommuteMinutes")
     age: int | None = Field(None, ge=0, le=120, description="나이 (정책 자격 판별용)", alias="age")
     no_householder: bool | None = Field(None, description="무주택 세대주 여부 (버팀목 대출 자격 판별용)", alias="noHouseholder")
+    assets: int | None = Field(None, ge=0, description="총자산 (만원, 정책 자격의 자산 기준 판별용)", alias="assets")
 
     class Config:
         populate_by_name = True
