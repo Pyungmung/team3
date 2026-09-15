@@ -23,6 +23,8 @@ class BuildingRecommendation(BaseModel):
     exclusive_area: float | None = None  # 전용면적(㎡)
     floor: str = ""
     deal_date: str = ""     # 실거래 기준월 "2024.8" (샘플이면 빈 문자열)
+    lease_type: str = "월세"  # "전세" | "월세"
+    is_semi_jeonse: bool = False  # 월세인데 보증금이 커서(반전세 성격) 별도 배지로 구분할 매물
     commute_minutes: int
     listing_deposit: int      # 만원, 그 매물의 실제 보증금 (실거래가 원본)
     listing_monthly_rent: int  # 만원, 그 매물의 실제 월세 (실거래가 원본, 보증금 전환 적용 전)
@@ -41,5 +43,6 @@ class BuildingRecommendation(BaseModel):
 class DiagnosisResponse(BaseModel):
     affordable_rent: int          # 만원, 소득의 30% 기준 적정 월세 상한
     rent_to_income_ratio: float   # RIR(%) 참고용
-    recommendations: list[BuildingRecommendation]
+    wolse_recommendations: list[BuildingRecommendation]   # 월세 매물 추천 (실질 주거비 = 월세+관리비+대출이자+교통비-지원금)
+    jeonse_recommendations: list[BuildingRecommendation]  # 전세 매물 추천 (월세=0, 실질 주거비는 대출이자 중심)
     disclaimer: str = "본 결과는 샘플 데이터 기반 추정치이며, 실제 시세·정책 자격과 다를 수 있습니다."

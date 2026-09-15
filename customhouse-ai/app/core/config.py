@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     policies_file: Path = data_dir / "policies.json"
     lawd_codes_file: Path = data_dir / "lawd_codes.json"
     region_coords_file: Path = data_dir / "region_coords.json"
+    work_locations_file: Path = data_dir / "work_locations.json"
 
     # --- 공공/외부 API 키 (.env.example 참고) ---
     # data.go.kr(공공데이터포털)은 계정 1개당 인증키 1개를 발급하고, 그 키로 여러 API를
