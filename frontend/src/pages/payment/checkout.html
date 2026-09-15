@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 결제(안심 매물 리포트 / 구독) (연동 대상 백엔드: domain/payment, 담당 황진구) -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 결제</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <!-- 토스페이먼츠 결제창 SDK -->
+  <script src="https://js.tosspayments.com/v2/standard"></script>
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-sm mx-auto px-4 py-16 space-y-6">
+    <h1 class="text-2xl font-extrabold text-center">결제</h1>
+
+    <div id="guest-view" class="hidden card p-6 text-center">
+      <p class="text-sm text-gray-500 mb-4">결제하려면 먼저 로그인해주세요.</p>
+      <a href="../auth/login.html" class="text-sm px-4 py-2 rounded-full text-white brand-gradient inline-block">로그인하기</a>
+    </div>
+
+    <div id="pay-view" class="hidden space-y-6">
+      <div class="card p-6 space-y-3">
+        <div class="flex justify-between text-sm items-center">
+          <span>안심 매물 리포트 (단건)</span>
+          <span class="font-bold">990원</span>
+        </div>
+        <button id="report-pay-btn" class="w-full py-3 rounded-full text-white font-semibold brand-gradient">
+          카드로 결제하기
+        </button>
+      </div>
+
+      <div class="card p-6 space-y-3">
+        <div class="flex justify-between text-sm items-center">
+          <span>맞집 프리미엄 월 구독</span>
+          <span class="font-bold">2,900원 / 월</span>
+        </div>
+        <div id="subscription-status" class="text-xs text-gray-400"></div>
+        <button id="billing-register-btn" class="w-full py-3 rounded-full text-white font-semibold brand-gradient">
+          자동결제 수단 등록하기
+        </button>
+        <button id="billing-charge-btn" class="hidden w-full py-3 rounded-full font-semibold border border-gray-200">
+          지금 바로 구독 결제 실행 (테스트용)
+        </button>
+        <button id="billing-cancel-btn" class="hidden w-full py-2 text-xs text-gray-400 underline">
+          구독 해지
+        </button>
+      </div>
+
+      <p id="pay-msg" class="text-xs text-gray-400 text-center"></p>
+      <p class="text-xs text-gray-400 text-center">
+        토스페이먼츠 테스트(샌드박스) 키로 연동되어 있어 실제 결제가 발생하지 않습니다.
+      </p>
+    </div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/api/payment.js?v=20260915b"></script>
+  <script src="../../js/utils/toss-util.js?v=20260915b"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+
+    const msg = document.getElementById("pay-msg");
+
+    if (!CustomHouseAuthApi.isLoggedIn()) {
+      document.getElementById("guest-view").classList.remove("hidden");
+    } else {
+      document.getElementById("pay-view").classList.remove("hidden");
+      initPaymentPage();
+    }
+
+    async function initPaymentPage() {
+      const customerKey = CustomHouseTossUtil.getOrCreateCustomerKey();
+      const tossPayments = CustomHouseTossUtil.getTossPayments();
+      const payment = tossPayments.payment({ customerKey });
+
+      // --- 안심 매물 리포트 단건 결제 ---
+      document.getElementById("report-pay-btn").addEventListener("click", async () => {
+        msg.textContent = "";
+        try {
+          await payment.requestPayment({
+            method: "CARD",
+            amount: { currency: "KRW", value: 990 },
+            orderId: CustomHouseTossUtil.generateOrderId("REPORT"),
+            orderName: "맞집 안심 매물 리포트",
+            successUrl: window.location.origin + "/pages/payment/success.html",
+            failUrl: window.location.origin + "/pages/payment/fail.html",
+            customerEmail: "customer@customhouse.com",
+            customerName: "맞집사용자",
+            card: { useEscrow: false, flowMode: "DEFAULT", useCardPoint: false, useAppCardOnly: false },
+          });
+        } catch (err) {
+          // 사용자가 결제창을 직접 닫은 경우 등은 조용히 무시
+          if (err && err.code !== "USER_CANCEL") {
+            msg.textContent = err.message || "결제창을 여는 중 오류가 발생했습니다.";
+          }
+        }
+      });
+
+      // --- 구독(자동결제 수단 등록) ---
+      document.getElementById("billing-register-btn").addEventListener("click", async () => {
+        msg.textContent = "";
+        try {
+          await payment.requestBillingAuth({
+            method: "CARD",
+            successUrl: window.location.origin + "/pages/payment/billing-success.html",
+            failUrl: window.location.origin + "/pages/payment/fail.html",
+            customerEmail: "customer@customhouse.com",
+            customerName: "맞집사용자",
+          });
+        } catch (err) {
+          if (err && err.code !== "USER_CANCEL") {
+            msg.textContent = err.message || "자동결제 등록창을 여는 중 오류가 발생했습니다.";
+          }
+        }
+      });
+
+      // --- 현재 구독 상태 표시 ---
+      await refreshSubscriptionStatus();
+
+      document.getElementById("billing-charge-btn").addEventListener("click", async () => {
+        msg.textContent = "구독 결제 실행 중...";
+        try {
+          await CustomHousePaymentApi.chargeSubscriptionNow();
+          msg.textContent = "구독 결제가 완료되었습니다.";
+          await refreshSubscriptionStatus();
+        } catch (err) {
+          msg.textContent = err.message;
+        }
+      });
+
+      document.getElementById("billing-cancel-btn").addEventListener("click", async () => {
+        try {
+          await CustomHousePaymentApi.cancelSubscription();
+          msg.textContent = "구독이 해지되었습니다.";
+          await refreshSubscriptionStatus();
+        } catch (err) {
+          msg.textContent = err.message;
+        }
+      });
+    }
+
+    async function refreshSubscriptionStatus() {
+      const statusEl = document.getElementById("subscription-status");
+      const chargeBtn = document.getElementById("billing-charge-btn");
+      const cancelBtn = document.getElementById("billing-cancel-btn");
+      const registerBtn = document.getElementById("billing-register-btn");
+
+      try {
+        const sub = await CustomHousePaymentApi.getMySubscription();
+        if (sub && sub.status === "ACTIVE") {
+          statusEl.textContent = `구독 중 · 다음 결제일 ${sub.nextPaymentDate}`;
+          chargeBtn.classList.remove("hidden");
+          cancelBtn.classList.remove("hidden");
+          registerBtn.textContent = "자동결제 수단 다시 등록하기";
+        } else {
+          statusEl.textContent = "아직 구독 중이 아니에요.";
+          chargeBtn.classList.add("hidden");
+          cancelBtn.classList.add("hidden");
+        }
+      } catch {
+        statusEl.textContent = "";
+      }
+    }
+  </script>
+</body>
+</html>

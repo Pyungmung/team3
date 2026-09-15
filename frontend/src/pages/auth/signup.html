@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 회원가입 페이지 (연동 대상 백엔드: domain/user, 담당 허겸) -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 회원가입</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-sm mx-auto px-4 py-16">
+    <h1 class="text-2xl font-extrabold mb-6 text-center">회원가입</h1>
+
+    <form id="signup-form" class="card p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-semibold mb-1">닉네임</label>
+        <input type="text" name="nickname" required class="w-full border border-gray-200 rounded-lg px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">이메일</label>
+        <input type="email" name="email" required class="w-full border border-gray-200 rounded-lg px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">비밀번호</label>
+        <input type="password" name="password" required minlength="8" placeholder="8자 이상"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2" />
+      </div>
+      <p id="form-msg" class="text-xs text-gray-400"></p>
+      <button type="submit" class="w-full py-3 rounded-full text-white font-semibold brand-gradient">가입하기</button>
+      <p class="text-xs text-center text-gray-400">
+        이미 계정이 있나요? <a href="login.html" class="underline">로그인</a>
+      </p>
+    </form>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+
+    document.getElementById("signup-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("form-msg");
+      msg.classList.remove("text-red-500");
+      msg.textContent = "가입 처리 중...";
+      try {
+        await CustomHouseAuthApi.signup(Object.fromEntries(new FormData(e.target)));
+        msg.textContent = "가입이 완료되었습니다! 로그인 페이지로 이동합니다.";
+        setTimeout(() => (window.location.href = "login.html"), 800);
+      } catch (err) {
+        msg.classList.add("text-red-500");
+        msg.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

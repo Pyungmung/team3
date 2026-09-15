@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 결제 성공 콜백 페이지 (연동 대상 백엔드: domain/payment, 담당 황진구)
+     토스 결제창이 결제 성공 시 이 페이지로 리다이렉트하며 paymentKey/orderId/amount를 쿼리로 실어보낸다.
+     여기서 백엔드로 그 값을 넘겨 최종 승인(confirm)을 받아야 결제가 완료된다. -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 결제 완료</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-sm mx-auto px-4 py-24 text-center">
+    <div id="loading-view">
+      <div class="text-5xl mb-4">⏳</div>
+      <p class="text-sm text-gray-500">결제를 승인하는 중입니다...</p>
+    </div>
+
+    <div id="success-view" class="hidden">
+      <div class="text-5xl mb-4">🎉</div>
+      <h1 class="text-2xl font-extrabold mb-2">결제가 완료되었습니다</h1>
+      <dl class="card p-4 mt-6 text-sm text-left space-y-1">
+        <div class="flex justify-between"><dt class="text-gray-400">상품명</dt><dd id="r-name"></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-400">결제금액</dt><dd id="r-amount"></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-400">주문번호</dt><dd id="r-order" class="truncate max-w-[160px]"></dd></div>
+      </dl>
+      <a href="../index.html" class="mt-6 inline-block px-6 py-2 rounded-full text-white brand-gradient">홈으로</a>
+    </div>
+
+    <div id="error-view" class="hidden">
+      <div class="text-5xl mb-4">😢</div>
+      <h1 class="text-xl font-bold mb-2">결제 승인에 실패했습니다</h1>
+      <p id="error-msg" class="text-sm text-red-500 mb-6"></p>
+      <a href="checkout.html" class="px-6 py-2 rounded-full text-white brand-gradient inline-block">다시 시도하기</a>
+    </div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/api/payment.js?v=20260915b"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const paymentKey = params.get("paymentKey");
+      const orderId = params.get("orderId");
+      const amount = params.get("amount");
+
+      const loadingView = document.getElementById("loading-view");
+      const successView = document.getElementById("success-view");
+      const errorView = document.getElementById("error-view");
+
+      if (!paymentKey || !orderId || !amount) {
+        loadingView.classList.add("hidden");
+        errorView.classList.remove("hidden");
+        document.getElementById("error-msg").textContent = "결제 정보가 올바르지 않습니다.";
+        return;
+      }
+
+      try {
+        const result = await CustomHousePaymentApi.confirmPayment({
+          paymentKey,
+          orderId,
+          amount: Number(amount),
+        });
+
+        loadingView.classList.add("hidden");
+        successView.classList.remove("hidden");
+        document.getElementById("r-name").textContent = result.orderName;
+        document.getElementById("r-amount").textContent = `${Number(result.amount).toLocaleString()}원`;
+        document.getElementById("r-order").textContent = result.orderId;
+      } catch (err) {
+        loadingView.classList.add("hidden");
+        errorView.classList.remove("hidden");
+        document.getElementById("error-msg").textContent = err.message;
+      }
+    })();
+  </script>
+</body>
+</html>

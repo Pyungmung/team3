@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 자동결제 수단 등록 콜백 페이지 (연동 대상 백엔드: domain/payment, 담당 황진구)
+     payment.requestBillingAuth() 성공 시 이 페이지로 리다이렉트되며 customerKey/authKey를 쿼리로 받는다.
+     백엔드로 넘겨 빌링키를 발급받아야 자동결제 수단 등록이 최종 완료된다. -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 자동결제 수단 등록</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-sm mx-auto px-4 py-24 text-center">
+    <div id="loading-view">
+      <div class="text-5xl mb-4">⏳</div>
+      <p class="text-sm text-gray-500">자동결제 수단을 등록하는 중입니다...</p>
+    </div>
+
+    <div id="success-view" class="hidden">
+      <div class="text-5xl mb-4">🎉</div>
+      <h1 class="text-2xl font-extrabold mb-2">자동결제 수단이 등록되었어요</h1>
+      <p class="text-sm text-gray-500 mb-6">다음 결제일: <span id="r-next-date"></span></p>
+      <a href="checkout.html" class="px-6 py-2 rounded-full text-white brand-gradient inline-block">결제 페이지로 돌아가기</a>
+    </div>
+
+    <div id="error-view" class="hidden">
+      <div class="text-5xl mb-4">😢</div>
+      <h1 class="text-xl font-bold mb-2">등록에 실패했습니다</h1>
+      <p id="error-msg" class="text-sm text-red-500 mb-6"></p>
+      <a href="checkout.html" class="px-6 py-2 rounded-full text-white brand-gradient inline-block">다시 시도하기</a>
+    </div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/api/payment.js?v=20260915b"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const customerKey = params.get("customerKey");
+      const authKey = params.get("authKey");
+
+      const loadingView = document.getElementById("loading-view");
+      const successView = document.getElementById("success-view");
+      const errorView = document.getElementById("error-view");
+
+      if (!customerKey || !authKey) {
+        loadingView.classList.add("hidden");
+        errorView.classList.remove("hidden");
+        document.getElementById("error-msg").textContent = "등록 정보가 올바르지 않습니다.";
+        return;
+      }
+
+      try {
+        const result = await CustomHousePaymentApi.issueBillingKey({ customerKey, authKey });
+        loadingView.classList.add("hidden");
+        successView.classList.remove("hidden");
+        document.getElementById("r-next-date").textContent = result.nextPaymentDate;
+      } catch (err) {
+        loadingView.classList.add("hidden");
+        errorView.classList.remove("hidden");
+        document.getElementById("error-msg").textContent = err.message;
+      }
+    })();
+  </script>
+</body>
+</html>

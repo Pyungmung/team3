@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] AI 주거비 절약 진단 - 조건 입력 폼 (핵심 기능 화면) -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 주거비 절약 진단</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-xl mx-auto px-4 py-12">
+    <h1 class="text-2xl font-extrabold mb-1">AI 주거비 절약 진단</h1>
+    <p class="text-sm text-gray-500 mb-8">
+      월급, 보증금, 직장 위치를 입력하면 맞집이 실질 주거비가 가장 낮은
+      지역과 받을 수 있는 정부 지원 정책을 찾아드려요.
+    </p>
+
+    <form id="diagnosis-form" class="card p-6 space-y-6">
+      <div>
+        <label class="block text-sm font-semibold mb-1">월급 (세후, 만원)</label>
+        <input type="number" name="monthlyIncome" required min="0" placeholder="예: 280"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
+               style="--tw-ring-color:var(--brand-500)" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">현재 보유 보증금 (만원)</label>
+        <input type="number" name="deposit" required min="0" placeholder="예: 800"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
+               style="--tw-ring-color:var(--brand-500)" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">희망 월세 (만원, 선택)</label>
+        <input type="number" name="desiredRent" min="0" placeholder="입력하지 않으면 소득 기준으로 자동 계산"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
+               style="--tw-ring-color:var(--brand-500)" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">직장 위치</label>
+        <!-- customhouse-ai/app/data/regions.json의 work_hubs와 동일하게 유지해야 함 -->
+        <select name="workLocation" required
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
+                style="--tw-ring-color:var(--brand-500)">
+          <option value="">직장 위치를 선택하세요</option>
+          <option value="강남구">강남구</option>
+          <option value="종로구">종로구</option>
+          <option value="영등포구">영등포구(여의도)</option>
+          <option value="구로구">구로구(가산디지털단지)</option>
+          <option value="성동구">성동구(성수)</option>
+          <option value="분당구">분당구(판교)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">희망 최대 통근시간</label>
+        <select name="maxCommuteMinutes"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
+                style="--tw-ring-color:var(--brand-500)">
+          <option value="30">30분 이내</option>
+          <option value="40" selected>40분 이내</option>
+          <option value="50">50분 이내</option>
+        </select>
+      </div>
+
+      <details class="text-sm">
+        <summary class="cursor-pointer font-semibold text-gray-600">정책 자격 판별을 위한 추가 정보 (선택)</summary>
+        <div class="mt-3 space-y-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">나이</label>
+            <input type="number" name="age" min="0" max="120" placeholder="예: 28"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2" />
+          </div>
+          <label class="flex items-center gap-2 text-xs text-gray-600">
+            <input type="checkbox" name="noHouseholder" />
+            무주택 세대주(예정자)입니다
+          </label>
+        </div>
+      </details>
+
+      <p id="form-error" class="text-sm text-red-500 hidden"></p>
+
+      <button type="submit" id="submit-btn"
+              class="w-full py-3 rounded-full text-white font-semibold brand-gradient disabled:opacity-50">
+        진단 결과 보기
+      </button>
+    </form>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script src="../../js/api/recommendation.js?v=20260915b"></script>
+  <script>
+    renderHeader("diagnosis");
+    renderFooter();
+
+    const form = document.getElementById("diagnosis-form");
+    const errorEl = document.getElementById("form-error");
+    const submitBtn = document.getElementById("submit-btn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.classList.add("hidden");
+
+      const fd = new FormData(form);
+      const condition = {
+        monthlyIncome: Number(fd.get("monthlyIncome")),
+        deposit: Number(fd.get("deposit")),
+        desiredRent: fd.get("desiredRent") ? Number(fd.get("desiredRent")) : null,
+        workLocation: fd.get("workLocation"),
+        maxCommuteMinutes: Number(fd.get("maxCommuteMinutes")),
+        age: fd.get("age") ? Number(fd.get("age")) : null,
+        noHouseholder: fd.get("noHouseholder") === "on",
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "분석 중...";
+
+      try {
+        const result = await CustomHouseRecommendationApi.requestDiagnosis(condition);
+        sessionStorage.setItem("customhouse:lastDiagnosis", JSON.stringify(result));
+        window.location.href = "report-result.html";
+      } catch (err) {
+        errorEl.textContent = err.message || "진단 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+        errorEl.classList.remove("hidden");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "진단 결과 보기";
+      }
+    });
+  </script>
+</body>
+</html>

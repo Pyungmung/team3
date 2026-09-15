@@ -1,0 +1,33 @@
+{
+  "_owner": "송귀성",
+  "_comment": "예시(샘플) 정책 데이터입니다. 실제 서비스에서는 복지로/마이홈 등 공공 정책 API로 교체해야 합니다.",
+  "policies": [
+    {
+      "id": "YOUTH_RENT_SUPPORT",
+      "name": "청년월세지원",
+      "type": "SUBSIDY",
+      "monthly_benefit": 20,
+      "max_months": 12,
+      "conditions": {
+        "min_age": 19,
+        "max_age": 39,
+        "max_monthly_income": 300,
+        "max_rent": 60
+      },
+      "description": "만 19~39세 무주택 청년 중 소득·월세 기준을 충족하면 월 20만원씩 최대 12개월 지원"
+    },
+    {
+      "id": "BUTTMOK_YOUTH_LOAN",
+      "name": "청년전용 버팀목전세자금대출",
+      "type": "LOAN",
+      "loan_rate_annual_percent": 2.9,
+      "conditions": {
+        "min_age": 19,
+        "max_age": 34,
+        "max_monthly_income": 500,
+        "require_no_household": true
+      },
+      "description": "만 19~34세 무주택 세대주(예정자) 대상 저금리(연 2.9%) 전세자금 대출 우대금리 적용"
+    }
+  ]
+}

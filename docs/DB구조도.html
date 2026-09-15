@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>맞집 ERD</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --surface-2: #f1f5f9;
+    --border: #e2e8f0;
+    --ink-900: #0f172a;
+    --ink-700: #334155;
+    --ink-500: #64748b;
+    --header-bg: #0f172a;
+    --header-fg: #f8fafc;
+    --pk-color: #b45309;
+    --fk-badge-bg: #e2e8f0;
+    --fk-badge-fg: #475569;
+    --unique-badge-bg: #fef3c7;
+    --unique-badge-fg: #92400e;
+    --line: #94a3b8;
+    --line-strong: #475569;
+    --label-bg: #ffffff;
+    --ghost-border: #cbd5e1;
+    --ghost-ink: #94a3b8;
+    --owner-bg: #eef2f7;
+    --owner-ink: #475569;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1220;
+      --surface: #111827;
+      --surface-2: #0c1526;
+      --border: #1f2937;
+      --ink-900: #f1f5f9;
+      --ink-700: #cbd5e1;
+      --ink-500: #94a3b8;
+      --header-bg: #1e293b;
+      --header-fg: #f8fafc;
+      --pk-color: #fbbf24;
+      --fk-badge-bg: #1f2937;
+      --fk-badge-fg: #cbd5e1;
+      --unique-badge-bg: #422006;
+      --unique-badge-fg: #fcd34d;
+      --line: #64748b;
+      --line-strong: #94a3b8;
+      --label-bg: #111827;
+      --ghost-border: #334155;
+      --ghost-ink: #64748b;
+      --owner-bg: #1e293b;
+      --owner-ink: #cbd5e1;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1220;
+    --surface: #111827;
+    --surface-2: #0c1526;
+    --border: #1f2937;
+    --ink-900: #f1f5f9;
+    --ink-700: #cbd5e1;
+    --ink-500: #94a3b8;
+    --header-bg: #1e293b;
+    --header-fg: #f8fafc;
+    --pk-color: #fbbf24;
+    --fk-badge-bg: #1f2937;
+    --fk-badge-fg: #cbd5e1;
+    --unique-badge-bg: #422006;
+    --unique-badge-fg: #fcd34d;
+    --line: #64748b;
+    --line-strong: #94a3b8;
+    --label-bg: #111827;
+    --ghost-border: #334155;
+    --ghost-ink: #64748b;
+    --owner-bg: #1e293b;
+    --owner-ink: #cbd5e1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink-900);
+    font-family: "Noto Sans KR", "Malgun Gothic", -apple-system, sans-serif;
+    padding-inline: 20px;
+    padding-block: 32px 60px;
+  }
+
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+  header.page-head {
+    max-width: 1220px;
+    margin: 0 auto 28px;
+  }
+  header.page-head .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--ink-500);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  header.page-head h1 {
+    font-size: 30px;
+    font-weight: 900;
+    margin: 4px 0 6px;
+    text-wrap: balance;
+  }
+  header.page-head p {
+    color: var(--ink-700);
+    font-size: 14px;
+    max-width: 65ch;
+    line-height: 1.6;
+    margin: 0;
+  }
+  header.page-head .toolbar {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  button#print-btn {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--header-fg);
+    background: var(--header-bg);
+    border: none;
+    border-radius: 999px;
+    padding: 8px 18px;
+    cursor: pointer;
+  }
+  button#print-btn:hover { opacity: 0.9; }
+
+  figure {
+    max-width: 1220px;
+    margin: 0 auto;
+  }
+  .diagram-scroll {
+    overflow-x: auto;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  #diagram {
+    position: relative;
+  }
+  #lines { position: absolute; inset: 0; overflow: visible; }
+
+  .tbl {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+  .tbl.ghost {
+    border: 1.5px dashed var(--ghost-border);
+    box-shadow: none;
+    opacity: 0.9;
+  }
+  .tbl .head {
+    background: var(--header-bg);
+    color: var(--header-fg);
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .tbl.ghost .head {
+    background: transparent;
+    color: var(--ghost-ink);
+    border-bottom: 1.5px dashed var(--ghost-border);
+  }
+  .tbl .head .name { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .tbl .head .owner {
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.16);
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+  .tbl.ghost .head .owner {
+    background: var(--owner-bg);
+    color: var(--owner-ink);
+  }
+  .tbl .row {
+    height: 22px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .tbl .row .mark { width: 14px; flex: none; text-align: center; font-size: 11px; }
+  .tbl .row .mark.pk { color: var(--pk-color); }
+  .tbl .row .mark.dot { color: var(--ink-500); font-size: 8px; }
+  .tbl .row .cname { font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 600; color: var(--ink-900); }
+  .tbl.ghost .row .cname { color: var(--ghost-ink); font-weight: 500; }
+  .tbl .row .ctype { font-family: "JetBrains Mono", ui-monospace, monospace; color: var(--ink-500); font-size: 11px; margin-left: auto; }
+  .tbl .row .badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 4px;
+    letter-spacing: 0.02em;
+  }
+  .tbl .row .badge.fk { background: var(--fk-badge-bg); color: var(--fk-badge-fg); }
+  .tbl .row .badge.uq { background: var(--unique-badge-bg); color: var(--unique-badge-fg); }
+
+  .legend {
+    position: absolute;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--ink-700);
+  }
+  .legend h3 { margin: 0 0 8px; font-size: 12px; color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.06em; }
+  .legend .item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .legend .item:last-child { margin-bottom: 0; }
+  .legend .swatch-line { width: 22px; height: 0; border-top: 2px solid var(--line-strong); }
+  .legend .swatch-line.dashed { border-top: 2px dashed var(--ghost-border); }
+
+  figcaption {
+    max-width: 1220px;
+    margin: 14px auto 0;
+    font-size: 13px;
+    color: var(--ink-500);
+  }
+
+  @media print {
+    button#print-btn { display: none; }
+    body { padding: 0; background: #fff; }
+    .diagram-scroll { border: none; background: #fff; padding: 0; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="page-head">
+  <div class="eyebrow">CustomHouse · Database</div>
+  <h1>맞집 ERD</h1>
+  <p>
+    backend의 JPA 엔티티를 그대로 옮긴 실제 테이블 구조입니다. 컬럼을 추가하면 아래 데이터만 고치면
+    되고, 박스 위치와 연결선은 자동으로 다시 계산됩니다. 점선 테이블(<span class="mono">registry_analysis</span>)은
+    아직 구현 전인 설계 단계 테이블입니다. 자세한 설명은 같은 폴더의 <span class="mono">DATABASE.md</span> 참고.
+  </p>
+  <div class="toolbar">
+    <button id="print-btn" onclick="window.print()">인쇄 / PDF로 저장</button>
+  </div>
+</header>
+
+<figure>
+  <div class="diagram-scroll">
+    <div id="diagram"></div>
+  </div>
+  <figcaption>
+    users가 중심 허브로 5개 테이블과 연결되고, properties가 관심매물·변동이력·(예정)위험도분석의 보조 허브 역할을 한다.
+  </figcaption>
+</figure>
+
+<script>
+  /**
+   * [담당: 김시연] 맞집 DB 구조도 — 데이터만 고치면 그림이 자동으로 다시 그려집니다.
+   *
+   * 컬럼을 추가/삭제하려면 -> TABLES 안의 해당 테이블 columns 배열만 수정하세요.
+   * 테이블을 새로 추가하려면 -> TABLES에 정의를 추가하고, GRID 배열의 원하는 칸에 id를 넣으세요.
+   *   (칸이 비어있으면 null로 둡니다. 같은 열에 세로로 나열하면 세로선, 같은 행에 나란히 두면 가로선이
+   *    자동으로 그어집니다. 대각선으로 떨어뜨리면 RELATIONS에서 elbow:true로 직접 꺾은선을 그려야 합니다.)
+   * 관계선을 추가/삭제하려면 -> RELATIONS 배열만 수정하세요.
+   */
+
+  // ---- 1. 테이블 정의 (컬럼 = 실제 엔티티 필드와 1:1 대응) ----
+  const TABLES = {
+    users: {
+      title: "users", owner: "허겸",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "email", type: "VARCHAR(191)", unique: true },
+        { name: "password", type: "VARCHAR(100)" },
+        { name: "nickname", type: "VARCHAR(50)" },
+        { name: "provider", type: "VARCHAR(20)" },
+        { name: "provider_id", type: "VARCHAR(100)" },
+        { name: "refresh_token", type: "VARCHAR(500)" },
+      ],
+    },
+    housing_conditions: {
+      title: "housing_conditions", owner: "황진구",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "user_id", type: "BIGINT", fk: true, unique: true },
+        { name: "monthly_income", type: "INT" },
+        { name: "work_location", type: "VARCHAR" },
+        { name: "desired_deposit", type: "INT" },
+        { name: "desired_rent", type: "INT" },
+        { name: "notification_enabled", type: "BOOLEAN" },
+      ],
+    },
+    payments: {
+      title: "payments", owner: "황진구",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "user_id", type: "BIGINT", fk: true },
+        { name: "payment_key", type: "VARCHAR(200)", unique: true },
+        { name: "order_id", type: "VARCHAR(64)", unique: true },
+        { name: "order_name", type: "VARCHAR(100)" },
+        { name: "amount", type: "BIGINT" },
+        { name: "status", type: "VARCHAR(20)" },
+      ],
+    },
+    subscriptions: {
+      title: "subscriptions", owner: "황진구",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "user_id", type: "BIGINT", fk: true, unique: true },
+        { name: "billing_key", type: "VARCHAR(200)" },
+        { name: "customer_key", type: "VARCHAR(100)", unique: true },
+        { name: "status", type: "VARCHAR(20)" },
+        { name: "next_payment_date", type: "DATE" },
+        { name: "expired_at", type: "DATE" },
+      ],
+    },
+    notifications: {
+      title: "notifications", owner: "김시연",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "user_id", type: "BIGINT", fk: true },
+        { name: "title", type: "VARCHAR(100)" },
+        { name: "content", type: "VARCHAR(500)" },
+        { name: "is_read", type: "BOOLEAN" },
+      ],
+    },
+    favorites: {
+      title: "favorites", owner: "김시연",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "user_id", type: "BIGINT", fk: true },
+        { name: "property_id", type: "BIGINT", fk: true },
+        { name: "status", type: "VARCHAR(20)" },
+      ],
+    },
+    properties: {
+      title: "properties", owner: "김시연",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "address", type: "VARCHAR(300)", unique: true },
+        { name: "region", type: "VARCHAR(50)" },
+        { name: "deposit", type: "INT" },
+        { name: "monthly_rent", type: "INT" },
+        { name: "maintenance_fee", type: "INT" },
+        { name: "source_url", type: "VARCHAR(500)" },
+        { name: "report_count", type: "INT" },
+      ],
+    },
+    registry_logs: {
+      title: "registry_logs", owner: "김시연",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "property_id", type: "BIGINT", fk: true },
+        { name: "change_type", type: "VARCHAR(50)" },
+        { name: "description", type: "VARCHAR(500)" },
+        { name: "detected_at", type: "DATETIME" },
+      ],
+    },
+    registry_analysis: {
+      title: "registry_analysis", owner: "김시연", ghost: true, ghostLabel: "예정(미구현)",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "property_id", type: "BIGINT", fk: true },
+        { name: "risk_score", type: "INT" },
+        { name: "summary", type: "VARCHAR" },
+      ],
+    },
+  };
+
+  // ---- 2. 배치 (행/열 그리드. null = 빈 칸) ----
+  const GRID = [
+    [null, "housing_conditions", null, null],
+    ["notifications", "users", "payments", "subscriptions"],
+    [null, "favorites", null, null],
+    [null, "properties", "registry_logs", "registry_analysis"],
+  ];
+
+  // ---- 3. 관계선 (from = "1" 쪽, to = "N" 또는 "0..1" 쪽) ----
+  const RELATIONS = [
+    { from: "users", to: "housing_conditions", label: "설정", mult: ["1", "0..1"] },
+    { from: "users", to: "notifications", label: "수신", mult: ["1", "N"] },
+    { from: "users", to: "payments", label: "결제", mult: ["1", "N"] },
+    { from: "users", to: "subscriptions", label: "구독", mult: ["1", "0..1"], elbow: true },
+    { from: "users", to: "favorites", label: "찜", mult: ["1", "N"] },
+    { from: "properties", to: "favorites", label: "포함", mult: ["1", "N"] },
+    { from: "properties", to: "registry_logs", label: "이력", mult: ["1", "N"] },
+    { from: "registry_logs", to: "registry_analysis", label: "예정", mult: ["1", "1"], ghost: true },
+  ];
+
+  // ---- 4. 레이아웃 상수 ----
+  const BOX_W = 260, HEAD_H = 38, ROW_H = 22, GAP_X = 40, GAP_Y = 70, MARGIN = 30;
+
+  function boxHeight(id) {
+    return HEAD_H + TABLES[id].columns.length * ROW_H;
+  }
+
+  const colX = GRID[0].map((_, c) => MARGIN + c * (BOX_W + GAP_X));
+  const rowY = [];
+  {
+    let y = MARGIN;
+    GRID.forEach((row) => {
+      rowY.push(y);
+      const h = Math.max(...row.filter(Boolean).map(boxHeight));
+      y += h + GAP_Y;
+    });
+  }
+
+  const pos = {};
+  GRID.forEach((row, r) => {
+    row.forEach((id, c) => {
+      if (!id) return;
+      pos[id] = { x: colX[c], y: rowY[r], w: BOX_W, h: boxHeight(id) };
+    });
+  });
+
+  const lastRow = GRID[GRID.length - 1];
+  const lastRowH = Math.max(...lastRow.filter(Boolean).map(boxHeight));
+  const DIAGRAM_W = colX[colX.length - 1] + BOX_W + MARGIN;
+  const DIAGRAM_H = rowY[rowY.length - 1] + lastRowH + MARGIN;
+
+  function gridCoord(id) {
+    for (let r = 0; r < GRID.length; r++) {
+      const c = GRID[r].indexOf(id);
+      if (c !== -1) return { r, c };
+    }
+    return null;
+  }
+
+  function edgeAnchor(id, side) {
+    const p = pos[id];
+    if (side === "top") return { x: p.x + p.w / 2, y: p.y };
+    if (side === "bottom") return { x: p.x + p.w / 2, y: p.y + p.h };
+    if (side === "left") return { x: p.x, y: p.y + p.h / 2 };
+    return { x: p.x + p.w, y: p.y + p.h / 2 }; // right
+  }
+
+  // ---- 5. 렌더링 ----
+  const diagramEl = document.getElementById("diagram");
+  diagramEl.style.width = DIAGRAM_W + "px";
+  diagramEl.style.height = DIAGRAM_H + "px";
+
+  // 5-1. 테이블 박스
+  Object.keys(TABLES).forEach((id) => {
+    const t = TABLES[id];
+    const p = pos[id];
+    if (!p) return;
+
+    const box = document.createElement("div");
+    box.className = "tbl" + (t.ghost ? " ghost" : "");
+    box.style.left = p.x + "px";
+    box.style.top = p.y + "px";
+    box.style.width = p.w + "px";
+    box.style.height = p.h + "px";
+
+    const head = document.createElement("div");
+    head.className = "head";
+    head.innerHTML =
+      `<span class="name">${t.title}</span>` +
+      `<span class="owner">${t.ghost ? t.ghostLabel : "담당 " + t.owner}</span>`;
+    box.appendChild(head);
+
+    t.columns.forEach((col) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      const mark = col.pk ? `<span class="mark pk">🔑</span>` : `<span class="mark dot">●</span>`;
+      const badges =
+        (col.fk ? `<span class="badge fk">FK</span>` : "") +
+        (col.unique ? `<span class="badge uq">UNIQUE</span>` : "");
+      row.innerHTML = `${mark}<span class="cname">${col.name}</span><span class="ctype">${col.type}</span>${badges}`;
+      box.appendChild(row);
+    });
+
+    diagramEl.appendChild(box);
+  });
+
+  // 5-2. 범례 (row0의 빈 칸을 활용)
+  const legend = document.createElement("div");
+  legend.className = "legend";
+  legend.style.left = colX[2] + "px";
+  legend.style.top = MARGIN + "px";
+  legend.style.width = (colX[3] + BOX_W - colX[2]) + "px";
+  legend.innerHTML = `
+    <h3>범례</h3>
+    <div class="item"><span class="mark pk" style="width:auto">🔑</span> 기본키(PK)</div>
+    <div class="item"><span class="badge fk" style="margin:0">FK</span> 다른 테이블 id 참조 (앱 레벨, DB 제약 아님)</div>
+    <div class="item"><span class="badge uq" style="margin:0">UNIQUE</span> 값 중복 불가</div>
+    <div class="item"><span class="swatch-line"></span> 구현된 관계 &nbsp;&nbsp; <span class="swatch-line dashed"></span> 설계만 된(예정) 관계</div>
+  `;
+  diagramEl.appendChild(legend);
+
+  // 5-3. 연결선 SVG
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("id", "lines");
+  svg.setAttribute("width", DIAGRAM_W);
+  svg.setAttribute("height", DIAGRAM_H);
+  svg.setAttribute("viewBox", `0 0 ${DIAGRAM_W} ${DIAGRAM_H}`);
+
+  const defs = document.createElementNS(svgNS, "defs");
+  defs.innerHTML = `
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+    </marker>
+  `;
+  svg.appendChild(defs);
+  svg.style.color = "var(--line-strong)";
+
+  function el(name, attrs) {
+    const e = document.createElementNS(svgNS, name);
+    Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+    return e;
+  }
+
+  function drawLabel(x, y, text, ghost) {
+    const padding = 5;
+    const w = text.length * 6.6 + padding * 2;
+    const h = 18;
+    svg.appendChild(el("rect", {
+      x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 5,
+      fill: "var(--label-bg)", stroke: "var(--border)",
+    }));
+    const t = el("text", {
+      x, y: y + 4, "text-anchor": "middle", "font-size": 11,
+      "font-family": "'Noto Sans KR', sans-serif", fill: ghost ? "var(--ghost-ink)" : "var(--ink-700)",
+      "font-weight": 600,
+    });
+    t.textContent = text;
+    svg.appendChild(t);
+  }
+
+  function drawMult(x, y, text, dx, dy) {
+    const t = el("text", {
+      x: x + dx, y: y + dy, "text-anchor": "middle", "font-size": 11,
+      "font-family": "'JetBrains Mono', monospace", fill: "var(--line-strong)", "font-weight": 700,
+    });
+    t.textContent = text;
+    svg.appendChild(t);
+  }
+
+  RELATIONS.forEach((rel) => {
+    const strokeAttrs = {
+      stroke: rel.ghost ? "var(--ghost-border)" : "var(--line-strong)",
+      "stroke-width": 1.6,
+      fill: "none",
+      "marker-end": "url(#arrow)",
+    };
+    if (rel.ghost) strokeAttrs["stroke-dasharray"] = "5 4";
+
+    if (rel.elbow) {
+      const a = pos[rel.from], b = pos[rel.to];
+      const start = edgeAnchor(rel.from, "top");
+      const end = edgeAnchor(rel.to, "top");
+      const laneY = rowY[gridCoord(rel.to).r] - GAP_Y / 2;
+      const points = `${start.x},${start.y} ${start.x},${laneY} ${end.x},${laneY} ${end.x},${end.y}`;
+      svg.appendChild(el("polyline", { points, ...strokeAttrs }));
+      drawLabel((start.x + end.x) / 2, laneY - 10, rel.label, rel.ghost);
+      drawMult(start.x, start.y, rel.mult[0], -14, -4);
+      drawMult(end.x, end.y, rel.mult[1], 18, -4);
+      return;
+    }
+
+    const ga = gridCoord(rel.from), gb = gridCoord(rel.to);
+    let p1, p2;
+    if (ga.r === gb.r) {
+      const leftId = ga.c < gb.c ? rel.from : rel.to;
+      const rightId = ga.c < gb.c ? rel.to : rel.from;
+      p1 = edgeAnchor(leftId, "right");
+      p2 = edgeAnchor(rightId, "left");
+      if (leftId !== rel.from) { const tmp = p1; p1 = p2; p2 = tmp; }
+    } else {
+      const topId = ga.r < gb.r ? rel.from : rel.to;
+      const bottomId = ga.r < gb.r ? rel.to : rel.from;
+      p1 = edgeAnchor(topId, "bottom");
+      p2 = edgeAnchor(bottomId, "top");
+      if (topId !== rel.from) { const tmp = p1; p1 = p2; p2 = tmp; }
+    }
+
+    svg.appendChild(el("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, ...strokeAttrs }));
+    drawLabel((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, rel.label, rel.ghost);
+
+    const dx = Math.sign(p2.x - p1.x) || 0, dy = Math.sign(p2.y - p1.y) || 0;
+    drawMult(p1.x, p1.y, rel.mult[0], dx ? -14 : 16, dy ? -8 : -6);
+    drawMult(p2.x, p2.y, rel.mult[1], dx ? 16 : 16, dy ? 14 : -6);
+  });
+
+  diagramEl.appendChild(svg);
+</script>
+</body>
+</html>
