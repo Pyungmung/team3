@@ -1,0 +1,28 @@
+# --- Java / Spring Boot (backend) ---
+backend/target/
+*.class
+*.jar
+*.log
+
+# --- Python (customhouse-ai) ---
+customhouse-ai/.venv/
+customhouse-ai/**/__pycache__/
+*.pyc
+
+# --- Node / Frontend build (future) ---
+frontend/node_modules/
+frontend/dist/
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+.vs/
+*.iml
+.DS_Store
+Thumbs.db
+
+# --- Secrets (CLAUDE.md 수칙: 키는 .env에만, .env는 절대 커밋 금지) ---
+.env
+.env.*
+!.env.example
+!*/.env.example

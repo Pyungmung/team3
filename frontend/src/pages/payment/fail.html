@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 결제/자동결제 등록 실패 콜백 페이지
+     토스 결제창이 실패 시 이 페이지로 리다이렉트하며 code/message를 쿼리로 실어보낸다. -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 결제 실패</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-sm mx-auto px-4 py-24 text-center">
+    <div class="text-5xl mb-4">😢</div>
+    <h1 class="text-xl font-bold mb-2">결제에 실패했습니다</h1>
+    <p id="error-detail" class="text-sm text-red-500 mb-6"></p>
+    <a href="checkout.html" class="px-6 py-2 rounded-full text-white brand-gradient inline-block">다시 시도하기</a>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const message = params.get("message");
+    document.getElementById("error-detail").textContent = message
+      ? `${message}${code ? ` (${code})` : ""}`
+      : "알 수 없는 오류가 발생했습니다.";
+  </script>
+</body>
+</html>

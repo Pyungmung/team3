@@ -1,0 +1,117 @@
+{
+  "_owner": "송귀성",
+  "_comment": "예시(샘플) 데이터입니다. 실제 서비스 배포 시 국토교통부 전월세 실거래가 API, 한국부동산원 API, SGIS 등 공공데이터로 교체해야 합니다 (services/api_collector.py 참고). base_rent는 보증금 1000만원 기준 원룸/오피스텔 평균 월세 시세(만원)를 임의로 추정한 값입니다.",
+  "conversion_rate_annual_percent": 5.0,
+  "base_deposit": 1000,
+  "work_hubs": ["강남구", "종로구", "영등포구", "구로구", "성동구", "분당구"],
+  "regions": [
+    {
+      "name": "관악구",
+      "base_rent": 55,
+      "maintenance_fee": 6,
+      "commute_minutes": { "강남구": 35, "종로구": 40, "영등포구": 25, "구로구": 20, "성동구": 45, "분당구": 50 }
+    },
+    {
+      "name": "동작구",
+      "base_rent": 60,
+      "maintenance_fee": 7,
+      "commute_minutes": { "강남구": 30, "종로구": 30, "영등포구": 20, "구로구": 25, "성동구": 40, "분당구": 45 }
+    },
+    {
+      "name": "마포구",
+      "base_rent": 65,
+      "maintenance_fee": 7,
+      "commute_minutes": { "강남구": 35, "종로구": 20, "영등포구": 20, "구로구": 30, "성동구": 30, "분당구": 55 }
+    },
+    {
+      "name": "은평구",
+      "base_rent": 50,
+      "maintenance_fee": 6,
+      "commute_minutes": { "강남구": 45, "종로구": 25, "영등포구": 35, "구로구": 40, "성동구": 40, "분당구": 60 }
+    },
+    {
+      "name": "서대문구",
+      "base_rent": 55,
+      "maintenance_fee": 6,
+      "commute_minutes": { "강남구": 40, "종로구": 15, "영등포구": 30, "구로구": 35, "성동구": 30, "분당구": 55 }
+    },
+    {
+      "name": "성북구",
+      "base_rent": 50,
+      "maintenance_fee": 6,
+      "commute_minutes": { "강남구": 40, "종로구": 20, "영등포구": 40, "구로구": 45, "성동구": 25, "분당구": 55 }
+    },
+    {
+      "name": "노원구",
+      "base_rent": 45,
+      "maintenance_fee": 6,
+      "commute_minutes": { "강남구": 50, "종로구": 30, "영등포구": 50, "구로구": 55, "성동구": 35, "분당구": 60 }
+    },
+    {
+      "name": "강북구",
+      "base_rent": 42,
+      "maintenance_fee": 5,
+      "commute_minutes": { "강남구": 50, "종로구": 25, "영등포구": 45, "구로구": 50, "성동구": 35, "분당구": 60 }
+    },
+    {
+      "name": "동대문구",
+      "base_rent": 52,
+      "maintenance_fee": 6,
+      "commute_minutes": { "강남구": 35, "종로구": 15, "영등포구": 35, "구로구": 40, "성동구": 20, "분당구": 50 }
+    },
+    {
+      "name": "광진구",
+      "base_rent": 60,
+      "maintenance_fee": 7,
+      "commute_minutes": { "강남구": 25, "종로구": 25, "영등포구": 35, "구로구": 40, "성동구": 15, "분당구": 40 }
+    },
+    {
+      "name": "강동구",
+      "base_rent": 55,
+      "maintenance_fee": 7,
+      "commute_minutes": { "강남구": 30, "종로구": 35, "영등포구": 45, "구로구": 50, "성동구": 25, "분당구": 30 }
+    },
+    {
+      "name": "송파구",
+      "base_rent": 68,
+      "maintenance_fee": 8,
+      "commute_minutes": { "강남구": 20, "종로구": 35, "영등포구": 40, "구로구": 45, "성동구": 25, "분당구": 20 }
+    },
+    {
+      "name": "금천구",
+      "base_rent": 45,
+      "maintenance_fee": 6,
+      "commute_minutes": { "강남구": 35, "종로구": 40, "영등포구": 20, "구로구": 10, "성동구": 45, "분당구": 45 }
+    },
+    {
+      "name": "강서구",
+      "base_rent": 52,
+      "maintenance_fee": 6,
+      "commute_minutes": { "강남구": 45, "종로구": 40, "영등포구": 20, "구로구": 25, "성동구": 50, "분당구": 60 }
+    },
+    {
+      "name": "양천구",
+      "base_rent": 55,
+      "maintenance_fee": 7,
+      "commute_minutes": { "강남구": 40, "종로구": 35, "영등포구": 15, "구로구": 20, "성동구": 45, "분당구": 55 }
+    },
+    {
+      "name": "경기 부천시",
+      "base_rent": 38,
+      "maintenance_fee": 5,
+      "commute_minutes": { "강남구": 55, "종로구": 45, "영등포구": 25, "구로구": 20, "성동구": 55, "분당구": 65 }
+    },
+    {
+      "name": "경기 광명시",
+      "base_rent": 42,
+      "maintenance_fee": 5,
+      "commute_minutes": { "강남구": 40, "종로구": 45, "영등포구": 20, "구로구": 15, "성동구": 50, "분당구": 45 }
+    },
+    {
+      "name": "경기 안양시",
+      "base_rent": 40,
+      "maintenance_fee": 5,
+      "commute_minutes": { "강남구": 40, "종로구": 50, "영등포구": 30, "구로구": 20, "성동구": 55, "분당구": 30 }
+    }
+  ]
+}

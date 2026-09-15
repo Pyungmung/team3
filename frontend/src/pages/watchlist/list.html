@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 관심 매물(WatchList) & 알림 (연동 대상 백엔드: domain/watchlist, domain/notification, 담당 김시연) -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 관심 매물</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-xl mx-auto px-4 py-12">
+    <div id="guest-view" class="hidden card p-6 text-center">
+      <p class="text-sm text-gray-500 mb-4">로그인하면 관심 매물을 등록하고 변동 알림을 받을 수 있어요.</p>
+      <a href="../auth/login.html" class="text-sm px-4 py-2 rounded-full text-white brand-gradient inline-block">로그인하기</a>
+    </div>
+
+    <div id="main-view" class="hidden space-y-8">
+      <!-- 관심 매물 등록 -->
+      <section>
+        <h1 class="text-2xl font-extrabold mb-4">관심 매물</h1>
+        <form id="add-form" class="card p-5 space-y-3">
+          <p class="text-xs text-gray-400 mb-1">
+            아직 실제 매물 연동 전이라, 관심 있는 매물 정보를 직접 등록해서 시세 변동 알림을 테스트해볼 수 있어요.
+          </p>
+          <input type="text" name="address" required placeholder="주소 (예: 서울시 관악구 신림동 123-45)"
+                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" name="region" required placeholder="지역 (예: 관악구)"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            <input type="number" name="maintenanceFee" min="0" placeholder="관리비(만원)"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="number" name="deposit" required min="0" placeholder="보증금(만원)"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            <input type="number" name="monthlyRent" required min="0" placeholder="월세(만원)"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <input type="text" name="sourceUrl" placeholder="출처 URL (선택)"
+                 class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          <p id="add-msg" class="text-xs text-gray-400"></p>
+          <button type="submit" class="w-full py-2.5 rounded-full text-white font-semibold brand-gradient text-sm">
+            관심 매물로 등록
+          </button>
+        </form>
+      </section>
+
+      <!-- 관심 매물 목록 -->
+      <section>
+        <h2 class="font-bold mb-3">내가 등록한 매물</h2>
+        <div id="watchlist-empty" class="hidden text-sm text-gray-400 text-center py-8">
+          아직 등록한 관심 매물이 없어요.
+        </div>
+        <ul id="watchlist-items" class="space-y-3"></ul>
+      </section>
+
+      <!-- 알림함 -->
+      <section>
+        <h2 class="font-bold mb-3">
+          알림함 <span id="unread-badge" class="hidden text-xs font-normal px-2 py-0.5 rounded-full" style="background:var(--brand-100);color:var(--brand-700)"></span>
+        </h2>
+        <div id="notifications-empty" class="hidden text-sm text-gray-400 text-center py-8">
+          아직 받은 알림이 없어요. 관심 매물의 "가격 재확인"을 눌러 변동을 만들어보세요.
+        </div>
+        <ul id="notification-items" class="space-y-2"></ul>
+      </section>
+    </div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/api/watchlist.js?v=20260915b"></script>
+  <script>
+    renderHeader("watchlist");
+    renderFooter();
+
+    if (!CustomHouseAuthApi.isLoggedIn()) {
+      document.getElementById("guest-view").classList.remove("hidden");
+    } else {
+      document.getElementById("main-view").classList.remove("hidden");
+      init();
+    }
+
+    async function init() {
+      await Promise.all([loadWatchlist(), loadNotifications()]);
+
+      document.getElementById("add-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById("add-msg");
+        msg.classList.remove("text-red-500");
+        msg.textContent = "등록 중...";
+
+        const fd = new FormData(e.target);
+        const property = {
+          address: fd.get("address"),
+          region: fd.get("region"),
+          deposit: Number(fd.get("deposit")),
+          monthlyRent: Number(fd.get("monthlyRent")),
+          maintenanceFee: fd.get("maintenanceFee") ? Number(fd.get("maintenanceFee")) : null,
+          sourceUrl: fd.get("sourceUrl") || null,
+        };
+
+        try {
+          await CustomHouseWatchlistApi.addToWatchlist(property);
+          msg.textContent = "등록되었습니다!";
+          e.target.reset();
+          await loadWatchlist();
+        } catch (err) {
+          msg.classList.add("text-red-500");
+          msg.textContent = err.message;
+        }
+      });
+    }
+
+    async function loadWatchlist() {
+      const items = await CustomHouseWatchlistApi.getWatchlist();
+      const listEl = document.getElementById("watchlist-items");
+      const emptyEl = document.getElementById("watchlist-empty");
+
+      if (items.length === 0) {
+        emptyEl.classList.remove("hidden");
+        listEl.innerHTML = "";
+        return;
+      }
+      emptyEl.classList.add("hidden");
+
+      listEl.innerHTML = items
+        .map(
+          (item) => `
+        <li class="card p-4" data-watchlist-id="${item.watchlistItemId}" data-property-id="${item.propertyId}">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <div class="font-semibold text-sm">${item.address}</div>
+              <div class="text-xs text-gray-400">${item.region} · 보증금 ${item.deposit}만 / 월세 ${item.monthlyRent}만${item.maintenanceFee != null ? ` / 관리비 ${item.maintenanceFee}만` : ""}</div>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-full ${
+              item.status === "CHANGED" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"
+            }">${item.status === "CHANGED" ? "변동 감지됨" : "모니터링 중"}</span>
+          </div>
+          ${item.reportCount > 0 ? `<div class="text-xs text-red-500 mb-2">⚠️ 신고 누적 ${item.reportCount}건${item.reportCount >= 3 ? " · 허위 매물 의심" : ""}</div>` : ""}
+          <div class="flex flex-wrap gap-2 text-xs">
+            <button class="recheck-btn px-3 py-1.5 rounded-full border border-gray-200">가격 재확인(테스트)</button>
+            <button class="report-btn px-3 py-1.5 rounded-full border border-gray-200 text-red-500">허위 매물 신고</button>
+            <button class="remove-btn px-3 py-1.5 rounded-full border border-gray-200 text-gray-400 ml-auto">삭제</button>
+          </div>
+        </li>
+      `
+        )
+        .join("");
+
+      listEl.querySelectorAll("[data-watchlist-id]").forEach((li) => {
+        const watchlistItemId = li.dataset.watchlistId;
+        const propertyId = li.dataset.propertyId;
+        const item = items.find((i) => String(i.watchlistItemId) === watchlistItemId);
+
+        li.querySelector(".remove-btn").addEventListener("click", async () => {
+          await CustomHouseWatchlistApi.removeFromWatchlist(watchlistItemId);
+          await loadWatchlist();
+        });
+
+        li.querySelector(".report-btn").addEventListener("click", async () => {
+          await CustomHouseWatchlistApi.reportProperty(propertyId);
+          await loadWatchlist();
+        });
+
+        li.querySelector(".recheck-btn").addEventListener("click", async () => {
+          // 데모용: 실제로는 외부 시세 API/크롤링이 최신값을 가져오지만, 여기서는
+          // 현재 월세에서 임의로 변동을 줘서 알림 발행 로직을 바로 확인할 수 있게 한다.
+          const bumped = item.monthlyRent + (Math.random() > 0.5 ? 5 : -5);
+          await CustomHouseWatchlistApi.recheckPrice(propertyId, {
+            deposit: item.deposit,
+            monthlyRent: Math.max(0, bumped),
+          });
+          await Promise.all([loadWatchlist(), loadNotifications()]);
+        });
+      });
+    }
+
+    async function loadNotifications() {
+      const [notifications, unreadCount] = await Promise.all([
+        CustomHouseWatchlistApi.getNotifications(),
+        CustomHouseWatchlistApi.getUnreadNotificationCount(),
+      ]);
+
+      const badge = document.getElementById("unread-badge");
+      if (unreadCount > 0) {
+        badge.textContent = `안읽음 ${unreadCount}`;
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+
+      const listEl = document.getElementById("notification-items");
+      const emptyEl = document.getElementById("notifications-empty");
+
+      if (notifications.length === 0) {
+        emptyEl.classList.remove("hidden");
+        listEl.innerHTML = "";
+        return;
+      }
+      emptyEl.classList.add("hidden");
+
+      listEl.innerHTML = notifications
+        .map(
+          (n) => `
+        <li class="card p-3 text-sm flex items-start justify-between gap-3 ${n.read ? "opacity-60" : ""}" data-id="${n.id}">
+          <div>
+            <div class="font-semibold">${n.read ? "" : "🔵 "}${n.title}</div>
+            <div class="text-xs text-gray-500 mt-0.5">${n.content}</div>
+            <div class="text-[11px] text-gray-300 mt-1">${new Date(n.createdAt).toLocaleString()}</div>
+          </div>
+          ${!n.read ? `<button class="read-btn text-xs underline text-gray-400 whitespace-nowrap">읽음</button>` : ""}
+        </li>
+      `
+        )
+        .join("");
+
+      listEl.querySelectorAll(".read-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const id = e.target.closest("[data-id]").dataset.id;
+          await CustomHouseWatchlistApi.markNotificationAsRead(id);
+          await loadNotifications();
+        });
+      });
+    }
+  </script>
+</body>
+</html>

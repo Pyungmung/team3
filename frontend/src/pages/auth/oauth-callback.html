@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 네이버 OAuth2 로그인 콜백 페이지
+     backend/.../OAuth2SuccessHandler.java가 로그인 성공 후 accessToken/refreshToken을
+     쿼리 파라미터에 담아 이 페이지로 리다이렉트시킨다 (application.yml: oauth2.success-redirect-url). -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 로그인 처리 중</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-sm mx-auto px-4 py-24 text-center">
+    <div id="status" class="text-sm text-gray-500">네이버 로그인 처리 중입니다...</div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get("accessToken");
+    const refreshToken = params.get("refreshToken");
+    const statusEl = document.getElementById("status");
+
+    if (accessToken && refreshToken) {
+      CustomHouseAuthApi.saveTokens({ accessToken, refreshToken });
+      statusEl.textContent = "로그인 성공! 홈으로 이동합니다...";
+      setTimeout(() => (window.location.href = "../index.html"), 500);
+    } else {
+      statusEl.textContent = "로그인에 실패했습니다. 다시 시도해주세요.";
+      statusEl.classList.add("text-red-500");
+    }
+  </script>
+</body>
+</html>

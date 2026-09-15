@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 메인 홈 페이지 -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 청년 맞춤형 주거 케어 플랫폼</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-5xl mx-auto px-4">
+    <section class="py-20 text-center">
+      <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-4" style="background:var(--brand-100);color:var(--brand-700)">
+        청년 맞춤형 주거 케어 플랫폼
+      </span>
+      <h1 class="text-4xl sm:text-5xl font-extrabold mb-4">
+        더 가벼운 주거, <span style="color:var(--brand-600)">더 나은 내일</span>
+      </h1>
+      <p class="text-gray-600 max-w-xl mx-auto mb-8">
+        월급, 보증금, 직장 위치만 입력하면 통근 30~40분 이내에서 가장 경제적인
+        주거지와 딱 맞는 정부 지원 정책을 찾아드려요.
+      </p>
+      <a href="diagnosis/input-form.html"
+         class="inline-block px-8 py-3 rounded-full text-white font-semibold brand-gradient shadow-lg">
+        내 주거비 절약 진단받기 →
+      </a>
+    </section>
+
+    <section class="grid sm:grid-cols-3 gap-4 pb-20">
+      <div class="card p-6">
+        <div class="text-2xl mb-2">💰</div>
+        <h3 class="font-bold mb-1">실질 주거비 계산</h3>
+        <p class="text-sm text-gray-500">월세+관리비+대출이자+교통비-정부지원금까지 한번에</p>
+      </div>
+      <div class="card p-6">
+        <div class="text-2xl mb-2">🚇</div>
+        <h3 class="font-bold mb-1">통근시간 기반 매칭</h3>
+        <p class="text-sm text-gray-500">직장 위치 기준 30~40분 이내 저렴한 지역 추천</p>
+      </div>
+      <div class="card p-6">
+        <div class="text-2xl mb-2">🏛️</div>
+        <h3 class="font-bold mb-1">정책 자동 추천</h3>
+        <p class="text-sm text-gray-500">청년월세지원, 버팀목 대출 등 자격을 자동 판별</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../js/components/header.js?v=20260915b"></script>
+  <script src="../js/components/footer.js?v=20260915b"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+  </script>
+</body>
+</html>
