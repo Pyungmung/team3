@@ -8,6 +8,19 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="../../js/config.js?v=20260915c"></script>
+  <script>
+    // config.js에 카카오맵 키가 있으면 SDK를 끼워넣는다 (autoload=false로 즉시 렌더 방지).
+    // document.write는 크롬이 느린 연결에서 차단시키는 인터벤션 대상이라 appendChild로 넣는다.
+    if (window.CUSTOMHOUSE_CONFIG && window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY) {
+      const kakaoSdkScript = document.createElement("script");
+      kakaoSdkScript.src =
+        "https://dapi.kakao.com/v2/maps/sdk.js?appkey=" +
+        window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY +
+        "&autoload=false";
+      document.head.appendChild(kakaoSdkScript);
+    }
+  </script>
 </head>
 <body>
   <div id="app-header"></div>
@@ -54,8 +67,8 @@
 
   <script src="../../js/components/header.js?v=20260915b"></script>
   <script src="../../js/components/footer.js?v=20260915b"></script>
-  <script src="../../js/utils/chart-util.js?v=20260915b"></script>
-  <script src="../../js/utils/map-util.js?v=20260915b"></script>
+  <script src="../../js/utils/chart-util.js?v=20260915d"></script>
+  <script src="../../js/utils/map-util.js?v=20260915d"></script>
   <script>
     renderHeader("diagnosis");
     renderFooter();
@@ -69,7 +82,7 @@
       document.getElementById("result-content").classList.remove("hidden");
 
       document.getElementById("summary-line").textContent =
-        `${data.recommendations.length}개 지역을 분석했어요. 아래 순서는 실질 주거비가 낮은 순입니다.`;
+        `${data.recommendations.length}개 매물을 분석했어요. 아래 순서는 실질 주거비가 낮은 순입니다.`;
       document.getElementById("affordable-rent").textContent = `${data.affordable_rent}만원`;
       document.getElementById("rir").textContent = `${data.rent_to_income_ratio}%`;
       document.getElementById("disclaimer").textContent = data.disclaimer;
@@ -87,16 +100,27 @@
               <span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:var(--brand-100);color:var(--brand-700)">#${
                 idx + 1
               }</span>
-              <span class="font-bold ml-2">${r.region}</span>
+              <span class="font-bold ml-2">${r.building_name}</span>
               <span class="text-xs text-gray-400 ml-1">통근 약 ${r.commute_minutes}분</span>
             </div>
             <div class="text-right">
+              <div class="text-xs text-gray-400">실질 주거비</div>
               <div class="text-lg font-extrabold" style="color:var(--brand-600)">${r.real_housing_cost}만원/월</div>
               <div class="text-xs text-gray-400">월 ${r.monthly_savings}만원 절감</div>
             </div>
           </div>
+          <div class="text-xs text-gray-400 mb-1">
+            ${r.region}${r.dong ? ` · ${r.dong}` : ""}${
+            r.exclusive_area ? ` · 전용 ${r.exclusive_area}㎡` : ""
+          }${r.floor ? ` · ${r.floor}층` : ""} · ${r.data_source}
+          </div>
+          <div class="text-xs text-gray-500 mb-3">
+            실거래 기준 보증금 ${r.listing_deposit}만 / 월세 ${r.listing_monthly_rent}만
+          </div>
           <div class="grid grid-cols-4 gap-2 text-xs text-gray-500 mb-3">
-            <div>월세 ${r.rent}만</div>
+            <div title="보유 보증금으로 전환/대출 계산까지 적용한 뒤의 월세">
+              월세 ${r.rent}만${r.rent === 0 && r.listing_monthly_rent > 0 ? " (보증금으로 상쇄)" : ""}
+            </div>
             <div>관리비 ${r.maintenance_fee}만</div>
             <div>대출이자 ${r.loan_interest}만</div>
             <div>교통비 ${r.transportation_cost}만</div>

@@ -5,9 +5,9 @@
  */
 
 /**
- * 추천 지역들의 실질 주거비 vs 기존(baseline) 주거비를 막대그래프로 그린다.
+ * 추천 매물들의 실질 주거비 vs 기존(baseline) 주거비를 막대그래프로 그린다.
  * @param {string} canvasId
- * @param {Array<{region:string, real_housing_cost:number, baseline_cost:number}>} recommendations
+ * @param {Array<{building_name:string, region:string, real_housing_cost:number, baseline_cost:number}>} recommendations
  */
 function renderSavingsChart(canvasId, recommendations) {
   const ctx = document.getElementById(canvasId);
@@ -16,7 +16,7 @@ function renderSavingsChart(canvasId, recommendations) {
   new Chart(ctx, {
     type: "bar",
     data: {
-      labels: recommendations.map((r) => r.region),
+      labels: recommendations.map((r) => r.building_name || r.region),
       datasets: [
         {
           label: "기존 예상 주거비(만원)",
@@ -35,7 +35,7 @@ function renderSavingsChart(canvasId, recommendations) {
       maintainAspectRatio: false,
       plugins: {
         legend: { position: "bottom" },
-        title: { display: true, text: "지역별 실질 주거비 비교" },
+        title: { display: true, text: "매물별 실질 주거비 비교" },
       },
       scales: {
         y: { beginAtZero: true, title: { display: true, text: "만원 / 월" } },

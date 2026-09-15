@@ -7,11 +7,15 @@
 공공 정책 API 데이터로 교체해야 한다.
 """
 import json
+from functools import lru_cache
 
 from app.core.config import settings
 
 
+@lru_cache(maxsize=1)
 def load_policies() -> list[dict]:
+    """지역 평균이 아니라 개별 매물 단위로 추천하면서 건물 후보마다 이 함수가 호출되므로,
+    (변하지 않는) 정책 JSON을 매번 디스크에서 다시 읽지 않도록 캐싱한다."""
     with open(settings.policies_file, encoding="utf-8") as f:
         return json.load(f)["policies"]
 

@@ -17,14 +17,24 @@ except ImportError:  # pragma: no cover - 환경에 따라 numpy/pandas 네이�
 
 
 def rank_by_real_cost(results: list[dict], top_n: int = 5) -> list[dict]:
-    """실질 주거비(real_housing_cost) 오름차순으로 정렬해 상위 N개 지역을 반환한다."""
+    """실질 주거비(real_housing_cost)가 기존 예상 주거비(baseline_cost)보다 낮은 지역만 골라
+    실질 주거비 오름차순으로 정렬해 상위 N개를 반환한다.
+
+    맞집은 "더 저렴한 곳을 추천"하는 앱이라, 보증금 전환/정책 지원 혜택이 전혀 없어
+    절감액(monthly_savings)이 0 이하인 지역은 애초에 추천 목록에 넣지 않는다
+    (그래프의 "맞집 추천 실질 주거비" 막대가 "기존 예상 주거비" 막대보다 항상 낮아야 한다).
+    """
     if not results:
         return []
 
+    savings_results = [r for r in results if r["monthly_savings"] > 0]
+    if not savings_results:
+        return []
+
     if _PANDAS_AVAILABLE:
-        df = pd.DataFrame(results)
+        df = pd.DataFrame(savings_results)
         df = df.sort_values(by="real_housing_cost", ascending=True).head(top_n)
         return df.to_dict(orient="records")
 
     # pandas 사용 불가 환경을 위한 순수 Python 폴백 (결과는 동일)
-    return sorted(results, key=lambda r: r["real_housing_cost"])[:top_n]
+    return sorted(savings_results, key=lambda r: r["real_housing_cost"])[:top_n]

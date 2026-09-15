@@ -7,7 +7,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import diagnosis, policy
+from app.api.v1 import diagnosis, market_price, policy
 from app.core.config import settings
 
 app = FastAPI(
@@ -25,6 +25,7 @@ app.add_middleware(
 
 app.include_router(diagnosis.router, prefix="/api/v1")
 app.include_router(policy.router, prefix="/api/v1")
+app.include_router(market_price.router, prefix="/api/v1")
 
 
 @app.get("/health")
