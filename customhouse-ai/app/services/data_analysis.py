@@ -17,14 +17,30 @@ except ImportError:  # pragma: no cover - 환경에 따라 numpy/pandas 네이�
 
 
 def rank_by_real_cost(results: list[dict], top_n: int = 5) -> list[dict]:
-    """실질 주거비(real_housing_cost) 오름차순으로 정렬해 상위 N개 지역을 반환한다."""
+    """실질 주거비(real_housing_cost)가 기존 예상 주거비(baseline_cost)보다 낮은 지역만 골라
+    실질 주거비 오름차순으로 정렬해 상위 N개를 반환한다.
+
+    맞집은 "더 저렴한 곳을 추천"하는 앱이라, 보증금 전환/정책 지원 혜택이 전혀 없어
+    절감액(monthly_savings)이 0 이하인 지역은 애초에 추천 목록에 넣지 않는다
+    (그래프의 "맞집 추천 실질 주거비" 막대가 "기존 예상 주거비" 막대보다 항상 낮아야 한다).
+
+    실질 주거비가 0(정책 지원금이 비용을 다 상쇄)인 매물이 여러 개면 동점이 되는데, 동점자
+    사이에 2차 기준이 없으면 국토부 API가 응답한 순서(사실상 임의 순서)에 따라 반전세형
+    매물(월세가 몇만원뿐인 특이 케이스)이 우연히 상위에 몰리는 문제가 있었다. 그래서 동점일
+    때는 절감액(monthly_savings)이 큰 매물을 우선한다 - "최적화 전에는 더 비쌌던 곳을 우리가
+    더 크게 절약해준" 매물을 보여주는 게 사용자에게 더 설득력 있다.
+    """
     if not results:
         return []
 
+    savings_results = [r for r in results if r["monthly_savings"] > 0]
+    if not savings_results:
+        return []
+
     if _PANDAS_AVAILABLE:
-        df = pd.DataFrame(results)
-        df = df.sort_values(by="real_housing_cost", ascending=True).head(top_n)
+        df = pd.DataFrame(savings_results)
+        df = df.sort_values(by=["real_housing_cost", "monthly_savings"], ascending=[True, False]).head(top_n)
         return df.to_dict(orient="records")
 
     # pandas 사용 불가 환경을 위한 순수 Python 폴백 (결과는 동일)
-    return sorted(results, key=lambda r: r["real_housing_cost"])[:top_n]
+    return sorted(savings_results, key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))[:top_n]

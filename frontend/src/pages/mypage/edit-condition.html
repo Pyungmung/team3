@@ -6,7 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맞집 | 주거 조건 수정</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <link rel="stylesheet" href="../../css/main.css?v=20260916a" />
+  <script src="../../js/config.js?v=20260916a"></script>
+  <script>
+    // 직장 위치 주소검색(카카오 Geocoder)용 SDK. 키 없으면 그냥 안 불러오고, 아래 스크립트가
+    // 기존 드롭다운 UI로 폴백한다 (diagnosis/input-form.html과 동일한 패턴).
+    if (window.CUSTOMHOUSE_CONFIG && window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY) {
+      const kakaoSdkScript = document.createElement("script");
+      kakaoSdkScript.src =
+        "https://dapi.kakao.com/v2/maps/sdk.js?appkey=" +
+        window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY +
+        "&libraries=services&autoload=false";
+      document.head.appendChild(kakaoSdkScript);
+    }
+  </script>
+  <!-- 주소 검색(우편번호) 팝업 - 다음(카카오) 공개 서비스, 별도 키 불필요 -->
+  <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 </head>
 <body>
   <div id="app-header"></div>
@@ -16,21 +31,68 @@
 
     <form id="condition-form" class="card p-6 space-y-4">
       <div>
-        <label class="block text-sm font-semibold mb-1">월급 (만원)</label>
-        <input type="number" name="monthlyIncome" required min="0" placeholder="예: 280"
+        <label class="block text-sm font-semibold mb-1">나이 (만)</label>
+        <input type="number" name="age" min="0" max="120" placeholder="예: 28"
                class="w-full border border-gray-200 rounded-lg px-3 py-2" />
       </div>
 
       <div>
+        <label class="block text-sm font-semibold mb-1">소득 (연소득, 만원)</label>
+        <input type="number" name="annualIncome" required min="0" placeholder="예: 3400"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">부부합산 연소득 (만원, 선택)</label>
+        <input type="number" name="coupleAnnualIncome" min="0" placeholder="배우자와 합산한 연소득"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2" />
+        <p class="text-xs text-gray-400 mt-1">입력하면 소득 기준 정책 판별 시 연소득과 비교해 더 큰 값을 사용해요.</p>
+      </div>
+
+      <div>
         <label class="block text-sm font-semibold mb-1">직장 위치</label>
-        <!-- customhouse-ai/app/data/regions.json의 work_hubs와 동일하게 유지해야 함 -->
-        <select name="workLocation" required class="w-full border border-gray-200 rounded-lg px-3 py-2">
+
+        <div id="work-address-ui" class="hidden">
+          <div class="flex gap-2">
+            <input type="text" id="work-address-display" readonly placeholder="주소를 검색해주세요"
+                   class="flex-1 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 cursor-default" />
+            <button type="button" id="search-address-btn"
+                    class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold whitespace-nowrap">
+              주소 검색
+            </button>
+          </div>
+          <p id="work-hub-match" class="text-xs text-gray-400 mt-1 hidden"></p>
+        </div>
+
+        <!-- customhouse-ai/app/data/work_locations.json과 동일하게 유지해야 함 (서울 25개 자치구 전체 + 분당구) -->
+        <select name="workLocation" id="work-location-select" required
+                class="w-full border border-gray-200 rounded-lg px-3 py-2">
           <option value="">직장 위치를 선택하세요</option>
           <option value="강남구">강남구</option>
-          <option value="종로구">종로구</option>
-          <option value="영등포구">영등포구(여의도)</option>
+          <option value="강동구">강동구</option>
+          <option value="강북구">강북구</option>
+          <option value="강서구">강서구</option>
+          <option value="관악구">관악구</option>
+          <option value="광진구">광진구</option>
           <option value="구로구">구로구(가산디지털단지)</option>
+          <option value="금천구">금천구</option>
+          <option value="노원구">노원구</option>
+          <option value="도봉구">도봉구</option>
+          <option value="동대문구">동대문구</option>
+          <option value="동작구">동작구</option>
+          <option value="마포구">마포구</option>
+          <option value="서대문구">서대문구</option>
+          <option value="서초구">서초구</option>
           <option value="성동구">성동구(성수)</option>
+          <option value="성북구">성북구</option>
+          <option value="송파구">송파구</option>
+          <option value="양천구">양천구</option>
+          <option value="영등포구">영등포구(여의도)</option>
+          <option value="용산구">용산구</option>
+          <option value="은평구">은평구</option>
+          <option value="종로구">종로구</option>
+          <option value="중구">중구</option>
+          <option value="중랑구">중랑구</option>
           <option value="분당구">분당구(판교)</option>
         </select>
       </div>
@@ -47,6 +109,90 @@
                class="w-full border border-gray-200 rounded-lg px-3 py-2" />
       </div>
 
+      <fieldset class="border border-gray-200 rounded-lg p-4">
+        <legend class="text-sm font-semibold px-1">자산 (만원)</legend>
+        <p class="text-xs text-gray-400 mb-3">청년 정책 중 상당수가 순자산 기준을 봐요. 아는 만큼만 입력해도 괜찮아요.</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">부동산</label>
+            <input type="number" name="realEstateAsset" min="0" placeholder="0" value="0"
+                   class="asset-input w-full border border-gray-200 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">자동차</label>
+            <input type="number" name="carAsset" min="0" placeholder="0" value="0"
+                   class="asset-input w-full border border-gray-200 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">금융자산</label>
+            <input type="number" name="financialAsset" min="0" placeholder="0" value="0"
+                   class="asset-input w-full border border-gray-200 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">일반자산</label>
+            <input type="number" name="otherAsset" min="0" placeholder="0" value="0"
+                   class="asset-input w-full border border-gray-200 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">금융부채</label>
+            <input type="number" name="financialDebt" min="0" placeholder="0" value="0"
+                   class="asset-input w-full border border-gray-200 rounded-lg px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">일반부채</label>
+            <input type="number" name="otherDebt" min="0" placeholder="0" value="0"
+                   class="asset-input w-full border border-gray-200 rounded-lg px-3 py-2" />
+          </div>
+        </div>
+        <p class="text-sm font-semibold mt-3">총자산액(순자산): <span id="net-asset-display">0</span>만원</p>
+      </fieldset>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">직업종류 (선택)</label>
+        <select name="jobType" class="w-full border border-gray-200 rounded-lg px-3 py-2">
+          <option value="">선택 안 함</option>
+          <option value="GOVERNMENT">공무원</option>
+          <option value="SME">중소기업</option>
+          <option value="MID_SIZED">중견기업</option>
+          <option value="LARGE_CORP">대기업</option>
+        </select>
+      </div>
+
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="noHouseholder" class="w-4 h-4" />
+        무주택 여부 (무주택입니다)
+      </label>
+
+      <fieldset class="border border-gray-200 rounded-lg p-4">
+        <legend class="text-sm font-semibold px-1">우대사항 (선택, 다중 선택 가능)</legend>
+        <div class="grid grid-cols-2 gap-2 text-sm mt-1">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="preferentialStatuses" value="BASIC_LIVELIHOOD" />
+            기초생활수급자
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="preferentialStatuses" value="NEAR_POVERTY" />
+            차상위계층
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="preferentialStatuses" value="SINGLE_PARENT" />
+            한부모가족
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="preferentialStatuses" value="INDEPENDENT_YOUTH" />
+            자립준비청년
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" />
+            신혼부부
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" />
+            다자녀가구
+          </label>
+        </div>
+      </fieldset>
+
       <label class="flex items-center gap-2 text-sm">
         <input type="checkbox" name="notificationEnabled" class="w-4 h-4" />
         관심 매물 변동 알림 받기
@@ -60,16 +206,17 @@
     </form>
 
     <p class="text-xs text-gray-400 mt-3">
-      저장한 조건은 <a href="../diagnosis/input-form.html" class="underline">AI 주거비 진단</a>에서 매번 새로 입력할 필요 없이 활용할 예정입니다.
+      저장한 조건은 <a href="../diagnosis/input-form.html" class="underline">AI 주거비 진단</a>에서 로그인 시 자동으로 불러와 채워집니다.
     </p>
   </main>
 
   <div id="app-footer"></div>
 
-  <script src="../../js/components/header.js?v=20260915b"></script>
-  <script src="../../js/components/footer.js?v=20260915b"></script>
-  <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/mypage.js?v=20260915b"></script>
+  <script src="../../js/components/header.js?v=20260916a"></script>
+  <script src="../../js/components/footer.js?v=20260916a"></script>
+  <script src="../../js/api/auth.js?v=20260916a"></script>
+  <script src="../../js/api/mypage.js?v=20260916a"></script>
+  <script src="../../js/utils/address-match-util.js?v=20260916a"></script>
   <script>
     renderHeader("mypage");
     renderFooter();
@@ -77,21 +224,112 @@
     const form = document.getElementById("condition-form");
     const msg = document.getElementById("form-msg");
     const submitBtn = document.getElementById("submit-btn");
+    const netAssetDisplay = document.getElementById("net-asset-display");
 
     if (!CustomHouseAuthApi.isLoggedIn()) {
       window.location.href = "../auth/login.html";
     }
+
+    // --- 직장 위치: 카카오 주소검색 -> 가장 가까운 직장 권역으로 자동 매칭 (키 없으면 드롭다운 폴백) ---
+    // diagnosis/input-form.html과 동일한 패턴. 마이페이지는 정확한 좌표(workLat/workLon)를 저장하지
+    // 않으므로(HousingCondition에 그 필드가 없음), 검색 결과는 가장 가까운 직장 권역 이름만 select에
+    // 채워서 기존 저장 방식 그대로 workLocation만 저장한다.
+    (function setupWorkLocationAddressSearch() {
+      const kakaoKey = window.CUSTOMHOUSE_CONFIG && window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY;
+      if (!kakaoKey) return; // 기본 드롭다운(#work-location-select)이 이미 보이는 상태라 그대로 둔다.
+
+      const addressUi = document.getElementById("work-address-ui");
+      const workSelect = document.getElementById("work-location-select");
+      const addressDisplay = document.getElementById("work-address-display");
+      const hubMatchEl = document.getElementById("work-hub-match");
+      const searchBtn = document.getElementById("search-address-btn");
+
+      function waitForKakaoServices(retriesLeft, cb) {
+        if (window.kakao && window.kakao.maps) {
+          window.kakao.maps.load(() => cb(true));
+        } else if (retriesLeft > 0) {
+          setTimeout(() => waitForKakaoServices(retriesLeft - 1, cb), 100);
+        } else {
+          cb(false);
+        }
+      }
+
+      waitForKakaoServices(50, (ready) => {
+        if (!ready || !window.daum || !window.daum.Postcode || !window.CustomHouseAddressMatchUtil) {
+          return; // SDK/우편번호 스크립트 로드 실패 -> 드롭다운 폴백 유지
+        }
+
+        addressUi.classList.remove("hidden");
+        workSelect.classList.add("hidden");
+
+        searchBtn.addEventListener("click", () => {
+          new daum.Postcode({
+            oncomplete: (data) => {
+              const address = data.roadAddress || data.jibunAddress;
+              addressDisplay.value = address;
+
+              const geocoder = new kakao.maps.services.Geocoder();
+              geocoder.addressSearch(address, (result, status) => {
+                if (status !== kakao.maps.services.Status.OK || !result.length) {
+                  hubMatchEl.textContent = "주소의 좌표를 찾지 못했어요. 아래 목록에서 직접 선택해주세요.";
+                  hubMatchEl.classList.remove("hidden");
+                  addressUi.classList.add("hidden");
+                  workSelect.classList.remove("hidden");
+                  return;
+                }
+
+                const lat = parseFloat(result[0].y);
+                const lon = parseFloat(result[0].x);
+                const nearest = CustomHouseAddressMatchUtil.findNearestWorkHub(lat, lon);
+                workSelect.value = nearest.hub;
+                hubMatchEl.textContent =
+                  `→ "${nearest.label}"로 저장돼요 (입력한 주소에서 직선거리 약 ` +
+                  `${nearest.distanceKm.toFixed(1)}km)`;
+                hubMatchEl.classList.remove("hidden");
+              });
+            },
+          }).open();
+        });
+      });
+    })();
+
+    // 자산/부채 입력값이 바뀔 때마다 순자산을 실시간으로 계산해 보여준다.
+    // 총자산액 = (부동산+자동차+금융자산+일반자산) - (금융부채+일반부채)
+    function recalcNetAsset() {
+      const num = (name) => Number(form[name].value) || 0;
+      const assets = num("realEstateAsset") + num("carAsset") + num("financialAsset") + num("otherAsset");
+      const debts = num("financialDebt") + num("otherDebt");
+      netAssetDisplay.textContent = (assets - debts).toLocaleString();
+    }
+    document.querySelectorAll(".asset-input").forEach((input) => {
+      input.addEventListener("input", recalcNetAsset);
+    });
 
     // 저장된 조건이 있으면 폼에 미리 채워준다.
     (async () => {
       try {
         const condition = await CustomHouseMypageApi.getMyCondition();
         if (!condition) return;
-        form.monthlyIncome.value = condition.monthlyIncome ?? "";
+        form.age.value = condition.age ?? "";
+        form.annualIncome.value = condition.annualIncome ?? "";
+        form.coupleAnnualIncome.value = condition.coupleAnnualIncome ?? "";
         form.workLocation.value = condition.workLocation ?? "";
         form.desiredDeposit.value = condition.desiredDeposit ?? "";
         form.desiredRent.value = condition.desiredRent ?? "";
+        form.realEstateAsset.value = condition.realEstateAsset ?? 0;
+        form.carAsset.value = condition.carAsset ?? 0;
+        form.financialAsset.value = condition.financialAsset ?? 0;
+        form.otherAsset.value = condition.otherAsset ?? 0;
+        form.financialDebt.value = condition.financialDebt ?? 0;
+        form.otherDebt.value = condition.otherDebt ?? 0;
+        form.jobType.value = condition.jobType ?? "";
+        form.noHouseholder.checked = !!condition.noHouseholder;
+        (condition.preferentialStatuses || []).forEach((value) => {
+          const box = form.querySelector(`input[name="preferentialStatuses"][value="${value}"]`);
+          if (box) box.checked = true;
+        });
         form.notificationEnabled.checked = !!condition.notificationEnabled;
+        recalcNetAsset();
       } catch {
         // 조회 실패는 무시하고 빈 폼으로 진행 (저장 시 다시 에러 확인됨)
       }
@@ -105,10 +343,21 @@
 
       const fd = new FormData(form);
       const condition = {
-        monthlyIncome: Number(fd.get("monthlyIncome")),
+        age: fd.get("age") ? Number(fd.get("age")) : null,
+        annualIncome: Number(fd.get("annualIncome")),
+        coupleAnnualIncome: fd.get("coupleAnnualIncome") ? Number(fd.get("coupleAnnualIncome")) : null,
         workLocation: fd.get("workLocation"),
         desiredDeposit: Number(fd.get("desiredDeposit")),
         desiredRent: fd.get("desiredRent") ? Number(fd.get("desiredRent")) : null,
+        realEstateAsset: Number(fd.get("realEstateAsset")) || 0,
+        carAsset: Number(fd.get("carAsset")) || 0,
+        financialAsset: Number(fd.get("financialAsset")) || 0,
+        otherAsset: Number(fd.get("otherAsset")) || 0,
+        financialDebt: Number(fd.get("financialDebt")) || 0,
+        otherDebt: Number(fd.get("otherDebt")) || 0,
+        jobType: fd.get("jobType") || null,
+        noHouseholder: fd.get("noHouseholder") === "on",
+        preferentialStatuses: fd.getAll("preferentialStatuses"),
         notificationEnabled: fd.get("notificationEnabled") === "on",
       };
 

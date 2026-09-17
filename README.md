@@ -98,7 +98,7 @@ python serve.py        # http://localhost:3000
 ```bash
 curl -X POST http://localhost:8080/api/recommendation/diagnosis \
   -H "Content-Type: application/json" \
-  -d '{"monthlyIncome":280,"deposit":800,"desiredRent":55,"workLocation":"강남구","maxCommuteMinutes":40,"age":28,"noHouseholder":true}'
+  -d '{"annualIncome":3400,"deposit":800,"desiredRent":55,"workLocation":"강남구","maxCommuteMinutes":40,"age":28,"noHouseholder":true,"jobType":"SME","preferentialStatuses":[]}'
 ```
 
 ## 5. 회원가입 / 로그인 (curl)
@@ -138,7 +138,7 @@ curl http://localhost:8080/api/mypage/condition -H "Authorization: Bearer {acces
 # 저장/수정 (upsert)
 curl -X PUT http://localhost:8080/api/mypage/condition \
   -H "Content-Type: application/json" -H "Authorization: Bearer {accessToken}" \
-  -d '{"monthlyIncome":280,"workLocation":"강남구","desiredDeposit":1000,"desiredRent":55,"notificationEnabled":true}'
+  -d '{"annualIncome":3400,"workLocation":"강남구","desiredDeposit":1000,"desiredRent":55,"notificationEnabled":true}'
 ```
 
 프론트엔드에서는 `pages/mypage/index.html`에서 저장된 조건 확인 + 알림 토글,
@@ -206,19 +206,20 @@ curl -X PATCH http://localhost:8080/api/notifications/{id}/read -H "Authorizatio
 ## 9. 실제 공공 API 연동 — 국토교통부 아파트 전월세 실거래가
 
 `customhouse-ai/app/services/api_collector.py`가 국토교통부 실거래가 API
-(`RTMSDataSvcAptRent`)를 실제로 호출하도록 구현되어 있습니다. **`MOLIT_API_KEY`를 안 채우면
-지금처럼 샘플 데이터(`regions.json`)로 자동 폴백**하고, 채우면 최근 2개월 실거래 평균 월세로
-지역 시세(`base_rent`)가 자동으로 대체됩니다. 진단 결과의 각 지역에 `data_source` 필드로
-"국토부 실거래가 (최근 N건 평균)" 또는 "샘플 데이터" 중 어느 쪽이 쓰였는지 표시됩니다.
+(`RTMSDataSvcAptRent`)를 실제로 호출하도록 구현되어 있습니다. **`DATA_GO_KR_API_KEY`를 안 채우면
+지금처럼 샘플 데이터(`regions.json`)로 자동 폴백**하고, 채우면 매물 단위 실거래 개별 건이
+후보 매물로 반영됩니다. 진단 결과의 각 매물에 `data_source` 필드로
+"국토부 실거래가 (YYYY-MM-DD 거래)" 또는 "샘플 데이터" 중 어느 쪽이 쓰였는지 표시됩니다.
 
 **키 발급 방법**: [data.go.kr](https://www.data.go.kr) 회원가입 → "아파트 전월세 실거래가" 검색 →
 "국토교통부_아파트 전월세 실거래가 자료" 활용신청 (보통 즉시 승인) → 마이페이지 > 개발계정에서
-"일반 인증키(Decoding)" 복사 → `customhouse-ai/.env`에 `MOLIT_API_KEY=`로 붙여넣기.
+"일반 인증키(Decoding)" 복사 → `customhouse-ai/.env`에 `DATA_GO_KR_API_KEY=`로 붙여넣기.
+같은 키를 한국주택금융공사/법정동코드 API에도 공용으로 쓸 수 있습니다(아직 미구현).
 
 ```bash
 # 연동 확인 (data_source 필드로 실거래가 사용 여부 확인)
 curl -X POST http://localhost:8000/api/v1/diagnosis -H "Content-Type: application/json" \
-  -d '{"monthlyIncome":280,"deposit":800,"workLocation":"강남구"}' \
+  -d '{"annualIncome":3400,"deposit":800,"workLocation":"강남구"}' \
   | python -c "import sys,json; [print(r['region'], r['data_source']) for r in json.load(sys.stdin)['recommendations']]"
 ```
 
@@ -235,7 +236,8 @@ curl -X POST http://localhost:8000/api/v1/diagnosis -H "Content-Type: applicatio
 
 - `customhouse-ai/app/data/regions.json`, `policies.json`은 **예시(샘플) 데이터**입니다.
   위 9번 항목처럼 실거래가 API로 순차 교체 중입니다.
-- 현재 직장 위치(통근 기준점)는 강남구·종로구·영등포구·구로구·성동구·분당구 6곳만 지원합니다.
+- 현재 직장 위치(통근 기준점)는 서울 25개 자치구 전체 + 분당구를 지원하며, 카카오 주소검색으로
+  입력하면 구 단위 대표좌표 대신 실제 주소 좌표로 통근시간을 계산합니다(`work_locations.json`).
 - 진단 기능은 로그인 없이도 사용할 수 있습니다 (`SecurityConfig`에서 `/api/recommendation/**`는 permitAll).
 - `CLAUDE.md`에는 프론트엔드 목표 스택이 React로 되어 있지만, 지금은 빠른 검증을 위해
   순수 HTML/CSS/JS로 구현되어 있습니다. React 전환은 다음 단계 작업입니다.

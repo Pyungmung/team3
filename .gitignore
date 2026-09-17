@@ -26,3 +26,6 @@ Thumbs.db
 .env.*
 !.env.example
 !*/.env.example
+
+# 프론트엔드는 빌드 단계가 없는 순수 JS라 .env를 못 씀 -> config.js에 카카오맵 키 등을 둔다.
+frontend/src/js/config.js

@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
+
 /**
  * [담당: 황진구] 마이페이지 도메인 - 사용자 주거 조건 저장·조회·수정
  */
@@ -31,10 +33,23 @@ public class MypageService {
         HousingCondition condition = housingConditionRepository.findByUserId(userId)
                 .orElseGet(() -> HousingCondition.builder().userId(userId).build());
 
-        condition.setMonthlyIncome(request.monthlyIncome());
+        condition.setAge(request.age());
+        condition.setAnnualIncome(request.annualIncome());
+        condition.setCoupleAnnualIncome(request.coupleAnnualIncome());
         condition.setWorkLocation(request.workLocation());
         condition.setDesiredDeposit(request.desiredDeposit());
         condition.setDesiredRent(request.desiredRent());
+        condition.setRealEstateAsset(request.realEstateAsset());
+        condition.setCarAsset(request.carAsset());
+        condition.setFinancialAsset(request.financialAsset());
+        condition.setOtherAsset(request.otherAsset());
+        condition.setFinancialDebt(request.financialDebt());
+        condition.setOtherDebt(request.otherDebt());
+        condition.setJobType(request.jobType());
+        condition.setNoHouseholder(request.noHouseholder());
+        condition.setPreferentialStatuses(
+                request.preferentialStatuses() != null ? request.preferentialStatuses() : Set.of()
+        );
         condition.setNotificationEnabled(request.notificationEnabled());
 
         housingConditionRepository.save(condition);
