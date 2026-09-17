@@ -7,7 +7,7 @@ const RECOMMENDATION_API_BASE = "http://localhost:8080/api";
 
 /**
  * 사용자 주거 조건을 서버로 보내 진단 결과를 받아온다.
- * @param {{monthlyIncome:number, deposit:number, desiredDeposit:number|null, desiredRent:number|null, workLocation:string, workLat:number|null, workLon:number|null, maxCommuteMinutes:number, age:number|null, assets:number|null, noHouseholder:boolean|null}} condition
+ * @param {{annualIncome:number, coupleAnnualIncome:number|null, deposit:number, desiredDeposit:number|null, desiredRent:number|null, workLocation:string, workLat:number|null, workLon:number|null, maxCommuteMinutes:number, age:number|null, assets:number|null, noHouseholder:boolean|null, jobType:string|null, preferentialStatuses:string[]}} condition
  * @returns {Promise<object>} 백엔드 ApiResponse.data (진단 결과)
  */
 async function requestDiagnosis(condition) {

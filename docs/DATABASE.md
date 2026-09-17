@@ -76,11 +76,21 @@
 |---|---|---|---|
 | id | BIGINT | PK | |
 | user_id | BIGINT | **UNIQUE**, NOT NULL | 사용자 1명당 1건만 저장 (FK: users.id, 애플리케이션에서만 검증) |
-| monthly_income | INT | | 월급(만원) |
+| age | INT | | 나이(만) |
+| annual_income | INT | NOT NULL | 소득(연소득, 만원) — 2026-09-16 이전엔 월급(월 단위)이었다가 연소득으로 통합 |
+| couple_annual_income | INT | | 부부합산 연소득(만원, 선택) — 계산 시 annual_income과 비교해 더 큰 값을 씀 |
 | work_location | VARCHAR | | 직장 위치 |
 | desired_deposit | INT | | 희망 보증금(만원) |
 | desired_rent | INT | | 희망 월세(만원) |
+| real_estate_asset / car_asset / financial_asset / other_asset | INT | | 자산 구성(부동산/자동차/금융자산/일반자산, 만원) |
+| financial_debt / other_debt | INT | | 부채 구성(금융부채/일반부채, 만원) — 총자산액(순자산) = 자산 합 - 부채 합, 저장 안 하고 매번 계산 |
+| job_type | VARCHAR | | 직업종류 (GOVERNMENT/SME/MID_SIZED/LARGE_CORP) |
+| no_householder | BOOLEAN | | 무주택여부 |
 | notification_enabled | BOOLEAN | NOT NULL | ⭐ WatchList 알림 발송 여부를 여기서 최종 판단함 (9-2 참고) |
+
+우대사항(preferentialStatuses, 다중 선택)은 별도 테이블 `housing_condition_preferences`
+(`housing_condition_id` FK + `preferential_status` VARCHAR)에 사용자당 0~N건으로 저장된다
+(JPA `@ElementCollection`).
 
 ### payments (단건 결제)
 | 컬럼 | 타입 | 제약 | 설명 |

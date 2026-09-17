@@ -160,7 +160,7 @@ def _transportation_cost(commute_minutes: int) -> int:
     return 11
 
 
-def calculate_affordable_rent(monthly_income: int) -> int:
+def calculate_affordable_rent(monthly_income: float) -> int:
     """소득 대비 주거비 비율(RIR) 30% 가이드라인 기준 적정 월세 상한."""
     return round(monthly_income * 0.30)
 
@@ -188,8 +188,9 @@ def run_diagnosis(request) -> dict:
             )
         work_lat, work_lon = work_location["lat"], work_location["lon"]
 
-    affordable_rent = calculate_affordable_rent(request.monthly_income)
-    rir = round((affordable_rent / request.monthly_income) * 100, 1) if request.monthly_income else 0.0
+    effective_monthly_income = request.effective_monthly_income
+    affordable_rent = calculate_affordable_rent(effective_monthly_income)
+    rir = round((affordable_rent / effective_monthly_income) * 100, 1) if effective_monthly_income else 0.0
 
     # 희망 보증금/전세액(desired_deposit)이 있으면 그걸 "실제 계약에 쓸 금액"으로 보고 보증금
     # 전환/대출 계산에 쓴다 (대출 등을 더해 현재 보유 보증금보다 클 수 있음). 없으면 현재 보유
