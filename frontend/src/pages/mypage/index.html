@@ -1,128 +1,18 @@
 <!DOCTYPE html>
-<!-- [담당: 양혜승] 마이페이지 (연동 대상 백엔드: domain/mypage, 담당 황진구) -->
+<!-- [담당: 양혜승] 마이페이지 진입점. 내 정보/주거 조건/알림/고객센터/약관이 한 화면의 탭(edit-condition.html)으로 통합되어 그쪽으로 이동시킨다. -->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맞집 | 마이페이지</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <script>
+    // 기존 링크(진단 결과 등에서 mypage/index.html로 오는 경우)가 깨지지 않도록 유지한다.
+    window.location.replace("edit-condition.html" + window.location.hash);
+  </script>
 </head>
 <body>
-  <div id="app-header"></div>
-
-  <main class="max-w-xl mx-auto px-4 py-12">
-    <h1 class="text-2xl font-extrabold mb-6">마이페이지</h1>
-
-    <!-- 로그인하지 않은 경우 -->
-    <div id="guest-view" class="hidden card p-6 text-center">
-      <p class="text-sm text-gray-500 mb-4">로그인하면 주거 조건을 저장하고 알림을 설정할 수 있어요.</p>
-      <a href="../auth/login.html" class="text-sm px-4 py-2 rounded-full text-white brand-gradient inline-block">로그인하기</a>
-    </div>
-
-    <!-- 로그인했지만 저장된 조건이 없는 경우 -->
-    <div id="empty-view" class="hidden card p-6 mb-4">
-      <h2 class="font-bold mb-2">내 주거 조건</h2>
-      <p class="text-sm text-gray-500 mb-4">아직 저장된 조건이 없어요. 한 번 등록해두면 다음 진단부터 자동으로 불러와요.</p>
-      <a href="edit-condition.html" class="text-sm px-4 py-2 rounded-full text-white brand-gradient inline-block">조건 등록하기</a>
-    </div>
-
-    <!-- 로그인 + 저장된 조건이 있는 경우 -->
-    <div id="condition-view" class="hidden">
-      <div class="card p-6 mb-4">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="font-bold">내 주거 조건</h2>
-          <a href="edit-condition.html" class="text-xs underline text-gray-500">수정하기</a>
-        </div>
-        <dl class="grid grid-cols-2 gap-y-2 text-sm">
-          <dt class="text-gray-400">나이</dt>
-          <dd id="c-age" class="text-right font-semibold"></dd>
-          <dt class="text-gray-400">연소득</dt>
-          <dd id="c-income" class="text-right font-semibold"></dd>
-          <dt class="text-gray-400">직장 위치</dt>
-          <dd id="c-work" class="text-right font-semibold"></dd>
-          <dt class="text-gray-400">희망 보증금</dt>
-          <dd id="c-deposit" class="text-right font-semibold"></dd>
-          <dt class="text-gray-400">희망 월세</dt>
-          <dd id="c-rent" class="text-right font-semibold"></dd>
-          <dt class="text-gray-400">순자산</dt>
-          <dd id="c-net-asset" class="text-right font-semibold"></dd>
-          <dt class="text-gray-400">직업종류</dt>
-          <dd id="c-job-type" class="text-right font-semibold"></dd>
-        </dl>
-      </div>
-
-      <div class="card p-6">
-        <h2 class="font-bold mb-2">알림 설정</h2>
-        <label class="flex items-center justify-between text-sm">
-          관심 매물 변동 알림 받기
-          <input type="checkbox" id="notification-toggle" class="w-5 h-5" />
-        </label>
-        <p id="notification-msg" class="text-xs text-gray-400 mt-2">
-          ※ 알림 수신 여부는 저장되며, 실제 알림 발송 기능은 준비 중입니다. (담당: 김시연)
-        </p>
-      </div>
-    </div>
-  </main>
-
-  <div id="app-footer"></div>
-
-  <script src="../../js/components/header.js?v=20260915b"></script>
-  <script src="../../js/components/footer.js?v=20260915b"></script>
-  <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/mypage.js?v=20260915b"></script>
-  <script>
-    renderHeader("mypage");
-    renderFooter();
-
-    (async () => {
-      if (!CustomHouseAuthApi.isLoggedIn()) {
-        document.getElementById("guest-view").classList.remove("hidden");
-        return;
-      }
-
-      let condition;
-      try {
-        condition = await CustomHouseMypageApi.getMyCondition();
-      } catch (err) {
-        document.getElementById("guest-view").classList.remove("hidden");
-        return;
-      }
-
-      if (!condition) {
-        document.getElementById("empty-view").classList.remove("hidden");
-        return;
-      }
-
-      const JOB_TYPE_LABELS = { GOVERNMENT: "공무원", SME: "중소기업", MID_SIZED: "중견기업", LARGE_CORP: "대기업" };
-
-      document.getElementById("condition-view").classList.remove("hidden");
-      document.getElementById("c-age").textContent = condition.age != null ? `${condition.age}세` : "-";
-      document.getElementById("c-income").textContent = `${condition.annualIncome}만원`;
-      document.getElementById("c-work").textContent = condition.workLocation;
-      document.getElementById("c-deposit").textContent = `${condition.desiredDeposit}만원`;
-      document.getElementById("c-rent").textContent = condition.desiredRent != null ? `${condition.desiredRent}만원` : "-";
-      document.getElementById("c-net-asset").textContent = `${condition.netAsset}만원`;
-      document.getElementById("c-job-type").textContent = JOB_TYPE_LABELS[condition.jobType] || "-";
-
-      const toggle = document.getElementById("notification-toggle");
-      const msg = document.getElementById("notification-msg");
-      toggle.checked = condition.notificationEnabled;
-
-      toggle.addEventListener("change", async () => {
-        toggle.disabled = true;
-        try {
-          await CustomHouseMypageApi.updateMyCondition({ ...condition, notificationEnabled: toggle.checked });
-          condition.notificationEnabled = toggle.checked;
-        } catch (err) {
-          toggle.checked = !toggle.checked;
-          msg.textContent = err.message;
-          msg.classList.add("text-red-500");
-        } finally {
-          toggle.disabled = false;
-        }
-      });
-    })();
-  </script>
+  <p style="padding:24px;font:14px sans-serif;color:#64748b">
+    마이페이지로 이동 중... <a href="edit-condition.html">자동으로 이동하지 않으면 여기를 눌러주세요</a>
+  </p>
 </body>
 </html>

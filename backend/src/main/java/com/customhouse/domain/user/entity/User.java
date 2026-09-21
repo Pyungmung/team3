@@ -40,6 +40,10 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 50)
     private String nickname;
 
+    /** 휴대폰 번호 (010-0000-0000 형식, 마이페이지에서 선택 입력. 없으면 null) */
+    @Column(length = 20)
+    private String phone;
+
     /** LOCAL(이메일 가입) / NAVER */
     @Builder.Default
     @Column(nullable = false, length = 20)
