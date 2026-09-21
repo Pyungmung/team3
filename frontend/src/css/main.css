@@ -35,6 +35,7 @@ body {
 }
 
 /* 메인 홈 Hero 배경 영역 */
+
 .home-intro-bg {
   position: relative;
   background-image:
@@ -49,7 +50,7 @@ body {
 }
 
 /* ========================================
-   Home
+  Home
 ======================================== */
 
 .home-container {
@@ -91,12 +92,12 @@ body {
 }
 
 /* ========================================
-   Hero
+  Hero
 ======================================== */
 
 .home-hero {
   position: relative;
-  min-height: 620px;
+  min-height: 580px;
   overflow: hidden;
   background:
     radial-gradient(
@@ -120,12 +121,12 @@ body {
 }
 
 .home-hero-inner {
-  min-height: 620px;
+  min-height: 580px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 80px;
-  padding: 80px 0;
+  padding: 60px 0;
 }
 
 .home-hero-copy {
@@ -138,7 +139,7 @@ body {
 .home-eyebrow {
   display: inline-flex;
   align-items: center;
-  margin: 0 0 28px;
+  margin: 0 0 20px;
   padding: 9px 15px;
   border-radius: 999px;
   background: rgba(241, 245, 249, 0.95);
@@ -150,28 +151,42 @@ body {
 .home-hero-title {
   margin: 0;
   color: var(--ink-900);
-  font-size: clamp(56px, 5vw, 72px);
+  font-size: clamp(48px, 4.2vw, 60px);
   font-weight: 800;
   letter-spacing: -0.06em;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .home-hero-description {
-  margin: 32px 0 0;
+  margin: 24px 0 0;
   color: #64748b;
-  font-size: 18px;
-  line-height: 1.8;
+  font-size: 17px;
+  line-height: 1.75;
   letter-spacing: -0.02em;
+}
+
+/* ========================================
+  Hero Button Group
+======================================== */
+
+.home-hero-button-group {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 28px;
+}
+
+.home-hero-button-group .home-primary-button {
+  margin-top: 0;
 }
 
 .home-primary-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-top: 36px;
-  padding: 18px 28px;
-  border-radius: 14px;
+  gap: 14px;
+  padding: 16px 26px;
+  border-radius: 12px;
   background: var(--brand-600);
   color: #fff;
   font-size: 16px;
@@ -195,20 +210,22 @@ body {
 }
 
 .home-hero-caption {
-  margin: 14px 0 0;
+  margin: 10px 0 0;
   color: #94a3b8;
   font-size: 13px;
+  text-align: center;
 }
 
 /* ========================================
-   Hero Diagnosis Card
+  Hero Diagnosis Card
 ======================================== */
 
 .home-diagnosis-card {
   position: relative;
   z-index: 1;
   flex: 0 0 500px;
-  padding: 28px 32px 20px;
+  transform: translateX(-40px);
+  padding: 26px 30px 18px;
   border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.97);
@@ -244,26 +261,24 @@ body {
 .home-diagnosis-status {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
   flex-shrink: 0;
   padding: 8px 13px;
-  border: 1px solid #d7f1e7;
+  border: 1px solid var(--brand-100);
   border-radius: 999px;
-  background: #effaf6;
-  color: #15966b;
+  background: var(--brand-50);
+  color: var(--brand-500);
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .home-diagnosis-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #16b77e;
+  display: none;
 }
 
 /* ========================================
-   Hero Diagnosis Main Result
+  Hero Diagnosis Main Result
 ======================================== */
 
 .home-diagnosis-main {
@@ -272,9 +287,9 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  min-height: 148px;
-  margin-top: 24px;
-  padding: 20px 22px;
+  min-height: 140px;
+  margin-top: 20px;
+  padding: 18px 20px;
   overflow: hidden;
   border: 1px solid #e2ebf8;
   border-radius: 16px;
@@ -345,63 +360,11 @@ body {
 }
 
 .home-diagnosis-visual {
-  position: relative;
-  z-index: 1;
-  width: 150px;
-  height: 110px;
-  flex-shrink: 0;
-  opacity: 0.9;
-}
-
-.home-diagnosis-visual-house {
-  position: absolute;
-  top: 4px;
-  right: 20px;
-  color: #8eb6ee;
-  opacity: 0.8;
-}
-
-.home-diagnosis-visual-house svg {
-  width: 92px;
-  height: 92px;
-}
-
-.home-diagnosis-visual-chart {
-  position: absolute;
-  right: 0;
-  bottom: 2px;
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  width: 60px;
-  height: 40px;
-  padding: 8px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 12px rgba(71, 103, 147, 0.08);
-}
-
-.home-diagnosis-visual-chart span {
-  display: block;
-  width: 7px;
-  border-radius: 3px 3px 0 0;
-  background: #8eb6ee;
-}
-
-.home-diagnosis-visual-chart span:nth-child(1) {
-  height: 12px;
-}
-
-.home-diagnosis-visual-chart span:nth-child(2) {
-  height: 19px;
-}
-
-.home-diagnosis-visual-chart span:nth-child(3) {
-  height: 26px;
+  display: none;
 }
 
 /* ========================================
-   Hero Diagnosis Info
+  Hero Diagnosis Info
 ======================================== */
 
 .home-diagnosis-info {
@@ -412,10 +375,10 @@ body {
 
 .home-diagnosis-info-item {
   display: grid;
-  grid-template-columns: 48px 38px minmax(0, 1fr);
+  grid-template-columns: 44px 36px minmax(0, 1fr);
   align-items: center;
   column-gap: 10px;
-  padding: 17px 0;
+  padding: 15px 0;
 }
 
 .home-diagnosis-info-item + .home-diagnosis-info-item {
@@ -426,8 +389,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 15px;
   background: #f1f6fc;
   color: var(--brand-600);
@@ -499,7 +462,7 @@ body {
 }
 
 /* ========================================
-   Process
+  Process
 ======================================== */
 
 .home-process-section {
@@ -556,11 +519,11 @@ body {
 }
 
 /* ========================================
-   Service
+  Service
 ======================================== */
 
 .home-service-section {
-  background: var(--off-white);
+  background: #fff;
 }
 
 .home-service-grid {
@@ -626,7 +589,7 @@ body {
 }
 
 /* ========================================
-   Bottom CTA
+  Bottom CTA
 ======================================== */
 
 .home-cta-section {
@@ -730,13 +693,24 @@ body {
     font-size: 16px;
   }
 
+  .home-hero-button-group {
+    width: 100%;
+    align-items: stretch;
+  }
+
   .home-primary-button {
     width: 100%;
+  }
+
+  .home-hero-caption {
+    width: 100%;
+    text-align: center;
   }
 
   .home-diagnosis-card {
     flex-basis: auto;
     width: 100%;
+    transform: none;
   }
 
   .home-section-heading h2 {
@@ -784,16 +758,7 @@ body {
   }
 
   .home-diagnosis-visual {
-    width: 110px;
-  }
-
-  .home-diagnosis-visual-house {
-    right: 0;
-  }
-
-  .home-diagnosis-visual-house svg {
-    width: 72px;
-    height: 72px;
+    display: none;
   }
 
   .home-diagnosis-info-item {

@@ -4,16 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맞집 | 청년 맞춤형 주거 케어</title>
-
+  
   <script src="https://cdn.tailwindcss.com"></script>
-
+  
   <link rel="stylesheet" href="../css/main.css?v=20260918a" />
 </head>
 
 <body>
   <!-- Header -->
   <div id="app-header"></div>
-
+  
   <main>
     <!-- Hero -->
     <section class="home-hero home-hero-bg">
@@ -22,27 +22,29 @@
           <p class="home-eyebrow">
             AI 맞춤형 청년 주거 케어
           </p>
-
+          
           <h1 class="home-hero-title">
             더 가벼운 주거,<br />
             더 나은 내일
           </h1>
-
+          
           <p class="home-hero-description">
             월급·보증금·직장 위치를 입력하면<br />
             나에게 맞는 주거비와 주거지를 찾아드려요.
           </p>
-
-          <a href="./diagnosis/input-form.html" class="home-primary-button">
-            내 주거비 진단하기
-            <span aria-hidden="true">→</span>
-          </a>
-
-          <p class="home-hero-caption">
-            로그인 없이 바로 시작할 수 있어요
-          </p>
+          
+          <div class="home-hero-button-group">
+            <a href="./diagnosis/input-form.html" class="home-primary-button">
+              내 주거비 진단하기
+              <span aria-hidden="true">→</span>
+            </a>
+            
+            <p class="home-hero-caption">
+              로그인 없이 바로 시작할 수 있어요
+            </p>
+          </div>
         </div>
-
+        
         <div class="home-diagnosis-card">
           <!-- Card Header -->
           <div class="home-diagnosis-card-header">
@@ -50,18 +52,18 @@
               <p class="home-diagnosis-card-eyebrow">
                 CUSTOM HOUSE AI
               </p>
-
+              
               <strong>
-                주거 진단 리포트
+                AI 주거 진단 미리보기
               </strong>
             </div>
-
+            
             <span class="home-diagnosis-status">
               <span class="home-diagnosis-status-dot"></span>
-              분석 완료
+              분석 예시
             </span>
           </div>
-
+          
           <!-- Main Result -->
           <div class="home-diagnosis-main">
             <div class="home-diagnosis-main-content">
@@ -82,61 +84,29 @@
                     />
                   </svg>
                 </span>
-
+                
                 <p class="home-diagnosis-label">
                   예상 적정 주거비
                 </p>
               </div>
-
+              
               <p class="home-diagnosis-price">
                 ₩ 58<span>만원</span>
               </p>
-
+              
               <p class="home-diagnosis-subtext">
                 월 소득과 보증금을 기준으로 분석한 금액이에요.
               </p>
             </div>
-
-            <div class="home-diagnosis-visual" aria-hidden="true">
-              <div class="home-diagnosis-visual-house">
-                <svg viewBox="0 0 80 80" fill="none">
-                  <path
-                    d="M14 38L40 17L66 38"
-                    stroke="currentColor"
-                    stroke-width="5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M21 35V62H59V35"
-                    stroke="currentColor"
-                    stroke-width="5"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M34 62V45H46V62"
-                    stroke="currentColor"
-                    stroke-width="5"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </div>
-
-              <div class="home-diagnosis-visual-chart">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
           </div>
-
+          
           <!-- Recommendation Info -->
           <div class="home-diagnosis-info">
             <div class="home-diagnosis-info-item">
               <span class="home-diagnosis-info-number">
                 01
               </span>
-
+              
               <span class="home-diagnosis-info-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
                   <path
@@ -153,23 +123,23 @@
                   />
                 </svg>
               </span>
-
+              
               <div>
                 <p>
                   추천 지역
                 </p>
-
+                
                 <strong>
                   관악구 · 동작구 · 구로구
                 </strong>
               </div>
             </div>
-
+            
             <div class="home-diagnosis-info-item">
               <span class="home-diagnosis-info-number">
                 02
               </span>
-
+              
               <span class="home-diagnosis-info-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
                   <rect
@@ -197,90 +167,90 @@
                   <circle cx="16" cy="14" r="1" fill="currentColor" />
                 </svg>
               </span>
-
+              
               <div>
                 <p>
                   평균 통근시간
                 </p>
-
+                
                 <strong>
                   32분
                 </strong>
               </div>
             </div>
           </div>
-
+          
           <!-- Card Footer -->
           <div class="home-diagnosis-card-footer">
             <span class="home-diagnosis-card-footer-icon" aria-hidden="true">
               ✓
             </span>
-
+            
             <p>
-              내 조건을 바탕으로 AI가 분석한 결과예요.
+              개인별 주거 조건을 분석해 맞춤형 결과를 제공합니다.
             </p>
           </div>
         </div>
       </div>
     </section>
-
+    
     <!-- Process -->
     <section class="home-process-section home-section">
       <div class="home-container">
         <div class="home-section-heading">
           <p class="home-section-eyebrow">HOW IT WORKS</p>
-
+          
           <h2>
             맞집은 이렇게 찾아드려요
           </h2>
-
+          
           <p>
             복잡한 주거 고민을 세 단계로 간단하게 해결해보세요.
           </p>
         </div>
-
+        
         <div class="home-process-grid">
           <div class="home-process-card">
             <div class="home-process-number">01</div>
-
+            
             <div class="home-process-icon">📝</div>
-
+            
             <h3>조건 입력</h3>
-
+            
             <p>
               월급, 보증금, 월세,<br />
               직장 위치 등 내 조건을 입력해요.
             </p>
           </div>
-
+          
           <div class="home-process-arrow" aria-hidden="true">
             →
           </div>
-
+          
           <div class="home-process-card">
             <div class="home-process-number">02</div>
-
+            
             <div class="home-process-icon">🤖</div>
-
+            
             <h3>AI 분석</h3>
-
+            
             <p>
               내 소득과 주거 조건을 분석해<br />
               적정 주거비와 이동 범위를 계산해요.
             </p>
           </div>
-
+          
           <div class="home-process-arrow" aria-hidden="true">
             →
           </div>
-
+          
           <div class="home-process-card">
             <div class="home-process-number">03</div>
-
+            
             <div class="home-process-icon">🏠</div>
-
+            
             <h3>맞춤 추천</h3>
-
+            
             <p>
               통근시간과 예산에 맞는<br />
               지역·매물·주거정책을 추천해드려요.
@@ -289,74 +259,74 @@
         </div>
       </div>
     </section>
-
+    
     <!-- Service -->
     <section class="home-service-section home-section">
       <div class="home-container">
         <div class="home-section-heading">
           <p class="home-section-eyebrow">CUSTOM HOUSE</p>
-
+          
           <h2>
             내 조건에 맞는 주거 정보를<br />
             한눈에 확인하세요
           </h2>
-
+          
           <p>
             주거비부터 추천 지역, 매물과 정책까지 한 번에 확인할 수 있어요.
           </p>
         </div>
-
+        
         <div class="home-service-grid">
           <a href="./diagnosis/input-form.html" class="home-service-card">
             <div class="home-service-card-top">
               <span class="home-service-icon">📊</span>
               <span class="home-service-arrow">→</span>
             </div>
-
+            
             <h3>주거비 분석</h3>
-
+            
             <p>
               내 소득과 보증금을 기준으로<br />
               부담 가능한 적정 주거비를 확인해보세요.
             </p>
           </a>
-
+          
           <a href="#" class="home-service-card">
             <div class="home-service-card-top">
               <span class="home-service-icon">📍</span>
               <span class="home-service-arrow">→</span>
             </div>
-
+            
             <h3>추천 지역</h3>
-
+            
             <p>
               직장까지의 통근시간과 예산을 고려해<br />
               나에게 맞는 지역을 찾아드려요.
             </p>
           </a>
-
+          
           <a href="#" class="home-service-card">
             <div class="home-service-card-top">
               <span class="home-service-icon">🏠</span>
               <span class="home-service-arrow">→</span>
             </div>
-
+            
             <h3>추천 매물</h3>
-
+            
             <p>
               내 조건에 맞는 주거 매물을 확인하고<br />
               관심 매물로 저장할 수 있어요.
             </p>
           </a>
-
+          
           <a href="#" class="home-service-card">
             <div class="home-service-card-top">
               <span class="home-service-icon">🎁</span>
               <span class="home-service-arrow">→</span>
             </div>
-
+            
             <h3>주거지원 정책</h3>
-
+            
             <p>
               내가 받을 수 있는 청년 주거지원 정책을<br />
               한눈에 확인할 수 있어요.
@@ -365,7 +335,7 @@
         </div>
       </div>
     </section>
-
+    
     <!-- Bottom CTA -->
     <section class="home-cta-section">
       <div class="home-container">
@@ -373,15 +343,15 @@
           <p class="home-section-eyebrow">
             START WITH CUSTOM HOUSE
           </p>
-
+          
           <h2>
             내 주거비, 한번 진단해볼까요?
           </h2>
-
+          
           <p>
             월급·보증금·직장 위치만 입력하면 돼요.
           </p>
-
+          
           <a href="./diagnosis/input-form.html" class="home-primary-button">
             내 주거비 진단하기
             <span aria-hidden="true">→</span>
@@ -390,13 +360,13 @@
       </div>
     </section>
   </main>
-
+  
   <!-- Footer -->
   <div id="app-footer"></div>
-
+  
   <script src="../js/components/header.js?v=20260918a"></script>
   <script src="../js/components/footer.js?v=20260918a"></script>
-
+  
   <script>
     renderHeader("");
     renderFooter();
