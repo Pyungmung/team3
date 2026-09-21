@@ -21,26 +21,33 @@ function renderHeader(activeMenu = "") {
 
   const authArea = email
     ? `<div class="flex items-center gap-2">
-         <span class="hidden sm:inline text-xs text-gray-500">${email}</span>
-         <button id="header-logout-btn" class="text-sm px-4 py-2 rounded-full text-white brand-gradient">로그아웃</button>
-       </div>`
-    : `<a href="${computeHref("auth/login.html")}" class="text-sm px-4 py-2 rounded-full text-white brand-gradient">로그인</a>`;
+        <span class="hidden sm:inline text-xs text-gray-500">${email}</span>
+        <button id="header-logout-btn" class="text-sm px-4 py-2 rounded-xl text-white brand-gradient font-semibold">로그아웃</button>
+      </div>`
+    : `<a href="${computeHref("auth/login.html")}" class="text-sm px-5 py-2.5 rounded-xl text-white brand-gradient font-semibold inline-block">
+        로그인 / 회원가입
+      </a>`;
 
   el.innerHTML = `
-    <header class="w-full border-b border-gray-100 bg-white/80 backdrop-blur sticky top-0 z-10">
-      <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-        <a href="${computeHref("index.html")}" class="flex items-center gap-2 font-bold text-lg" style="color:var(--brand-600)">
-          <span>🏠</span><span>맞집</span>
+    <header class="w-full border-b border-slate-200 bg-white sticky top-0 z-10">
+      <div class="w-full px-6 sm:px-12 h-20 flex items-center justify-between">
+
+        <a href="${computeHref("index.html")}" class="flex items-center shrink-0 -ml-2">
+          <img src="${computeHref("../assets/images/맞집 로고(최종).png")}" alt="맞집 로고" class="h-14 w-auto object-contain" />
         </a>
-        <nav class="hidden sm:flex items-center gap-6 text-sm text-gray-600">
+
+        <nav class="hidden sm:flex items-center gap-3 absolute left-1/2 -translate-x-1/2 text-sm font-medium text-slate-500">
           ${menus
             .map(
-              (m) => `<a href="${m.href}" class="${
-                activeMenu === m.key ? "font-semibold" : ""
-              } hover:text-[var(--brand-600)]" style="${activeMenu === m.key ? "color:var(--brand-600)" : ""}">${m.label}</a>`
+              (m) => `<a href="${m.href}" class="relative px-3 py-2 rounded-xl hover:bg-slate-100 hover:text-[var(--brand-600)] ${
+                activeMenu === m.key ? "font-bold text-[var(--brand-600)]" : ""
+              }" style="${activeMenu === m.key ? "color:var(--brand-600)" : ""}">
+                ${m.label}
+              </a>`
             )
             .join("")}
         </nav>
+
         ${authArea}
       </div>
     </header>

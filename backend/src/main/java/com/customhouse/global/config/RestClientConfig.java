@@ -24,7 +24,8 @@ public class RestClientConfig {
     public RestClient aiEngineRestClient() {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(5_000);
-        requestFactory.setReadTimeout(15_000);
+        // AI 엔진이 국토부 실거래가 4종을 지역별로 조회하므로 콜드 스타트 때 시간이 걸린다 (병렬 호출로 줄였지만 여유를 둔다).
+        requestFactory.setReadTimeout(30_000);
 
         return RestClient.builder()
                 .baseUrl(aiEngineBaseUrl)

@@ -53,6 +53,22 @@
       <h2 class="font-bold mb-3">추천 지역 (통근 · 정책까지 반영한 실질 주거비 순)</h2>
       <div id="map-container" class="mb-6"></div>
 
+      <h2 class="font-bold mb-3">주거정책 추천</h2>
+      <p class="text-xs text-gray-400 mb-3">아래 매물 추천에 반영된 정책들이에요. 하나의 매물에 여러 정책이 동시에 적용될 수 있어요.</p>
+      <div class="card p-0 mb-8 overflow-x-auto">
+        <table class="w-full text-sm" style="table-layout: fixed">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="text-left px-3 py-2 text-xs font-semibold text-gray-500" style="width: 22%">기관명</th>
+              <th class="text-left px-3 py-2 text-xs font-semibold text-gray-500" style="width: 28%">지원정책명</th>
+              <th class="text-left px-3 py-2 text-xs font-semibold text-gray-500">지원혜택</th>
+            </tr>
+          </thead>
+          <tbody id="policy-table-body"></tbody>
+        </table>
+      </div>
+      <p id="policy-empty" class="text-sm text-gray-400 mb-8 hidden">매칭된 지원 정책이 없어요.</p>
+
       <h2 class="font-bold mb-3">월세 매물 추천</h2>
       <ul id="wolse-list" class="space-y-3 mb-8"></ul>
       <p id="wolse-empty" class="text-sm text-gray-400 mb-8 hidden">조건에 맞는 월세 매물을 찾지 못했어요.</p>
@@ -139,6 +155,11 @@
               }</span>
               <span class="font-bold ml-2">${r.building_name}</span>
               ${
+                r.property_type
+                  ? `<span class="text-xs px-2 py-0.5 rounded-full ml-1 bg-gray-100 text-gray-600 whitespace-nowrap inline-block">${r.property_type}</span>`
+                  : ""
+              }
+              ${
                 r.is_semi_jeonse
                   ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ml-1" style="background:#fef3c7;color:#92400e" title="보증금을 크게 걸고 월세는 소액만 내는 매물이에요. 보증금이 부담되면 아래 '희망 보증금' 필터로 제외할 수 있어요.">반전세형</span>`
                   : ""
@@ -151,30 +172,44 @@
           </div>
           <div class="text-xs text-gray-400 mb-1">
             ${r.region}${r.dong ? ` · ${r.dong}` : ""}${
-          r.exclusive_area ? ` · 전용 ${r.exclusive_area}㎡` : ""
+          r.exclusive_area ? ` · ${r.property_type === "단독다가구" ? "연면적" : "전용"} ${r.exclusive_area}㎡` : ""
         }${r.floor ? ` · ${r.floor}층` : ""} · ${r.data_source}
           </div>
           <div class="text-sm font-semibold mb-1">${priceHeadline}</div>
           ${appliedNote}
-          <div class="grid grid-cols-3 gap-2 text-xs text-gray-500 mb-3 mt-2">
+          <div class="grid grid-cols-3 gap-2 text-xs text-gray-500 mt-2">
             <div>관리비 ${r.maintenance_fee}만</div>
             <div>대출이자 ${r.loan_interest}만</div>
             <div>교통비 ${r.transportation_cost}만</div>
           </div>
-          ${
-            r.matched_policies.length
-              ? `<div class="flex flex-wrap gap-2">
-                  ${r.matched_policies
-                    .map(
-                      (p) =>
-                        `<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600" title="${p.description}">✅ ${p.name}</span>`
-                    )
-                    .join("")}
-                </div>`
-              : `<div class="text-xs text-gray-400">매칭된 지원 정책 없음</div>`
-          }
         </li>
       `;
+      }
+
+      // 매물 카드에 개별로 붙이던 정책 배지를 없애고, 월세/전세 매물 전체에서 매칭된 정책을
+      // 하나로 모아 "주거정책 추천" 표(기관명/지원정책명/지원혜택)로 독립시킨다.
+      function renderPolicyTable(recommendations) {
+        const uniquePolicies = new Map();
+        recommendations.forEach((r) => {
+          (r.matched_policies || []).forEach((p) => {
+            if (!uniquePolicies.has(p.id)) uniquePolicies.set(p.id, p);
+          });
+        });
+
+        const policyTableBody = document.getElementById("policy-table-body");
+        policyTableBody.innerHTML = Array.from(uniquePolicies.values())
+          .map(
+            (p) => `
+              <tr class="border-t border-gray-100">
+                <td class="px-3 py-2 text-gray-500">${p.agency}</td>
+                <td class="px-3 py-2 font-semibold">${p.name}</td>
+                <td class="px-3 py-2 text-gray-600">${p.description}</td>
+              </tr>
+            `
+          )
+          .join("");
+
+        document.getElementById("policy-empty").classList.toggle("hidden", uniquePolicies.size > 0);
       }
 
       const wolseListEl = document.getElementById("wolse-list");
@@ -182,6 +217,7 @@
 
       wolseListEl.innerHTML = wolseList.map(renderBuildingCard).join("");
       jeonseListEl.innerHTML = jeonseList.map(renderBuildingCard).join("");
+      renderPolicyTable(allResults);
 
       document.getElementById("wolse-empty").classList.toggle("hidden", wolseList.length > 0);
       document.getElementById("jeonse-empty").classList.toggle("hidden", jeonseList.length > 0);

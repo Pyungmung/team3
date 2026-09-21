@@ -4,12 +4,12 @@
 */
 
 :root {
-  /* 메인 컬러: 다크 네이비(#0F172A) + 쿨톤 오프화이트(회색 살짝 섞인 화이트). brand-600이 실제 primary 컬러. */
+  /* 메인 컬러: 다크 네이비(#1B2A4A) + 쿨톤 오프화이트(회색 살짝 섞인 화이트). brand-600이 실제 primary 컬러. */
   --brand-50: #f1f5f9;   /* 쿨톤(slate) 배지 배경 */
   --brand-100: #e2e8f0;  /* 배지/보더 */
-  --brand-500: #334155;  /* 그라데이션 시작(연한 네이비) */
-  --brand-600: #0f172a;  /* PRIMARY */
-  --brand-700: #020617;  /* hover / 그라데이션 끝(가장 진한 네이비) */
+  --brand-500: #334155;  /* 단색 배경용 메인 톤 */
+  --brand-600: #1B2A4A;  /* PRIMARY */
+  --brand-700: #020617;  /* hover 네이비 */
   --ink-900: #0f172a;    /* 본문 텍스트 컬러 */
   --off-white: #f7f8fa;  /* 배경: 회색이 살짝 섞인 쿨톤 화이트 */
 }
@@ -21,7 +21,7 @@ body {
 }
 
 .brand-gradient {
-  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  background: var(--brand-600);
 }
 
 .card {
@@ -30,13 +30,16 @@ body {
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
 }
 
-/* 마이페이지/진단 폼 등에서 공통으로 쓰는 step indicator */
-.step-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #cbd5e1;
-}
-.step-dot.active {
-  background: var(--brand-600);
+/* 메인 홈 Hero 배경 영역 */
+.home-intro-bg {
+  position: relative;
+  background-image:
+    linear-gradient(
+      rgba(247, 248, 250, 0.86),
+      rgba(247, 248, 250, 0.94)
+    ),
+    url("https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2000&q=80");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }

@@ -29,16 +29,27 @@
   <main class="max-w-xl mx-auto px-4 py-12">
     <h1 class="text-2xl font-extrabold mb-1">AI 주거비 절약 진단</h1>
     <p class="text-sm text-gray-500 mb-8">
-      월급, 보증금, 직장 위치를 입력하면 맞집이 실질 주거비가 가장 낮은
+      소득, 보증금, 직장 위치를 입력하면 맞집이 실질 주거비가 가장 낮은
       지역과 받을 수 있는 정부 지원 정책을 찾아드려요.
+    </p>
+    <p id="prefill-msg" class="text-xs mb-4 hidden" style="color:var(--brand-500)">
+      마이페이지에 저장된 조건을 불러왔어요. 필요하면 아래에서 수정 후 진단하세요.
     </p>
 
     <form id="diagnosis-form" class="card p-6 space-y-6">
       <div>
-        <label class="block text-sm font-semibold mb-1">월급 (세후, 만원)</label>
-        <input type="number" name="monthlyIncome" required min="0" placeholder="예: 280"
+        <label class="block text-sm font-semibold mb-1">소득 (연소득, 세전, 만원)</label>
+        <input type="number" name="annualIncome" required min="0" placeholder="예: 3400"
                class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
                style="--tw-ring-color:var(--brand-500)" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">부부합산 연소득 (만원, 선택)</label>
+        <input type="number" name="coupleAnnualIncome" min="0" placeholder="배우자와 합산한 연소득"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2"
+               style="--tw-ring-color:var(--brand-500)" />
+        <p class="text-xs text-gray-400 mt-1">입력하면 소득 기준 계산 시 연소득과 비교해 더 큰 값을 사용해요.</p>
       </div>
 
       <div>
@@ -150,6 +161,45 @@
             <input type="checkbox" name="noHouseholder" />
             무주택 세대주(예정자)입니다
           </label>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">직업종류</label>
+            <select name="jobType" class="w-full border border-gray-200 rounded-lg px-3 py-2">
+              <option value="">선택 안 함</option>
+              <option value="GOVERNMENT">공무원</option>
+              <option value="SME">중소기업</option>
+              <option value="MID_SIZED">중견기업</option>
+              <option value="LARGE_CORP">대기업</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">우대사항 (해당하는 항목 모두 선택)</label>
+            <div class="grid grid-cols-2 gap-1 text-xs text-gray-600">
+              <label class="flex items-center gap-2">
+                <input type="checkbox" name="preferentialStatuses" value="BASIC_LIVELIHOOD" />
+                기초생활수급자
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" name="preferentialStatuses" value="NEAR_POVERTY" />
+                차상위계층
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" name="preferentialStatuses" value="SINGLE_PARENT" />
+                한부모가족
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" name="preferentialStatuses" value="INDEPENDENT_YOUTH" />
+                자립준비청년
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" />
+                신혼부부
+              </label>
+              <label class="flex items-center gap-2">
+                <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" />
+                다자녀가구
+              </label>
+            </div>
+          </div>
         </div>
       </details>
 
@@ -164,10 +214,12 @@
 
   <div id="app-footer"></div>
 
-  <script src="../../js/components/header.js?v=20260915b"></script>
-  <script src="../../js/components/footer.js?v=20260915b"></script>
-  <script src="../../js/api/recommendation.js?v=20260915b"></script>
-  <script src="../../js/utils/address-match-util.js?v=20260915d"></script>
+  <script src="../../js/components/header.js?v=20260916a"></script>
+  <script src="../../js/components/footer.js?v=20260916a"></script>
+  <script src="../../js/api/auth.js?v=20260916a"></script>
+  <script src="../../js/api/mypage.js?v=20260916a"></script>
+  <script src="../../js/api/recommendation.js?v=20260916a"></script>
+  <script src="../../js/utils/address-match-util.js?v=20260916a"></script>
   <script>
     renderHeader("diagnosis");
     renderFooter();
@@ -175,6 +227,35 @@
     const form = document.getElementById("diagnosis-form");
     const errorEl = document.getElementById("form-error");
     const submitBtn = document.getElementById("submit-btn");
+
+    // 로그인한 사용자는 마이페이지에 저장된 프로필(나이/소득/자산/직업종류/우대사항 등)을
+    // 진단 폼에 자동으로 채워준다 (그대로 제출해도 되고, 수정 후 제출해도 됨).
+    (async () => {
+      if (!CustomHouseAuthApi.isLoggedIn()) return;
+      let condition;
+      try {
+        condition = await CustomHouseMypageApi.getMyCondition();
+      } catch {
+        return; // 조회 실패는 무시하고 빈 폼으로 진행
+      }
+      if (!condition) return;
+
+      if (condition.age != null) form.age.value = condition.age;
+      form.annualIncome.value = condition.annualIncome ?? "";
+      if (condition.coupleAnnualIncome != null) form.coupleAnnualIncome.value = condition.coupleAnnualIncome;
+      if (condition.workLocation) form.workLocation.value = condition.workLocation;
+      if (condition.desiredDeposit != null) form.desiredDeposit.value = condition.desiredDeposit;
+      if (condition.desiredRent != null) form.desiredRent.value = condition.desiredRent;
+      if (condition.netAsset != null) form.assets.value = condition.netAsset;
+      if (condition.jobType) form.jobType.value = condition.jobType;
+      form.noHouseholder.checked = !!condition.noHouseholder;
+      (condition.preferentialStatuses || []).forEach((value) => {
+        const box = form.querySelector(`input[name="preferentialStatuses"][value="${value}"]`);
+        if (box) box.checked = true;
+      });
+
+      document.getElementById("prefill-msg").classList.remove("hidden");
+    })();
 
     // --- 직장 위치: 카카오 주소검색 -> 가장 가까운 직장 권역으로 자동 매칭 (키 없으면 드롭다운 폴백) ---
     (function setupWorkLocationAddressSearch() {
@@ -251,7 +332,8 @@
 
       const fd = new FormData(form);
       const condition = {
-        monthlyIncome: Number(fd.get("monthlyIncome")),
+        annualIncome: Number(fd.get("annualIncome")),
+        coupleAnnualIncome: fd.get("coupleAnnualIncome") ? Number(fd.get("coupleAnnualIncome")) : null,
         deposit: Number(fd.get("deposit")),
         desiredDeposit: fd.get("desiredDeposit") ? Number(fd.get("desiredDeposit")) : null,
         desiredRent: fd.get("desiredRent") ? Number(fd.get("desiredRent")) : null,
@@ -262,6 +344,8 @@
         age: fd.get("age") ? Number(fd.get("age")) : null,
         assets: fd.get("assets") ? Number(fd.get("assets")) : null,
         noHouseholder: fd.get("noHouseholder") === "on",
+        jobType: fd.get("jobType") || null,
+        preferentialStatuses: fd.getAll("preferentialStatuses"),
       };
 
       submitBtn.disabled = true;
