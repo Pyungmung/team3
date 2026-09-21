@@ -54,6 +54,11 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/**"
                         ).permitAll()
+                        // 커뮤니티 게시판: 읽기(목록/상세)는 공개, 내 스크랩 목록과 쓰기(작성/댓글/투표/좋아요 등)는 로그인 필요.
+                        // 순서가 중요하다 (먼저 매칭되는 규칙이 적용됨).
+                        .requestMatchers(HttpMethod.GET, "/api/posts/scraps").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**").permitAll()
+                        .requestMatchers("/api/posts", "/api/posts/**", "/api/comments/**").authenticated()
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api/mypage/**").authenticated()
                         .requestMatchers("/api/payments/**").authenticated()

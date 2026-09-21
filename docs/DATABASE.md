@@ -53,6 +53,13 @@
 | `favorites` | `domain/watchlist/entity/WatchlistItem.java` | 김시연 | 관심 매물 (사용자 ↔ 매물 연결) |
 | `registry_logs` | `domain/watchlist/entity/RegistryLog.java` | 김시연 | 매물 시세/상태 변동 이력 |
 | `notifications` | `domain/notification/entity/Notification.java` | 김시연 | 사용자에게 발송된 알림 |
+| `posts` | `domain/board/entity/Post.java` | 미정 | 커뮤니티 게시글 (카테고리 4종) |
+| `post_metas` | `domain/board/entity/PostMeta.java` | 미정 | 게시글 부가정보 키/값 (매물 요약, 인테리어 태그·사진 등) |
+| `comments` | `domain/board/entity/Comment.java` | 미정 | 댓글/답변/대댓글 (+ 답변 채택) |
+| `vote_options` | `domain/board/entity/VoteOption.java` | 미정 | 집 구하기 게시글의 투표 항목 |
+| `vote_records` | `domain/board/entity/VoteRecord.java` | 미정 | 투표 내역 (1인 1표) |
+| `post_likes` | `domain/board/entity/PostLike.java` | 미정 | 게시글 좋아요 |
+| `post_scraps` | `domain/board/entity/PostScrap.java` | 미정 | 게시글 스크랩 |
 | ~~`registry_analysis`~~ | `domain/watchlist/entity/RegistryAnalysis.java` | 김시연 | ⏳ **미구현.** 실제 등기부등본 API 연동이 필요해 스키마 설계만 되어있는 상태 (자세한 내용은 9번 항목 참고) |
 
 ## 3. 테이블 상세
@@ -67,6 +74,7 @@
 | email | VARCHAR(191) | UNIQUE, NOT NULL | 로그인 아이디 |
 | password | VARCHAR(100) | NULL 허용 | BCrypt 암호화. 네이버 전용 계정은 null |
 | nickname | VARCHAR(50) | NOT NULL | |
+| phone | VARCHAR(20) | NULL 허용 | 휴대폰 번호(010-0000-0000). 마이페이지에서 선택 입력 — 운영(`validate`)은 `ALTER TABLE users ADD COLUMN phone VARCHAR(20);` 수동 적용 필요 |
 | provider | VARCHAR(20) | NOT NULL | `LOCAL` \| `NAVER` |
 | provider_id | VARCHAR(100) | | 소셜 로그인 고유 ID |
 | refresh_token | VARCHAR(500) | | 최근 발급된 JWT refresh token (대조용) |
@@ -155,6 +163,59 @@
 | content | VARCHAR(500) | NOT NULL | |
 | is_read | BOOLEAN | NOT NULL | 읽음 여부 (JPA 필드명은 `read`지만, MySQL 예약어라 컬럼명만 `is_read`로 매핑) |
 
+### 커뮤니티 게시판 (posts 외 6개, 담당: 미정)
+
+카테고리(`HOUSING` 집 구하기 / `INTERIOR` 인테리어 / `SAFETY` 전세사기·법률 / `COMMUNITY` 자취 꿀팁)는
+테이블이 아니라 `BoardCategory` enum이고 `posts.category`에 문자열로 저장됩니다.
+`post_id`/`option_id`/`user_id`/`writer_id`는 다른 도메인처럼 FK 제약 없이 id만 들고 있습니다
+(자식 행 삭제는 `PostService.delete`가 처리: metas/options/comments는 JPA cascade, 투표·좋아요·스크랩은 직접 삭제).
+
+#### posts
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK | |
+| category | VARCHAR(20) | NOT NULL | `HOUSING` \| `INTERIOR` \| `SAFETY` \| `COMMUNITY`. 인덱스 `idx_posts_category_created (category, created_at)` |
+| title | VARCHAR(100) | NOT NULL | |
+| content | TEXT | NOT NULL | 최대 10,000자(서비스에서 검증) |
+| writer_id | BIGINT | NOT NULL | 익명 글도 저장하지만 API 응답에는 절대 내려가지 않음 |
+| is_anonymous | BOOLEAN | NOT NULL | SAFETY에서만 true 허용 (`anonymous`가 예약어라 컬럼명만 `is_anonymous`) |
+| view_count / like_count / comment_count | BIGINT | NOT NULL | 원자 UPDATE(`n = n + 1`)로만 갱신 |
+| solved | BOOLEAN | NOT NULL | SAFETY 답변 채택 완료 여부 |
+
+#### post_metas (부가정보 키/값)
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK | |
+| post_id | BIGINT | NOT NULL | FK: posts.id |
+| meta_key | VARCHAR(40) | NOT NULL | `PostMetaKey` enum. HOUSING: LISTING_ADDRESS/DEPOSIT/MONTHLY_RENT/AREA/TYPE/URL, INTERIOR: HOUSING_TYPE/AREA_PYEONG/IMAGE_URL(여러 개)/IMAGE_PIN(여러 개, JSON 문자열) |
+| meta_value | TEXT | NOT NULL | 키별 최대 길이는 `PostMetaKey.maxLength` |
+| sort_order | INT | NOT NULL | 같은 키가 여러 개일 때(사진 슬라이드) 순서 |
+
+새 부가정보가 필요하면 `PostMetaKey`에 키만 추가하면 됩니다 (테이블 변경 없음).
+
+#### comments
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK | |
+| post_id | BIGINT | NOT NULL | FK: posts.id |
+| writer_id | BIGINT | NOT NULL | |
+| parent_id | BIGINT | NULL 허용 | null이면 댓글/답변, 값이 있으면 대댓글(1단계까지) |
+| content | VARCHAR(2000) | NOT NULL | |
+| is_selected | BOOLEAN | NOT NULL | 채택된 답변 (SAFETY 최상위 댓글만, 글당 1개) |
+| selected_at | DATETIME | | 채택 시각 |
+
+#### vote_options / vote_records / post_likes / post_scraps
+| 테이블 | 컬럼 | 제약 |
+|---|---|---|
+| vote_options | id PK, post_id, label VARCHAR(50), sort_order INT, vote_count BIGINT | 글당 2~5개(서비스 검증) |
+| vote_records | id PK, post_id, option_id, user_id | **UNIQUE(post_id, user_id)** `uk_vote_post_user` = 1인 1표 |
+| post_likes | id PK, post_id, user_id | **UNIQUE(post_id, user_id)** `uk_like_post_user` |
+| post_scraps | id PK, post_id, user_id | **UNIQUE(post_id, user_id)** `uk_scrap_post_user` |
+
+> ⚠️ 운영(`ddl-auto: validate`)에서는 위 7개 테이블을 수동으로 만들어야 합니다.
+> 가장 간단한 방법: dev(H2/로컬 MySQL)를 `update`로 띄워 테이블을 자동 생성시킨 뒤 `SHOW CREATE TABLE posts;` 등으로 DDL을 뽑아 운영에 적용하세요
+> (컬럼 규칙: 카멜케이스 필드 → 스네이크케이스, 예: `viewCount` → `view_count`).
+
 ## 4. 관계 요약
 
 ```
@@ -166,6 +227,11 @@ users 1 ─── N   notifications         (알림 여러 건)
 
 properties 1 ─── N favorites          (매물 하나를 여러 사용자가 관심 등록)
 properties 1 ─── N registry_logs      (매물 하나의 변동 이력 여러 건)
+
+users 1 ─── N   posts / comments      (writer_id, FK 없음)
+posts 1 ─── N   post_metas / comments / vote_options
+vote_options 1 ─── N vote_records     (post_id+user_id 유니크 = 1인 1표)
+users N ─── N   posts                 (post_likes, post_scraps 로 연결)
 ```
 
 전부 애플리케이션 레벨 FK입니다 (JPA `@ManyToOne` 대신 `Long userId`/`propertyId`로 직접 들고 있는

@@ -23,7 +23,13 @@ public enum ErrorCode {
 
     // --- 결제/구독 (담당: 황진구) ---
     PAYMENT_FAILED(HttpStatus.BAD_GATEWAY, "결제 처리 중 오류가 발생했습니다."),
-    SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "구독 정보가 없습니다.");
+    SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "구독 정보가 없습니다."),
+
+    // --- 커뮤니티 게시판 (담당: 미정) ---
+    POST_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+    ALREADY_VOTED(HttpStatus.CONFLICT, "이미 투표에 참여했습니다."),
+    ALREADY_SELECTED(HttpStatus.CONFLICT, "이미 채택된 답변이 있습니다.");
 
     private final HttpStatus status;
     private final String defaultMessage;

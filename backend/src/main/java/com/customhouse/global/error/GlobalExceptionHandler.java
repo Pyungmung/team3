@@ -2,7 +2,9 @@ package com.customhouse.global.error;
 
 import com.customhouse.global.common.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientException;
@@ -33,6 +35,20 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getStatus())
                 .body(ApiResponse.fail(ErrorCode.VALIDATION_ERROR.name(), ErrorCode.VALIDATION_ERROR.getDefaultMessage(), fieldErrors));
+    }
+
+    /** 요청 본문의 JSON 형식/enum 값이 잘못됐을 때 (예: 없는 category 값) 500이 아니라 400으로 돌려준다. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getStatus())
+                .body(ApiResponse.fail(ErrorCode.VALIDATION_ERROR.name(), "요청 본문 형식이 올바르지 않습니다."));
+    }
+
+    /** 경로/쿼리 파라미터 타입이 안 맞을 때 (예: /api/posts/abc) 400으로 돌려준다. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getStatus())
+                .body(ApiResponse.fail(ErrorCode.VALIDATION_ERROR.name(), "'" + ex.getName() + "' 값이 올바르지 않습니다."));
     }
 
     @ExceptionHandler(RestClientException.class)

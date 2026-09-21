@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<!-- [담당: 미정 - 커뮤니티 게시판] 게시글 상세 (detail.html?id=3) -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 커뮤니티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <style>
+    .slider { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+    .slider::-webkit-scrollbar { display: none; }
+    .slide { flex: 0 0 100%; scroll-snap-align: center; position: relative; }
+    .pin { position: absolute; transform: translate(-50%, -50%); }
+  </style>
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <a id="back" href="list.html" class="text-sm text-slate-500 hover:text-[var(--brand-600)]">‹ 목록으로</a>
+    <div id="error" class="hidden card p-6 text-center text-sm text-gray-500 mt-4"></div>
+    <div id="loading" class="text-center text-sm text-gray-400 py-16">불러오는 중...</div>
+    <article id="post" class="hidden mt-4 space-y-4"></article>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260915b"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/api/community.js?v=20260921"></script>
+  <script>
+    renderHeader("community");
+    renderFooter();
+
+    const API = CustomHouseCommunityApi;
+    const postId = new URLSearchParams(location.search).get("id");
+    const loggedIn = CustomHouseAuthApi.isLoggedIn();
+    let post = null;
+
+    const META_LABELS = {
+      LISTING_ADDRESS: "주소", LISTING_DEPOSIT: "보증금", LISTING_MONTHLY_RENT: "월세",
+      LISTING_AREA: "면적", LISTING_TYPE: "유형",
+    };
+
+    function requireLogin() {
+      if (loggedIn) return true;
+      if (confirm("로그인이 필요해요. 로그인 화면으로 이동할까요?")) location.href = "../auth/login.html";
+      return false;
+    }
+
+    function metaValue(key) {
+      const m = post.metas.find((x) => x.key === key);
+      return m ? m.value : "";
+    }
+
+    // ---------- 섹션 렌더 ----------
+    function renderHeaderBlock() {
+      return `
+        <div class="card p-5">
+          <div class="flex items-center gap-1.5 mb-2">
+            <span class="text-[11px] px-2 py-0.5 rounded-full" style="background:var(--brand-50);color:var(--brand-600)">${esc(API.categoryLabel(post.category))}</span>
+            ${post.solved ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold">채택 완료</span>' : ""}
+          </div>
+          <h1 class="text-xl font-extrabold break-words">${esc(post.title)}</h1>
+          <div class="text-xs text-gray-400 mt-2 flex flex-wrap gap-x-3">
+            <span>${esc(post.writerName)}</span><span>${API.timeAgo(post.createdAt)}</span><span>조회 ${post.viewCount}</span>
+          </div>
+          <div class="mt-5 text-sm leading-relaxed whitespace-pre-wrap break-words">${esc(post.content)}</div>
+          ${renderMetas()}
+        </div>`;
+    }
+
+    function renderMetas() {
+      if (post.category === "HOUSING") {
+        const rows = Object.entries(META_LABELS)
+          .filter(([k]) => metaValue(k))
+          .map(([k, label]) => `<div class="flex gap-2"><dt class="w-14 shrink-0 text-gray-400">${label}</dt><dd class="font-medium break-words">${esc(metaValue(k))}</dd></div>`)
+          .join("");
+        const url = API.safeUrl(metaValue("LISTING_URL"));
+        if (!rows && !url) return "";
+        return `<div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs font-bold text-slate-500 mb-2">🏠 첨부한 매물</div>
+          <dl class="text-sm space-y-1">${rows}</dl>
+          ${url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 text-xs font-semibold underline" style="color:var(--brand-600)">매물 링크 열기 ↗</a>` : ""}
+        </div>`;
+      }
+      if (post.category === "INTERIOR") {
+        const tags = [metaValue("HOUSING_TYPE"), metaValue("AREA_PYEONG") && metaValue("AREA_PYEONG") + "평"].filter(Boolean);
+        const images = post.metas.filter((m) => m.key === "IMAGE_URL").map((m) => API.safeUrl(m.value)).filter(Boolean);
+        const pins = post.metas.filter((m) => m.key === "IMAGE_PIN").map((m) => {
+          try { return JSON.parse(m.value); } catch { return null; }
+        }).filter((p) => p && typeof p.x === "number" && typeof p.y === "number");
+
+        const slides = images.map((src, i) => `
+          <div class="slide"><img src="${esc(src)}" alt="방 사진 ${i + 1}" class="w-full max-h-[420px] object-contain bg-slate-100 rounded-xl" onerror="this.alt='이미지를 불러올 수 없어요'" />
+            ${pins.filter((p) => (p.image || 0) === i).map((p) => `<span class="pin" style="left:${p.x}%;top:${p.y}%"><span class="block w-4 h-4 rounded-full bg-white border-2 shadow" style="border-color:var(--brand-600)"></span>${p.label ? `<span class="block mt-1 text-[11px] px-1.5 py-0.5 rounded bg-black/70 text-white whitespace-nowrap">${esc(p.label)}</span>` : ""}</span>`).join("")}
+          </div>`).join("");
+
+        return `${tags.length ? `<div class="flex gap-1.5 mt-5">${tags.map((t) => `<span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">#${esc(t)}</span>`).join("")}</div>` : ""}
+          ${images.length ? `<div class="mt-4 relative">
+              <div id="slider" class="slider gap-0">${slides}</div>
+              ${images.length > 1 ? `<button data-slide="-1" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow">‹</button>
+              <button data-slide="1" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow">›</button>
+              <span id="slide-count" class="absolute right-3 bottom-3 text-xs px-2 py-0.5 rounded-full bg-black/60 text-white">1 / ${images.length}</span>` : ""}
+            </div>` : ""}`;
+      }
+      return "";
+    }
+
+    function renderVote() {
+      if (!post.voteOptions.length) return "";
+      const voted = post.myVoteOptionId != null;
+      const total = post.voteOptions.reduce((s, o) => s + o.voteCount, 0);
+      const opts = post.voteOptions.map((o) => {
+        const mine = o.id === post.myVoteOptionId;
+        return `<button data-vote="${o.id}" ${voted ? "disabled" : ""} class="relative w-full text-left rounded-xl border overflow-hidden px-4 py-3 text-sm ${mine ? "border-[var(--brand-600)]" : "border-slate-200"} ${voted ? "" : "hover:bg-slate-50"}">
+            <span class="absolute inset-y-0 left-0" style="width:${voted ? o.percent : 0}%;background:${mine ? "var(--brand-100)" : "var(--brand-50)"}"></span>
+            <span class="relative flex justify-between gap-3"><span class="font-medium break-words">${mine ? "✓ " : ""}${esc(o.label)}</span>${voted ? `<span class="text-xs text-slate-500 shrink-0">${o.percent}% · ${o.voteCount}표</span>` : ""}</span>
+          </button>`;
+      }).join("");
+      return `<div class="card p-5">
+        <h2 class="font-bold text-sm mb-3">🗳 어느 쪽이 좋을까요? <span class="text-xs font-normal text-gray-400">${voted ? `총 ${total}명 참여` : "투표하면 결과가 보여요 (변경 불가)"}</span></h2>
+        <div class="space-y-2">${opts}</div></div>`;
+    }
+
+    function renderActions() {
+      const btn = "text-sm px-4 py-2 rounded-xl border";
+      return `<div class="flex flex-wrap items-center gap-2">
+        <button id="like-btn" class="${btn} ${post.liked ? "text-white border-transparent" : "bg-white border-slate-200 text-slate-600"}" style="${post.liked ? "background:var(--brand-600)" : ""}">♥ 좋아요 ${post.likeCount}</button>
+        <button id="scrap-btn" class="${btn} ${post.scrapped ? "text-white border-transparent" : "bg-white border-slate-200 text-slate-600"}" style="${post.scrapped ? "background:var(--brand-600)" : ""}">${post.scrapped ? "★ 스크랩됨" : "☆ 스크랩"}</button>
+        ${post.mine ? `<span class="flex-1"></span>
+          <a href="write.html?id=${post.id}" class="${btn} bg-white border-slate-200 text-slate-600">수정</a>
+          <button id="delete-btn" class="${btn} bg-white border-red-200 text-red-500">삭제</button>` : ""}
+      </div>`;
+    }
+
+    function commentHtml(c, isReply) {
+      const canAdopt = post.category === "SAFETY" && post.mine && !post.solved && !isReply && !c.mine;
+      return `<li class="${isReply ? "ml-6 mt-2 border-l-2 border-slate-100 pl-3" : "py-4 border-b border-slate-100 last:border-0"}" data-comment="${c.id}">
+        <div class="flex items-center gap-1.5 text-xs">
+          <span class="font-semibold text-slate-700">${esc(c.writerName)}</span>
+          ${c.postAuthor && post.category !== "SAFETY" ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">글쓴이</span>' : ""}
+          ${c.selected ? '<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">✓ 채택된 답변</span>' : ""}
+          <span class="text-gray-400">${API.timeAgo(c.createdAt)}</span>
+        </div>
+        <p class="mt-1 text-sm whitespace-pre-wrap break-words">${esc(c.content)}</p>
+        <div class="mt-1.5 flex gap-3 text-xs text-gray-400">
+          ${isReply ? "" : `<button data-reply="${c.id}" class="hover:text-slate-700">답글</button>`}
+          ${canAdopt ? `<button data-adopt="${c.id}" class="font-semibold hover:underline" style="color:var(--brand-600)">이 답변 채택하기</button>` : ""}
+        </div>
+        ${isReply ? "" : `<div id="reply-box-${c.id}" class="hidden mt-2"></div>`}
+        ${(c.replies || []).map((r) => commentHtml(r, true)).join("")}
+      </li>`;
+    }
+
+    function renderComments() {
+      const hint = post.category === "SAFETY" ? "답변" : "댓글";
+      return `<div class="card p-5">
+        <h2 class="font-bold text-sm mb-3">${hint} <span id="comment-count" class="text-gray-400 font-normal">${post.commentCount}</span></h2>
+        <form id="comment-form" class="flex gap-2 mb-2">
+          <textarea id="comment-input" rows="2" maxlength="2000" required placeholder="${loggedIn ? `${hint}을 입력하세요` : "로그인 후 작성할 수 있어요"}" ${loggedIn ? "" : "readonly"}
+                    class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+          <button class="px-4 rounded-xl text-white text-sm font-semibold brand-gradient shrink-0">등록</button>
+        </form>
+        <p id="comment-msg" class="text-xs text-red-500 min-h-[1rem]"></p>
+        <ul id="comment-list">${post.comments.map((c) => commentHtml(c, false)).join("") || `<li class="text-sm text-gray-400 text-center py-6">아직 ${hint}이 없어요.</li>`}</ul>
+      </div>`;
+    }
+
+    function render() {
+      document.title = `맞집 | ${post.title}`;
+      document.getElementById("post").innerHTML = renderHeaderBlock() + renderVote() + renderActions() + renderComments();
+      document.getElementById("back").href = `list.html?tab=${post.category}`;
+    }
+
+    // ---------- 이벤트 (위임) ----------
+    const root = document.getElementById("post");
+
+    root.addEventListener("click", async (e) => {
+      const t = e.target.closest("button");
+      if (!t) return;
+      try {
+        if (t.dataset.slide) {
+          const s = document.getElementById("slider");
+          s.scrollBy({ left: s.clientWidth * Number(t.dataset.slide), behavior: "smooth" });
+        } else if (t.dataset.vote) {
+          if (!requireLogin()) return;
+          const r = await API.votePost(post.id, Number(t.dataset.vote));
+          post.voteOptions = r.voteOptions;
+          post.myVoteOptionId = r.myOptionId;
+          render();
+        } else if (t.id === "like-btn") {
+          if (!requireLogin()) return;
+          const r = await API.toggleLike(post.id);
+          post.liked = r.liked;
+          post.likeCount = r.likeCount;
+          render();
+        } else if (t.id === "scrap-btn") {
+          if (!requireLogin()) return;
+          post.scrapped = (await API.toggleScrap(post.id)).scrapped;
+          render();
+        } else if (t.id === "delete-btn") {
+          if (!confirm("정말 삭제할까요? 댓글과 투표 내역도 함께 삭제돼요.")) return;
+          await API.deletePost(post.id);
+          location.href = "list.html";
+        } else if (t.dataset.reply) {
+          if (!requireLogin()) return;
+          openReplyBox(Number(t.dataset.reply));
+        } else if (t.dataset.adopt) {
+          if (!confirm("이 답변을 채택할까요? 채택은 한 번만 할 수 있고 되돌릴 수 없어요.")) return;
+          await API.selectComment(Number(t.dataset.adopt));
+          post.solved = true;
+          post.comments.forEach((c) => { if (c.id === Number(t.dataset.adopt)) c.selected = true; });
+          render();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    function openReplyBox(parentId) {
+      const box = document.getElementById(`reply-box-${parentId}`);
+      if (box.innerHTML) {
+        box.innerHTML = "";
+        box.classList.add("hidden");
+        return;
+      }
+      box.classList.remove("hidden");
+      box.innerHTML = `<form data-reply-form="${parentId}" class="flex gap-2">
+        <input maxlength="2000" required placeholder="답글을 입력하세요" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+        <button class="px-3 rounded-lg text-white text-xs font-semibold brand-gradient shrink-0">등록</button></form>`;
+      box.querySelector("input").focus();
+    }
+
+    root.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const isReply = form.dataset.replyForm;
+      if (!isReply && form.id !== "comment-form") return;
+      if (!requireLogin()) return;
+
+      const input = form.querySelector("textarea, input");
+      const msg = document.getElementById("comment-msg");
+      try {
+        const created = await API.addComment(post.id, input.value, isReply ? Number(isReply) : null);
+        created.replies = [];
+        if (isReply) post.comments.find((c) => c.id === Number(isReply)).replies.push(created);
+        else post.comments.push(created);
+        post.commentCount += 1;
+        render();
+      } catch (err) {
+        if (isReply) alert(err.message);
+        else msg.textContent = err.message;
+      }
+    });
+
+    root.addEventListener("scroll", (e) => {
+      if (e.target.id !== "slider") return;
+      const s = e.target;
+      const idx = Math.round(s.scrollLeft / s.clientWidth) + 1;
+      const counter = document.getElementById("slide-count");
+      if (counter) counter.textContent = `${idx} / ${s.children.length}`;
+    }, true);
+
+    // ---------- 로드 ----------
+    (async function load() {
+      const errEl = document.getElementById("error");
+      if (!postId) {
+        document.getElementById("loading").classList.add("hidden");
+        errEl.textContent = "잘못된 주소예요.";
+        errEl.classList.remove("hidden");
+        return;
+      }
+      try {
+        post = await API.getPost(postId);
+        document.getElementById("loading").classList.add("hidden");
+        root.classList.remove("hidden");
+        render();
+      } catch (err) {
+        document.getElementById("loading").classList.add("hidden");
+        errEl.textContent = err.status === 404 ? "삭제되었거나 없는 게시글이에요." : err.status ? err.message : "서버에 연결할 수 없어요. 백엔드(8080)가 켜져 있는지 확인해주세요.";
+        errEl.classList.remove("hidden");
+      }
+    })();
+  </script>
+</body>
+</html>

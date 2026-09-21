@@ -15,6 +15,7 @@ function renderHeader(activeMenu = "") {
 
   const menus = [
     { key: "diagnosis", label: "AI 주거비 진단", href: computeHref("diagnosis/input-form.html") },
+    { key: "community", label: "커뮤니티", href: computeHref("community/list.html") },
     { key: "watchlist", label: "관심 매물", href: computeHref("watchlist/list.html") },
     { key: "mypage", label: "마이페이지", href: computeHref("mypage/index.html") },
   ];
@@ -23,8 +24,8 @@ function renderHeader(activeMenu = "") {
 
   const authArea = email
     ? `<div class="flex items-center gap-2">
-        <span id="header-user-name" class="hidden sm:inline text-xs text-gray-500"></span>
-        <button id="header-logout-btn" class="text-sm px-4 py-2 rounded-xl text-white brand-gradient font-semibold">로그아웃</button>
+        <span id="header-user-name" class="inline-block truncate max-w-[7.5rem] sm:max-w-[13rem] text-xs text-gray-500"></span>
+        <button id="header-logout-btn" class="text-sm px-3 sm:px-4 py-2 rounded-xl text-white brand-gradient font-semibold whitespace-nowrap shrink-0">로그아웃</button>
       </div>`
     : `<a href="${computeHref("auth/login.html")}" class="text-sm px-5 py-2.5 rounded-xl text-white brand-gradient font-semibold inline-block">
         로그인 / 회원가입
@@ -38,7 +39,7 @@ function renderHeader(activeMenu = "") {
           <img src="${computeHref("../assets/images/맞집 로고(최종).png")}" alt="맞집 로고" class="h-14 w-auto object-contain" />
         </a>
 
-        <nav class="hidden sm:flex items-center gap-3 absolute left-1/2 -translate-x-1/2 text-sm font-medium text-slate-500">
+        <nav class="hidden sm:flex items-center gap-3 lg:absolute lg:left-1/2 lg:-translate-x-1/2 text-sm font-medium text-slate-500">
           ${menus
             .map(
               (m) => `<a href="${m.href}" class="relative px-3 py-2 rounded-xl hover:bg-slate-100 hover:text-[var(--brand-600)] ${
@@ -79,7 +80,7 @@ async function showHeaderNickname(email) {
   if (!nameEl) return;
 
   const cached = readHeaderNicknameCache();
-  if (cached && cached.email === email) nameEl.textContent = cached.nickname;
+  if (cached && cached.email === email) renderWelcome(nameEl, cached.nickname);
 
   try {
     const res = await fetch(HEADER_USER_ME_URL, {
@@ -88,11 +89,24 @@ async function showHeaderNickname(email) {
     const body = await res.json();
     if (!res.ok || !body.data || !body.data.nickname) throw new Error("nickname unavailable");
 
-    nameEl.textContent = body.data.nickname;
+    renderWelcome(nameEl, body.data.nickname);
     localStorage.setItem(HEADER_NICKNAME_CACHE_KEY, JSON.stringify({ email, nickname: body.data.nickname }));
   } catch {
-    if (!nameEl.textContent) nameEl.textContent = email;
+    if (!nameEl.textContent) renderWelcome(nameEl, email);
   }
+}
+
+/**
+ * 헤더 인사말을 그린다. 예: "홍길동님 환영합니다." (이름만 굵게 강조).
+ * 이름은 사용자가 입력한 값이라 innerHTML이 아니라 textContent로만 넣는다.
+ */
+function renderWelcome(el, name) {
+  const strong = document.createElement("strong");
+  strong.className = "font-bold text-gray-900";
+  strong.textContent = name;
+
+  el.replaceChildren(strong, document.createTextNode("님 환영합니다."));
+  el.title = `${name}님 환영합니다.`;
 }
 
 function readHeaderNicknameCache() {

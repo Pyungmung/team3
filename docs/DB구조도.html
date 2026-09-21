@@ -291,6 +291,7 @@
         { name: "email", type: "VARCHAR(191)", unique: true },
         { name: "password", type: "VARCHAR(100)" },
         { name: "nickname", type: "VARCHAR(50)" },
+        { name: "phone", type: "VARCHAR(20)" },
         { name: "provider", type: "VARCHAR(20)" },
         { name: "provider_id", type: "VARCHAR(100)" },
         { name: "refresh_token", type: "VARCHAR(500)" },
@@ -393,6 +394,79 @@
         { name: "summary", type: "VARCHAR" },
       ],
     },
+    // ---- 커뮤니티 게시판 (담당: 미정) — 사용자 참조(writer_id/user_id)는 FK 없이 id만 저장 ----
+    posts: {
+      title: "posts", owner: "미정",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "category", type: "VARCHAR(20)" },
+        { name: "title", type: "VARCHAR(100)" },
+        { name: "content", type: "TEXT" },
+        { name: "writer_id", type: "BIGINT" },
+        { name: "is_anonymous", type: "BOOLEAN" },
+        { name: "view_count", type: "BIGINT" },
+        { name: "like_count", type: "BIGINT" },
+        { name: "comment_count", type: "BIGINT" },
+        { name: "solved", type: "BOOLEAN" },
+      ],
+    },
+    comments: {
+      title: "comments", owner: "미정",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "post_id", type: "BIGINT", fk: true },
+        { name: "writer_id", type: "BIGINT" },
+        { name: "parent_id", type: "BIGINT" },
+        { name: "content", type: "VARCHAR(2000)" },
+        { name: "is_selected", type: "BOOLEAN" },
+        { name: "selected_at", type: "DATETIME" },
+      ],
+    },
+    post_metas: {
+      title: "post_metas", owner: "미정",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "post_id", type: "BIGINT", fk: true },
+        { name: "meta_key", type: "VARCHAR(40)" },
+        { name: "meta_value", type: "TEXT" },
+        { name: "sort_order", type: "INT" },
+      ],
+    },
+    vote_options: {
+      title: "vote_options", owner: "미정",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "post_id", type: "BIGINT", fk: true },
+        { name: "label", type: "VARCHAR(50)" },
+        { name: "sort_order", type: "INT" },
+        { name: "vote_count", type: "BIGINT" },
+      ],
+    },
+    vote_records: {
+      title: "vote_records", owner: "미정",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "post_id", type: "BIGINT", fk: true, unique: true },
+        { name: "option_id", type: "BIGINT", fk: true },
+        { name: "user_id", type: "BIGINT", unique: true },
+      ],
+    },
+    post_likes: {
+      title: "post_likes", owner: "미정",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "post_id", type: "BIGINT", fk: true, unique: true },
+        { name: "user_id", type: "BIGINT", unique: true },
+      ],
+    },
+    post_scraps: {
+      title: "post_scraps", owner: "미정",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "post_id", type: "BIGINT", fk: true, unique: true },
+        { name: "user_id", type: "BIGINT", unique: true },
+      ],
+    },
   };
 
   // ---- 2. 배치 (행/열 그리드. null = 빈 칸) ----
@@ -401,6 +475,8 @@
     ["notifications", "users", "payments", "subscriptions"],
     [null, "favorites", null, null],
     [null, "properties", "registry_logs", "registry_analysis"],
+    ["comments", "posts", "post_metas", null],
+    ["post_likes", "vote_options", "vote_records", "post_scraps"],
   ];
 
   // ---- 3. 관계선 (from = "1" 쪽, to = "N" 또는 "0..1" 쪽) ----
@@ -413,6 +489,10 @@
     { from: "properties", to: "favorites", label: "포함", mult: ["1", "N"] },
     { from: "properties", to: "registry_logs", label: "이력", mult: ["1", "N"] },
     { from: "registry_logs", to: "registry_analysis", label: "예정", mult: ["1", "1"], ghost: true },
+    { from: "posts", to: "comments", label: "댓글", mult: ["1", "N"] },
+    { from: "posts", to: "post_metas", label: "부가정보", mult: ["1", "N"] },
+    { from: "posts", to: "vote_options", label: "투표항목", mult: ["1", "N"] },
+    { from: "vote_options", to: "vote_records", label: "투표", mult: ["1", "N"] },
   ];
 
   // ---- 4. 레이아웃 상수 ----
