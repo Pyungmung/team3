@@ -214,6 +214,12 @@ def run_diagnosis(request) -> dict:
     results = []
     seen_buildings: set[tuple] = set()
 
+    # 선호 주택 유형: 일부 유형만 선택했으면 그 유형의 매물만 추천한다. 비어 있거나 4종을 다 골랐거나
+    # 알 수 없는 값뿐이면 필터를 걸지 않는다. (샘플 폴백 매물은 유형이 없어서 필터가 걸리면 제외된다.)
+    all_types = set(api_collector.PROPERTY_TYPES)
+    selected_types = set(request.preferred_building_types) & all_types
+    type_filter = selected_types if selected_types and selected_types != all_types else None
+
     # 통근권 안에 드는 지역만 먼저 추린 뒤, 지역별 실거래 조회(네트워크 호출)를 동시에 시작한다.
     # 순차로 하면 콜드 스타트 대기가 "지역 수 x 호출 시간"이 되어 백엔드 타임아웃(502)이 났다.
     eligible = []
@@ -231,6 +237,9 @@ def run_diagnosis(request) -> dict:
         transportation_cost = _transportation_cost(commute)
 
         for building in candidates_by_region[region.name]:
+            if type_filter and building["property_type"] not in type_filter:
+                continue
+
             # 희망 보증금/전세액·희망 월세를 입력했으면 "그 금액 이하"인 매물만 검색 대상으로
             # 삼는다 (전세는 월세가 항상 0이라 희망 월세 필터는 자동으로 통과된다).
             if request.desired_deposit is not None and building["deposit"] > request.desired_deposit:

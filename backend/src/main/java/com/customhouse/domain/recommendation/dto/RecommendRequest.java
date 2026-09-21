@@ -52,7 +52,16 @@ public record RecommendRequest(
 
         String jobType, // 선택. GOVERNMENT/SME/MID_SIZED/LARGE_CORP - 일부 정책의 직업종류 자격 판별용
 
-        List<String> preferentialStatuses // 선택. BASIC_LIVELIHOOD/NEAR_POVERTY/SINGLE_PARENT/
+        List<String> preferentialStatuses, // 선택. BASIC_LIVELIHOOD/NEAR_POVERTY/SINGLE_PARENT/
         // INDEPENDENT_YOUTH/NEWLYWED/MULTI_CHILD 중 다중 선택 - 일부 정책의 우대사항 자격 판별용
+
+        String moveSchedule, // 선택. IMMEDIATE/WITHIN_3M/WITHIN_6M/EXPLORING - 아직 로직에 안 쓰고 AI 엔진으로 전달만 함 (추후 데이터 활용)
+
+        String transportType, // 선택. PUBLIC/WALK/CAR - 아직 로직에 안 쓰고 AI 엔진으로 전달만 함 (추후 데이터 활용)
+
+        Boolean useLoanPolicy, // 선택, 기본 true. false면 정부지원정책 목록에서 대출 상품을 추천하지 않음
+
+        List<String> preferredBuildingTypes // 선택. 아파트/오피스텔/연립다세대/단독다가구 (실거래가 API 유형명 그대로).
+        // 일부만 선택하면 그 유형의 매물만 추천, 비어 있거나 전부면 전체 추천
 ) {
 }

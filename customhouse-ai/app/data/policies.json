@@ -1,6 +1,6 @@
 {
   "_owner": "송귀성",
-  "_comment": "docs/housing_policy_list.csv에서 변환한 실제 서울시/자치구 청년 주거지원 정책 데이터입니다. CSV가 갱신되면 이 파일도 다시 변환해야 합니다 (customhouse-ai 담당자에게 재변환 요청).",
+  "_comment": "docs/housing_policy_list.csv에서 변환한 실제 서울시/자치구 청년 주거지원 정책 데이터입니다. CSV가 갱신되면 이 파일도 다시 변환해야 합니다 (customhouse-ai 담당자에게 재변환 요청). is_loan은 정책명에 '대출/전세자금/이자지원'이 들어가면 true인 대출 상품 표시로, 진단 폼에서 '정책 대출 활용'을 해제한 사용자에게 이 정책들을 추천하지 않는 데 쓰인다 (CSV를 다시 변환할 때도 같은 규칙을 적용할 것).",
   "median_income_100_percent_monthly_manwon": 256.4238,
   "policies": [
     {
@@ -17,7 +17,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": true
     },
     {
       "id": "POLICY_002",
@@ -33,7 +34,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": true
     },
     {
       "id": "POLICY_003",
@@ -49,7 +51,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": true
     },
     {
       "id": "POLICY_004",
@@ -65,7 +68,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": true,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": true
     },
     {
       "id": "POLICY_005",
@@ -81,7 +85,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_006",
@@ -97,7 +102,8 @@
       "require_basic_livelihood": true,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_007",
@@ -113,7 +119,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": true,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": false
     },
     {
       "id": "POLICY_008",
@@ -129,7 +136,8 @@
       "require_basic_livelihood": true,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": true
     },
     {
       "id": "POLICY_009",
@@ -145,7 +153,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": false
     },
     {
       "id": "POLICY_010",
@@ -161,7 +170,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_011",
@@ -177,7 +187,8 @@
       "require_basic_livelihood": true,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_012",
@@ -193,7 +204,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_013",
@@ -209,7 +221,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": false
     },
     {
       "id": "POLICY_014",
@@ -225,7 +238,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": true
     },
     {
       "id": "POLICY_015",
@@ -241,7 +255,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_016",
@@ -257,7 +272,8 @@
       "require_basic_livelihood": true,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_017",
@@ -273,7 +289,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": true,
-      "require_no_household": true
+      "require_no_household": true,
+      "is_loan": false
     },
     {
       "id": "POLICY_018",
@@ -289,7 +306,8 @@
       "require_basic_livelihood": true,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_019",
@@ -305,7 +323,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_020",
@@ -321,7 +340,8 @@
       "require_basic_livelihood": true,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_021",
@@ -337,7 +357,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_022",
@@ -353,7 +374,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     },
     {
       "id": "POLICY_023",
@@ -369,7 +391,8 @@
       "require_basic_livelihood": false,
       "require_sme": false,
       "require_newlywed": false,
-      "require_no_household": false
+      "require_no_household": false,
+      "is_loan": false
     }
   ]
 }

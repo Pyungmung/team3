@@ -59,6 +59,29 @@ class DiagnosisRequest(BaseModel):
         alias="preferentialStatuses",
     )
 
+    move_schedule: str | None = Field(
+        None,
+        description="희망 이사 일정 (IMMEDIATE/WITHIN_3M/WITHIN_6M/EXPLORING). 아직 추천 로직에는 쓰지 않고 "
+        "나중에 데이터로 활용하기 위해 받아만 둔다.",
+        alias="moveSchedule",
+    )
+    transport_type: str | None = Field(
+        None,
+        description="주요 통근 수단 (PUBLIC/WALK/CAR). 아직 추천 로직에는 쓰지 않고 나중에 데이터로 활용하기 위해 받아만 둔다.",
+        alias="transportType",
+    )
+    use_loan_policy: bool = Field(
+        True,
+        description="정책 대출 활용 의향. false면 정부지원정책 목록에서 대출 상품(policies.json의 is_loan)을 추천하지 않는다.",
+        alias="useLoanPolicy",
+    )
+    preferred_building_types: list[str] = Field(
+        default_factory=list,
+        description="선호 주택 유형(국토부 실거래가 API 유형명 그대로: 아파트/오피스텔/연립다세대/단독다가구). "
+        "비어 있거나 4종 모두면 필터 없이 전체를, 일부만 있으면 그 유형의 매물만 추천한다.",
+        alias="preferredBuildingTypes",
+    )
+
     class Config:
         populate_by_name = True
 
@@ -67,10 +90,15 @@ class DiagnosisRequest(BaseModel):
     def _default_max_commute(cls, v):
         return 40 if v is None else v
 
-    @field_validator("preferential_statuses", mode="before")
+    @field_validator("preferential_statuses", "preferred_building_types", mode="before")
     @classmethod
-    def _default_preferential_statuses(cls, v):
+    def _default_empty_list(cls, v):
         return [] if v is None else v
+
+    @field_validator("use_loan_policy", mode="before")
+    @classmethod
+    def _default_use_loan_policy(cls, v):
+        return True if v is None else v
 
     @property
     def effective_monthly_income(self) -> float:

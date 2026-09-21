@@ -30,7 +30,7 @@
 
 \- BE 응답: `ApiResponse<T>` (`{success, code, message, data}`) \& `CustomException` 전역 예외
 
-\- 인증: JWT (로그인 시 발급 → `localStorage` 저장 → `Authorization` 헤더 전송) — 구현 완료. 이메일 회원가입/로그인/토큰재발급 + 네이버 OAuth2(코드 완성, 실 서비스 등록 전까지는 더미 키로 기동)
+\- 인증: JWT (로그인 시 발급 → `localStorage` 저장 → `Authorization` 헤더 전송) — 구현 완료. 이메일 회원가입/로그인/토큰재발급 + 네이버 OAuth2(앱 등록·연동 완료, 키는 `backend/.env`에만 보관. 개발 중 상태라 팀원 네이버 계정은 개발자센터 멤버관리에 테스트 계정으로 등록해야 로그인됨)
 
 \- 마이페이지 프로필: 나이/연소득/부부합산 연소득/자산 6분해(총자산=자산 합-부채 합)/직장위치/직업종류/무주택/우대사항 저장 → 로그인 사용자는 진단 폼 진입 시 자동 프리필
 
@@ -52,7 +52,7 @@
 
 \- 운영용 MySQL DB 위치 및 접속 정보 (현재 개발은 H2 인메모리) / 관리비·교통비 공공데이터 출처
 
-\- 네이버 개발자센터 앱 등록 (client-id/secret 발급 후 backend/.env에 설정)
+\- 네이버 로그인 운영 전환 (앱 검수·서비스 URL/콜백 URL을 운영 도메인으로 변경, 같은 이메일로 이미 가입한 계정과의 통합 처리)
 
 \- FE/BE/AI 설치·빌드·테스트 명령어 / `CustomException` 에러 코드 체계 상세 (1차 초안: `backend/src/main/java/com/customhouse/global/error/ErrorCode.java`)
 

@@ -105,6 +105,9 @@ def match_display_policies(request, building_region: str) -> list[dict]:
     (실질 주거비 계산에는 반영하지 않는 정보성 매칭 - 모듈 docstring 참고)"""
     matched = []
     for policy in load_policies():
+        # "정책 대출 활용"을 해제한 사용자에게는 대출 상품을 추천하지 않는다.
+        if policy.get("is_loan") and not request.use_loan_policy:
+            continue
         if not _region_ok(policy, building_region):
             continue
         if not _age_ok(policy, request.age):
