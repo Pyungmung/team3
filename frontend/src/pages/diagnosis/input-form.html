@@ -6,9 +6,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>맞집 - AI 주거비 절약 진단</title>
+  <title>맞집 | 주거비 절약 진단</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 공통 헤더/푸터가 쓰는 브랜드 스타일(main.css). 이 페이지의 색상은 아래 Tailwind 클래스가 우선한다. -->
   <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
   <script src="../../js/config.js?v=20260915d"></script>
   <script>
@@ -25,255 +24,609 @@
   </script>
   <!-- 주소 검색(우편번호) 팝업 - 다음(카카오) 공개 서비스, 별도 키 불필요 -->
   <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
   <style>
-    /* 단계형 페이지 전환 */
-    .page-step {
-      display: block;
-      transition: all 0.3s ease-in-out;
+    /* 진단 페이지 전용 스타일. 색상은 전역 브랜드 토큰(--brand-*, main.css)을 따른다. */
+    :root {
+      --navy: var(--brand-600);
+      --blue: var(--brand-500);
+      --ink: #10213a;
+      --muted: #64748b;
+      --line: #e7edf4;
+      --bg: #f6f8fb;
     }
-    .page-step.hidden-page {
-      display: none !important;
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg) !important;
+    }
+
+    /* ===== HERO: 메인 홈 배너(.home-intro-bg, main.css)와 같은 배경/톤 ===== */
+    .hero {
+      position: relative;
+      color: var(--ink, #0f172a);
+    }
+
+    .hero-inner {
+      max-width: 1040px;
+      margin: auto;
+      padding: 72px 24px 72px;
+    }
+
+    .hero-label {
+      display: inline-block;
+      padding: 5px 14px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      background: var(--brand-100);
+      color: var(--brand-700);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: clamp(32px, 4.4vw, 48px);
+      line-height: 1.3;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      color: #0f172a;
+    }
+
+    .hero-title .accent { color: var(--brand-600); }
+
+    .hero-desc {
+      max-width: 38rem;
+      margin-top: 18px;
+      font-size: 17px;
+      line-height: 1.75;
+      color: #4b5563;
+    }
+
+    /* ===== MAIN CARD ===== */
+    .shell {
+      max-width: 1040px;
+      margin: 8px auto 70px;
+      padding: 0 24px;
+      position: relative;
+    }
+
+    .main-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, .07);
+      overflow: hidden;
+    }
+
+    /* ===== STEP 표시 ===== */
+    .step-head {
+      padding: 28px 34px 22px;
+      border-bottom: 1px solid #edf1f5;
+    }
+
+    .steps {
+      display: flex;
+      align-items: center;
+      max-width: 560px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      color: #a0a9b6;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .step-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #edf1f5;
+      color: #8491a4;
+      font-size: 15px;
+    }
+
+    .step-item.active { color: var(--navy); }
+
+    .step-item.active .step-circle {
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .step-line {
+      height: 1px;
+      flex: 1;
+      background: #e1e6ed;
+      margin: 0 13px;
+    }
+
+    /* ===== INTRO ===== */
+    .intro { padding: 32px 34px 4px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: var(--brand-50);
+      color: var(--brand-600);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .intro h2 {
+      margin: 14px 0 0;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: -.035em;
+    }
+
+    .intro p {
+      margin: 8px 0 0;
+      font-size: 16px;
+      color: var(--muted);
+    }
+
+    .prefill {
+      margin: 20px 34px 0;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--brand-50);
+      color: var(--brand-600);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    /* ===== STAGE ===== */
+    .stage {
+      display: none;
+      padding: 30px 34px 34px;
+    }
+
+    .stage.active { display: block; }
+
+    .section-title {
+      font-size: 19px;
+      font-weight: 900;
+      margin-bottom: 18px;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    .stack { display: grid; gap: 18px; }
+
+    /* ===== FIELD ===== */
+    .flabel {
+      display: block;
+      margin-bottom: 9px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #1e293b;
+    }
+
+    .req { color: #ef4444; }
+
+    .input,
+    .select {
+      width: 100%;
+      height: 54px;
+      padding: 0 15px;
+      border: 1px solid #dfe6ee;
+      border-radius: 12px;
+      background: #fff;
+      font-size: 16px;
+    }
+
+    .input:focus,
+    .select:focus {
+      outline: 0;
+      border-color: var(--brand-500);
+      box-shadow: 0 0 0 3px rgba(51, 65, 85, .12);
+    }
+
+    .input[readonly] {
+      background: #f6f8fa;
+      color: #758195;
+    }
+
+    .hint {
+      margin-top: 7px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #64748b;
+    }
+
+    .divider {
+      height: 1px;
+      background: #edf1f5;
+      margin: 30px 0;
+    }
+
+    /* ===== 버튼 ===== */
+    .secondary {
+      height: 54px;
+      border: 1px solid #dce3eb;
+      border-radius: 10px;
+      padding: 0 20px;
+      background: #fff;
+      color: #34435a;
+      font-size: 15px;
+      font-weight: 800;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .secondary:hover { background: #f8fafc; }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 24px 34px;
+      background: #fbfcfe;
+      border-top: 1px solid #edf1f5;
+    }
+
+    .action-note {
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 9px;
+    }
+
+    .back-btn,
+    .next-btn,
+    .submit-btn {
+      border-radius: 12px;
+      padding: 15px 28px;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: .18s;
+    }
+
+    .back-btn {
+      border: 1px solid #dce3eb;
+      background: #fff;
+      color: #526075;
+    }
+
+    .back-btn:hover { background: #f8fafc; }
+
+    .next-btn,
+    .submit-btn {
+      border: 0;
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .next-btn:hover,
+    .submit-btn:hover { background: var(--brand-700); }
+
+    .submit-btn:disabled,
+    .back-btn:disabled,
+    .next-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* 3초 진단 결과 바로 보기 */
+    .quick-result-btn {
+      border-color: var(--brand-100);
+      color: var(--brand-600);
+      background: var(--brand-50);
+    }
+
+    .quick-result-btn:hover { background: var(--brand-100); }
+
+    /* ===== 체크박스 ===== */
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .check-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .check-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 15px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font-size: 15px;
+      color: #334155;
+      cursor: pointer;
+      transition: .15s;
+    }
+
+    .check-card:hover { background: #f8fafc; }
+
+    .check-card input { accent-color: var(--brand-600); width: 18px; height: 18px; flex: none; }
+
+    .check-card.tall { min-height: 54px; }
+
+    .check-card .sub {
+      display: block;
+      margin-top: 4px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .group-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--brand-600);
+      margin-bottom: 18px;
+    }
+
+    /* ===== 모바일 ===== */
+    @media (max-width: 700px) {
+      .hero-inner { padding: 48px 20px 50px; }
+      .hero-title { font-size: 28px; }
+      .shell { margin: 8px auto 50px; padding: 0 14px; }
+      .step-head, .intro, .stage { padding-left: 20px; padding-right: 20px; }
+      .hero-title { font-size: 32px; }
+      .intro h2 { font-size: 24px; }
+      .prefill { margin-left: 20px; margin-right: 20px; }
+      .actions { padding: 18px 20px; }
+      .grid2, .grid3 { grid-template-columns: 1fr; }
+      .full { grid-column: auto; }
+      .check-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .actions { padding: 18px 20px; align-items: stretch; flex-direction: column; }
+      .button-row { width: 100%; }
+      .button-row button { flex: 1; }
+    }
+
+    @media (max-width: 460px) {
+      .check-grid { grid-template-columns: 1fr; }
+      .button-row { flex-direction: column; }
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+<body>
   <!-- 공통 헤더 -->
   <div id="app-header"></div>
 
-  <main class="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
-    <!-- 프리필 안내 메시지 -->
-    <div id="prefill-msg" class="hidden mb-6 p-4 bg-[var(--brand-50)] border border-[var(--brand-100)] text-[var(--brand-600)] rounded-xl text-sm flex items-center justify-between shadow-sm">
-      <div class="flex items-center gap-2">
-        <span class="text-base">✨</span>
-        <span>마이페이지에 저장된 프로필 정보로 기본 진단 폼을 자동으로 채웠습니다.</span>
-      </div>
+  <!-- HERO -->
+  <section class="hero home-intro-bg">
+    <div class="hero-inner">
+      <div class="hero-label">AI HOUSING DIAGNOSIS</div>
+      <h1 class="hero-title">AI 주거비<br /><span class="accent">절약 진단</span></h1>
+      <p class="hero-desc">
+        간단한 조건부터 입력하고, 필요하면 상세 조건까지 추가해 더 정확하게 진단해보세요.
+      </p>
     </div>
+  </section>
 
-    <!-- 전체 진행률 스텝 바 -->
-    <div class="mb-8">
-      <div class="flex items-center justify-between mb-2 text-xs font-semibold text-slate-500">
-        <span id="step-indicator-text" class="text-[var(--brand-600)] font-bold">1단계: 3초 간편 진단</span>
-        <span id="step-indicator-num">1 / 2 단계</span>
+  <main class="shell">
+    <!-- novalidate: 숨겨진 단계의 입력칸 때문에 브라우저가 제출을 조용히 막지 않도록 검증은 아래 스크립트가 직접 한다 -->
+    <form id="diagnosis-form" class="main-card" novalidate>
+
+      <!-- STEP 표시 -->
+      <div class="step-head">
+        <div class="steps">
+          <div class="step-item active" id="step-indicator-1">
+            <span class="step-circle">1</span>
+            <span>3초 진단</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-item" id="step-indicator-2">
+            <span class="step-circle">2</span>
+            <span>상세 조건</span>
+          </div>
+        </div>
       </div>
-      <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-        <div id="step-progress-bar" class="bg-[var(--brand-600)] h-2 rounded-full transition-all duration-300" style="width: 50%;"></div>
+
+      <!-- 단계 설명 -->
+      <div class="intro">
+        <span class="badge" id="stage-badge">STEP 01 · 3초 간편 진단</span>
+        <h2 id="stage-title">핵심 조건만 빠르게 입력하세요.</h2>
+        <p id="stage-description">출퇴근 위치와 기본적인 소득·예산으로 빠르게 진단합니다.</p>
       </div>
-    </div>
 
-    <!-- 오류 메시지 (두 단계 공용) -->
-    <div id="form-error" class="hidden mb-4 p-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl"></div>
-
-    <!-- 한 개의 Form 안에서 두 단계로 분리 (서버 데이터 전송 계약 유지).
-         novalidate: 숨겨진 단계의 입력칸 때문에 브라우저가 제출을 조용히 막지 않도록 검증은 아래 스크립트가 직접 한다 -->
-    <form id="diagnosis-form" class="space-y-6" novalidate>
+      <!-- 마이페이지 자동 프리필 안내 -->
+      <p id="prefill-msg" class="prefill hidden">
+        ✨ 마이페이지에 저장된 프로필 정보로 진단 폼을 자동으로 채웠어요. 필요한 부분만 수정 후 진단하세요.
+      </p>
 
       <!-- =========================================================
-           [PAGE 1] ⚡ 1단계: 3초 간편 진단 (기본 핵심 조건)
+           [STEP 1] 3초 간편 진단 (기본 핵심 조건)
       ========================================================= -->
-      <div id="page-step-1" class="page-step bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
+      <div class="stage active" id="page-step-1">
+        <div class="section-title">기본 조건</div>
 
-        <div class="text-center pb-4 border-b border-slate-100">
-          <span class="inline-block px-3 py-1 bg-[var(--brand-100)] text-[var(--brand-700)] text-xs font-bold rounded-full mb-2">STEP 01</span>
-          <h1 class="text-2xl font-bold text-slate-900">3초 간편 주거비 진단</h1>
-          <p class="text-slate-500 text-xs sm:text-sm mt-1">출퇴근 위치와 기본적인 소득·예산으로 빠르게 진단합니다.</p>
-        </div>
+        <div class="grid2">
 
-        <!-- 직장 위치 -->
-        <div class="space-y-2">
-          <label class="block text-sm font-bold text-slate-700">직장/학교 위치 <span class="text-red-500">*</span></label>
+          <!-- 직장 위치 -->
+          <div class="full">
+            <label class="flabel">직장/학교 위치 <span class="req">*</span></label>
 
-          <div id="work-address-ui" class="hidden">
-            <div class="flex gap-2">
-              <input type="text" id="work-address-display" readonly placeholder="직장 위치를 검색해주세요"
-                     class="flex-1 min-w-0 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 truncate cursor-default" />
-              <button type="button" id="search-address-btn" class="px-5 py-3.5 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-xl shrink-0 transition shadow-sm">
-                주소 검색
-              </button>
+            <div id="work-address-ui" class="hidden">
+              <div class="flex gap-2">
+                <input type="text" id="work-address-display" readonly placeholder="직장 위치를 검색해주세요"
+                       class="input flex-1 min-w-0 truncate" />
+                <button type="button" id="search-address-btn" class="secondary">주소 검색</button>
+              </div>
             </div>
+            <div id="work-hub-match" class="hidden hint" style="color:var(--brand-600);font-weight:700"></div>
+
+            <!-- 주소 검색으로 얻은 정확한 좌표. 있으면 AI 엔진이 구 단위 대표좌표 대신 이 좌표로 통근시간을 계산한다. -->
+            <input type="hidden" id="work-lat-input" name="workLat" />
+            <input type="hidden" id="work-lon-input" name="workLon" />
+
+            <!-- customhouse-ai/app/data/work_locations.json과 동일하게 유지해야 함 (서울 25개 자치구 + 분당구).
+                 카카오맵 키가 있으면 위 주소 검색 UI로 대체되고 검색 결과가 이 select 값을 채운다. 키가 없으면 이 드롭다운을 그대로 쓴다(폴백). -->
+            <select id="work-location-select" name="workLocation" class="select">
+              <option value="">직장 위치를 선택하세요</option>
+              <option value="강남구">강남구</option>
+              <option value="강동구">강동구</option>
+              <option value="강북구">강북구</option>
+              <option value="강서구">강서구</option>
+              <option value="관악구">관악구</option>
+              <option value="광진구">광진구</option>
+              <option value="구로구">구로구(가산디지털단지)</option>
+              <option value="금천구">금천구</option>
+              <option value="노원구">노원구</option>
+              <option value="도봉구">도봉구</option>
+              <option value="동대문구">동대문구</option>
+              <option value="동작구">동작구</option>
+              <option value="마포구">마포구</option>
+              <option value="서대문구">서대문구</option>
+              <option value="서초구">서초구</option>
+              <option value="성동구">성동구(성수)</option>
+              <option value="성북구">성북구</option>
+              <option value="송파구">송파구</option>
+              <option value="양천구">양천구</option>
+              <option value="영등포구">영등포구(여의도)</option>
+              <option value="용산구">용산구</option>
+              <option value="은평구">은평구</option>
+              <option value="종로구">종로구</option>
+              <option value="중구">중구</option>
+              <option value="중랑구">중랑구</option>
+              <option value="분당구">분당구(판교)</option>
+            </select>
           </div>
-          <div id="work-hub-match" class="hidden text-xs text-[var(--brand-600)] font-medium mt-1"></div>
 
-          <!-- 주소 검색으로 얻은 정확한 좌표. 있으면 AI 엔진이 구 단위 대표좌표 대신 이 좌표로 통근시간을 계산한다. -->
-          <input type="hidden" id="work-lat-input" name="workLat" />
-          <input type="hidden" id="work-lon-input" name="workLon" />
-
-          <!-- customhouse-ai/app/data/work_locations.json과 동일하게 유지해야 함 (서울 25개 자치구 + 분당구).
-               카카오맵 키가 있으면 위 주소 검색 UI로 대체되고 검색 결과가 이 select 값을 채운다. 키가 없으면 이 드롭다운을 그대로 쓴다(폴백). -->
-          <select id="work-location-select" name="workLocation" class="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none">
-            <option value="">직장 위치를 선택하세요</option>
-            <option value="강남구">강남구</option>
-            <option value="강동구">강동구</option>
-            <option value="강북구">강북구</option>
-            <option value="강서구">강서구</option>
-            <option value="관악구">관악구</option>
-            <option value="광진구">광진구</option>
-            <option value="구로구">구로구(가산디지털단지)</option>
-            <option value="금천구">금천구</option>
-            <option value="노원구">노원구</option>
-            <option value="도봉구">도봉구</option>
-            <option value="동대문구">동대문구</option>
-            <option value="동작구">동작구</option>
-            <option value="마포구">마포구</option>
-            <option value="서대문구">서대문구</option>
-            <option value="서초구">서초구</option>
-            <option value="성동구">성동구(성수)</option>
-            <option value="성북구">성북구</option>
-            <option value="송파구">송파구</option>
-            <option value="양천구">양천구</option>
-            <option value="영등포구">영등포구(여의도)</option>
-            <option value="용산구">용산구</option>
-            <option value="은평구">은평구</option>
-            <option value="종로구">종로구</option>
-            <option value="중구">중구</option>
-            <option value="중랑구">중랑구</option>
-            <option value="분당구">분당구(판교)</option>
-          </select>
-        </div>
-
-        <!-- 최대 통근 시간 -->
-        <div class="space-y-2">
-          <label class="block text-sm font-bold text-slate-700">희망 최대 통근시간</label>
-          <select name="maxCommuteMinutes" class="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none">
-            <option value="30">30분 이내</option>
-            <option value="40" selected>40분 이내</option>
-            <option value="50">50분 이내</option>
-          </select>
-        </div>
-
-        <!-- 소득 정보 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="space-y-2">
-            <label class="block text-sm font-bold text-slate-700">본인 연소득 (만원) <span class="text-red-500">*</span></label>
-            <input type="number" name="annualIncome" placeholder="예: 3500" min="0" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none" />
+          <!-- 최대 통근 시간 -->
+          <div class="full">
+            <label class="flabel">희망 최대 통근시간</label>
+            <select name="maxCommuteMinutes" class="select">
+              <option value="30">30분 이내</option>
+              <option value="40" selected>40분 이내</option>
+              <option value="50">50분 이내</option>
+            </select>
           </div>
-          <div class="space-y-2">
-            <label class="block text-sm font-bold text-slate-700">부부합산 연소득 (만원)</label>
-            <input type="number" name="coupleAnnualIncome" placeholder="배우자와 합산한 연소득 (선택)" min="0" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none" />
-            <p class="text-xs text-slate-400">입력하면 소득 기준 계산 시 연소득과 비교해 더 큰 값을 사용해요.</p>
+
+          <!-- 소득 -->
+          <div>
+            <label class="flabel">본인 연소득 (만원) <span class="req">*</span></label>
+            <input type="number" name="annualIncome" placeholder="예: 3500" min="0" class="input" />
+          </div>
+          <div>
+            <label class="flabel">부부합산 연소득 (만원)</label>
+            <input type="number" name="coupleAnnualIncome" placeholder="배우자와 합산한 연소득 (선택)" min="0" class="input" />
+            <div class="hint">입력하면 소득 기준 계산 시 연소득과 비교해 더 큰 값을 사용해요.</div>
           </div>
         </div>
 
-        <!-- 보증금 및 희망 월세 -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="space-y-2">
-            <label class="block text-sm font-bold text-slate-700">현재 보증금 (만원) <span class="text-red-500">*</span></label>
-            <input type="number" name="deposit" placeholder="예: 1000" min="0" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none" />
-            <p class="text-xs text-slate-400">지금 수중에 있는 현금 기준</p>
+        <div class="divider"></div>
+
+        <div class="section-title">보증금 · 희망 월세</div>
+
+        <div class="grid3">
+          <div>
+            <label class="flabel">현재 보증금 (만원) <span class="req">*</span></label>
+            <input type="number" name="deposit" placeholder="예: 1000" min="0" class="input" />
+            <div class="hint">지금 수중에 있는 현금 기준</div>
           </div>
-          <div class="space-y-2">
-            <label class="block text-sm font-bold text-slate-700">희망 보증금 (만원)</label>
-            <input type="number" name="desiredDeposit" placeholder="선택 (미입력 시 현재 보증금)" min="0" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none" />
-            <p class="text-xs text-slate-400">입력한 금액 이하 매물만 검색</p>
+          <div>
+            <label class="flabel">희망 보증금 (만원)</label>
+            <input type="number" name="desiredDeposit" placeholder="선택 (미입력 시 현재 보증금)" min="0" class="input" />
+            <div class="hint">입력한 금액 이하 매물만 검색</div>
           </div>
-          <div class="space-y-2">
-            <label class="block text-sm font-bold text-slate-700">희망 월세 (만원)</label>
-            <input type="number" name="desiredRent" placeholder="선택 (미입력 시 소득 기준)" min="0" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none" />
-            <p class="text-xs text-slate-400">입력한 금액 이하 매물만 검색</p>
+          <div>
+            <label class="flabel">희망 월세 (만원)</label>
+            <input type="number" name="desiredRent" placeholder="선택 (미입력 시 소득 기준)" min="0" class="input" />
+            <div class="hint">입력한 금액 이하 매물만 검색</div>
           </div>
         </div>
-
-        <!-- 1단계 이동 및 나가기/결과보기 버튼 영역 -->
-        <div class="pt-4 space-y-3">
-          <button type="button" id="btn-next-to-step2" class="w-full py-4 bg-[var(--brand-600)] hover:bg-[var(--brand-700)] text-white font-bold text-base rounded-xl shadow-md transition flex items-center justify-center gap-2">
-            <span>2단계 상세 맞춤 진단 이어하기</span>
-            <span class="text-lg">➔</span>
-          </button>
-
-          <!-- 2단계 입력 없이 바로 결과 확인 -->
-          <button type="button" id="btn-skip-to-result" class="w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition flex items-center justify-center gap-1.5">
-            <span>⚡ 3초 진단 결과 먼저 보기</span>
-            <span class="text-xs text-slate-400 font-normal">(2단계 입력 없이 진단)</span>
-          </button>
-
-          <p class="text-center text-xs text-slate-400 mt-2">자세한 정보(나이, 자산, 직업, 우대사항, 선호 주택 유형)를 입력할수록 더 정확한 정부지원금 및 맞춤 매물 추천이 가능합니다.</p>
-        </div>
-
       </div>
 
-
       <!-- =========================================================
-           [PAGE 2] 🔍 2단계: 정밀 맞춤 진단 (추가 질문 포함)
+           [STEP 2] 정밀 맞춤 진단 (추가 질문 포함, 모두 선택)
       ========================================================= -->
-      <div id="page-step-2" class="page-step hidden-page bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-8">
-
-        <div class="text-center pb-4 border-b border-slate-100">
-          <span class="inline-block px-3 py-1 bg-[var(--brand-100)] text-[var(--brand-700)] text-xs font-bold rounded-full mb-2">STEP 02</span>
-          <h2 class="text-2xl font-bold text-slate-900">정밀 맞춤 조건 진단</h2>
-          <p class="text-slate-500 text-xs sm:text-sm mt-1">상세 조건 및 주거 라이프스타일을 반영해 최적의 정책과 매물을 매칭합니다. 모두 선택 사항이에요.</p>
-        </div>
+      <div class="stage" id="page-step-2">
 
         <!-- 그룹 1: 기본 인적 & 자산 정보 -->
-        <div class="space-y-4">
-          <h3 class="text-sm font-bold text-[var(--brand-600)] uppercase tracking-wider flex items-center gap-1.5">
-            <span>👤</span> 기본 인적 & 자산 정보
-          </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="space-y-2">
-              <label class="block text-sm font-bold text-slate-700">만 나이</label>
-              <input type="number" id="input-age" name="age" placeholder="예: 28" min="0" max="120" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none" />
-            </div>
-            <div class="space-y-2">
-              <label class="block text-sm font-bold text-slate-700">보유 총자산 (만원)</label>
-              <input type="number" id="input-assets" name="assets" placeholder="예: 5000" min="0" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none" />
-              <p class="text-xs text-slate-400">청년월세지원·버팀목대출 등 일부 정책은 자산 기준도 봐요.</p>
-            </div>
+        <div class="group-title"><span>👤</span> 기본 인적 &amp; 자산 정보</div>
+        <div class="grid2">
+          <div>
+            <label class="flabel">만 나이</label>
+            <input type="number" id="input-age" name="age" placeholder="예: 28" min="0" max="120" class="input" />
           </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="space-y-2">
-              <label class="block text-sm font-bold text-slate-700">직업 유형</label>
-              <select name="jobType" class="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none">
-                <option value="">선택 안 함</option>
-                <option value="GOVERNMENT">공무원/공공기관</option>
-                <option value="SME">중소기업 재직자</option>
-                <option value="MID_SIZED">중견기업 재직자</option>
-                <option value="LARGE_CORP">대기업 재직자</option>
-              </select>
-            </div>
-            <div class="space-y-2 flex flex-col justify-end">
-              <label class="flex items-center gap-3 p-3.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
-                <input type="checkbox" name="noHouseholder" checked class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300 focus:ring-[var(--brand-500)]" />
-                <span class="text-sm font-medium text-slate-700">무주택 세대주 여부</span>
-              </label>
-            </div>
+          <div>
+            <label class="flabel">보유 총자산 (만원)</label>
+            <input type="number" id="input-assets" name="assets" placeholder="예: 5000" min="0" class="input" />
+            <div class="hint">청년월세지원·버팀목대출 등 일부 정책은 자산 기준도 봐요.</div>
+          </div>
+          <div>
+            <label class="flabel">직업 유형</label>
+            <select name="jobType" class="select">
+              <option value="">선택 안 함</option>
+              <option value="GOVERNMENT">공무원/공공기관</option>
+              <option value="SME">중소기업 재직자</option>
+              <option value="MID_SIZED">중견기업 재직자</option>
+              <option value="LARGE_CORP">대기업 재직자</option>
+            </select>
+          </div>
+          <div>
+            <span class="flabel">주택 보유 여부</span>
+            <label class="check-card tall">
+              <input type="checkbox" name="noHouseholder" checked />
+              <span>무주택 세대주 여부</span>
+            </label>
           </div>
         </div>
 
-        <!-- 그룹 2: 주거 이동 & 대출 금융 조건 -->
-        <div class="space-y-4 pt-4 border-t border-slate-100">
-          <h3 class="text-sm font-bold text-[var(--brand-600)] uppercase tracking-wider flex items-center gap-1.5">
-            <span>🏡</span> 주거 이동 & 금융 플랜
-          </h3>
-          <div class="space-y-4">
-            <div class="space-y-2">
-              <label class="block text-sm font-bold text-slate-700">희망 이사 일정</label>
-              <select name="moveSchedule" class="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none">
-                <option value="IMMEDIATE">1개월 이내 (즉시)</option>
-                <option value="WITHIN_3M" selected>3개월 이내</option>
-                <option value="WITHIN_6M">6개월 이내</option>
-                <option value="EXPLORING">차근차근 탐색 중</option>
-              </select>
-            </div>
-            <div class="space-y-2 flex flex-col justify-end">
-              <label class="flex items-start gap-3 p-3.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
-                <input type="checkbox" name="useLoanPolicy" checked class="w-4 h-4 mt-0.5 accent-[var(--brand-600)] rounded border-slate-300 focus:ring-[var(--brand-500)]" />
-                <span>
-                  <span class="block text-sm font-medium text-slate-700">정책 대출 상품 활용</span>
-                  <span class="block text-xs text-slate-400 mt-0.5">해제하면 정부 지원 정책 목록에서 대출 상품이 빠져요.</span>
-                </span>
-              </label>
-            </div>
+        <div class="divider"></div>
+
+        <!-- 그룹 2: 주거 이동 & 금융 플랜 (한 줄씩 나눠서 표시) -->
+        <div class="group-title"><span>🏡</span> 주거 이동 &amp; 금융 플랜</div>
+        <div class="stack">
+          <div>
+            <label class="flabel">희망 이사 일정</label>
+            <select name="moveSchedule" class="select">
+              <option value="IMMEDIATE">1개월 이내 (즉시)</option>
+              <option value="WITHIN_3M" selected>3개월 이내</option>
+              <option value="WITHIN_6M">6개월 이내</option>
+              <option value="EXPLORING">차근차근 탐색 중</option>
+            </select>
           </div>
+          <label class="check-card tall" style="align-items:flex-start">
+            <input type="checkbox" name="useLoanPolicy" checked style="margin-top:3px" />
+            <span>
+              <span style="font-weight:700;color:#1e293b">정책 대출 상품 활용</span>
+              <span class="sub">해제하면 정부 지원 정책 목록에서 대출 상품이 빠져요.</span>
+            </span>
+          </label>
         </div>
 
-        <!-- 그룹 3: 라이프스타일 & 선호 환경 -->
-        <div class="space-y-4 pt-4 border-t border-slate-100">
-          <h3 class="text-sm font-bold text-[var(--brand-600)] uppercase tracking-wider flex items-center gap-1.5">
-            <span>🚗</span> 이동 수단 & 주거 우선순위
-          </h3>
-          <div class="space-y-2">
-            <label class="block text-sm font-bold text-slate-700">주요 통근 수단</label>
-            <select name="transportType" class="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand-500)] focus:outline-none">
+        <div class="divider"></div>
+
+        <!-- 그룹 3: 이동 수단 & 주거 우선순위 -->
+        <div class="group-title"><span>🚗</span> 이동 수단 &amp; 주거 우선순위</div>
+        <div class="stack">
+          <div>
+            <label class="flabel">주요 통근 수단</label>
+            <select name="transportType" class="select">
               <option value="PUBLIC" selected>대중교통 (지하철/버스)</option>
               <option value="WALK">도보 / 따릉이·자전거</option>
               <option value="CAR">자차 보유 (주차 필요)</option>
@@ -281,74 +634,86 @@
           </div>
 
           <!-- 값은 국토부 실거래가 API의 주택 유형명 그대로 (진단 결과의 property_type과 동일) -->
-          <div class="space-y-2">
-            <label class="block text-sm font-bold text-slate-700">선호 주택 유형
-              <span class="text-xs font-normal text-slate-500">(체크한 유형의 매물만 추천해요)</span>
-            </label>
-            <div class="grid grid-cols-2 gap-2.5">
-              <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-                <input type="checkbox" name="preferredBuildingTypes" value="아파트" checked class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
+          <div>
+            <span class="flabel">선호 주택 유형
+              <span style="font-weight:400;color:#64748b">(체크한 유형의 매물만 추천해요)</span>
+            </span>
+            <div class="check-grid two">
+              <label class="check-card">
+                <input type="checkbox" name="preferredBuildingTypes" value="아파트" checked />
                 <span>아파트</span>
               </label>
-              <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-                <input type="checkbox" name="preferredBuildingTypes" value="오피스텔" checked class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
+              <label class="check-card">
+                <input type="checkbox" name="preferredBuildingTypes" value="오피스텔" checked />
                 <span>오피스텔</span>
               </label>
-              <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-                <input type="checkbox" name="preferredBuildingTypes" value="연립다세대" checked class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
+              <label class="check-card">
+                <input type="checkbox" name="preferredBuildingTypes" value="연립다세대" checked />
                 <span>연립·다세대 (빌라)</span>
               </label>
-              <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-                <input type="checkbox" name="preferredBuildingTypes" value="단독다가구" checked class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
+              <label class="check-card">
+                <input type="checkbox" name="preferredBuildingTypes" value="단독다가구" checked />
                 <span>단독·다가구</span>
               </label>
             </div>
           </div>
         </div>
 
+        <div class="divider"></div>
+
         <!-- 그룹 4: 정부 지원 우대사항 -->
-        <div class="space-y-3 pt-4 border-t border-slate-100">
-          <label class="block text-sm font-bold text-slate-700">정부 주거지원 정책 우대사항 <span class="text-xs font-normal text-slate-500">(중복 선택 가능)</span></label>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-              <input type="checkbox" name="preferentialStatuses" value="BASIC_LIVELIHOOD" class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
-              <span>기초생활수급자</span>
-            </label>
-            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-              <input type="checkbox" name="preferentialStatuses" value="NEAR_POVERTY" class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
-              <span>차상위계층</span>
-            </label>
-            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-              <input type="checkbox" name="preferentialStatuses" value="SINGLE_PARENT" class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
-              <span>한부모가족</span>
-            </label>
-            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-              <input type="checkbox" name="preferentialStatuses" value="INDEPENDENT_YOUTH" class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
-              <span>자립준비청년</span>
-            </label>
-            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-              <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
-              <span>신혼부부</span>
-            </label>
-            <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 text-xs sm:text-sm transition">
-              <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" class="w-4 h-4 accent-[var(--brand-600)] rounded border-slate-300" />
-              <span>다자녀가구</span>
-            </label>
-          </div>
+        <div class="group-title"><span>🎁</span> 정부 주거지원 정책 우대사항
+          <span style="font-weight:400;color:#64748b">(중복 선택 가능)</span>
         </div>
-
-        <!-- 버튼 영역 (이전 단계 / 최종 진단) -->
-        <div class="pt-4 flex flex-col sm:flex-row gap-3">
-          <button type="button" id="btn-prev-to-step1" class="w-full sm:w-1/3 py-4 border border-slate-300 text-slate-600 font-bold text-sm rounded-xl hover:bg-slate-100 transition">
-            ⬅️ 1단계로 돌아가기
-          </button>
-          <button type="submit" id="submit-btn" class="w-full sm:w-2/3 py-4 bg-[var(--brand-600)] hover:bg-[var(--brand-700)] text-white font-bold text-base rounded-xl shadow-lg shadow-slate-900/20 transition flex items-center justify-center gap-2 disabled:opacity-50">
-            🚀 정밀 주거비 절약 진단 보고서 보기
-          </button>
+        <div class="check-grid">
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="BASIC_LIVELIHOOD" />
+            기초생활수급자
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="NEAR_POVERTY" />
+            차상위계층
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="SINGLE_PARENT" />
+            한부모가족
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="INDEPENDENT_YOUTH" />
+            자립준비청년
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" />
+            신혼부부
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" />
+            다자녀가구
+          </label>
         </div>
-
       </div>
 
+      <!-- 오류 메시지 (두 단계 공용) -->
+      <p id="form-error" class="hidden text-red-500" style="margin:0 34px 16px;font-size:16px;font-weight:700"></p>
+
+      <!-- 버튼 영역 -->
+      <div class="actions">
+        <div class="action-note" id="action-note">핵심 조건 입력 후 상세 조건으로 이동하거나, 바로 3초 진단 결과를 볼 수 있어요.</div>
+
+        <div class="button-row">
+          <!-- 2단계: 이전 -->
+          <button type="button" id="btn-prev-to-step1" class="back-btn hidden">← 이전</button>
+
+          <!-- 1단계: 2단계 입력 없이 바로 결과 확인 -->
+          <button type="button" id="btn-skip-to-result" class="back-btn quick-result-btn">⚡ 3초 진단결과 먼저 보기</button>
+
+          <!-- 1단계: 다음 -->
+          <button type="button" id="btn-next-to-step2" class="next-btn">상세 조건 입력하기 →</button>
+
+          <!-- 2단계: 최종 진단 -->
+          <button type="submit" id="submit-btn" class="submit-btn hidden">🚀 정밀 진단 결과 보기</button>
+        </div>
+      </div>
     </form>
   </main>
 
@@ -368,37 +733,58 @@
     const form = document.getElementById("diagnosis-form");
     const errorEl = document.getElementById("form-error");
     const submitBtn = document.getElementById("submit-btn");
-    const SUBMIT_LABEL = "🚀 정밀 주거비 절약 진단 보고서 보기";
+    const quickBtn = document.getElementById("btn-skip-to-result");
+    const nextBtn = document.getElementById("btn-next-to-step2");
+    const prevBtn = document.getElementById("btn-prev-to-step1");
+    const SUBMIT_LABEL = submitBtn.textContent;
+    const QUICK_LABEL = quickBtn.textContent;
     const pageStep1 = document.getElementById("page-step-1");
     const pageStep2 = document.getElementById("page-step-2");
-    const indicatorText = document.getElementById("step-indicator-text");
-    const indicatorNum = document.getElementById("step-indicator-num");
-    const progressBar = document.getElementById("step-progress-bar");
+    const indicator1 = document.getElementById("step-indicator-1");
+    const indicator2 = document.getElementById("step-indicator-2");
+    const stageBadge = document.getElementById("stage-badge");
+    const stageTitle = document.getElementById("stage-title");
+    const stageDesc = document.getElementById("stage-description");
+    const actionNote = document.getElementById("action-note");
+
+    // 어떤 버튼으로 진단을 시작했는지 (로딩 문구를 그 버튼에 표시하기 위해)
+    let quickMode = false;
 
     // ---------- 단계 전환 ----------
     function goToStep(step) {
-      if (step === 1) {
-        pageStep1.classList.remove("hidden-page");
-        pageStep2.classList.add("hidden-page");
-        indicatorText.textContent = "1단계: 3초 간편 진단";
-        indicatorText.className = "text-[var(--brand-600)] font-bold";
-        indicatorNum.textContent = "1 / 2 단계";
-        progressBar.style.width = "50%";
-      } else {
-        pageStep1.classList.add("hidden-page");
-        pageStep2.classList.remove("hidden-page");
-        indicatorText.textContent = "2단계: 정밀 맞춤 진단";
-        indicatorText.className = "text-[var(--brand-600)] font-bold";
-        indicatorNum.textContent = "2 / 2 단계";
-        progressBar.style.width = "100%";
-      }
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const second = step === 2;
+
+      pageStep1.classList.toggle("active", !second);
+      pageStep2.classList.toggle("active", second);
+      indicator1.classList.toggle("active", !second);
+      indicator2.classList.toggle("active", second);
+
+      nextBtn.classList.toggle("hidden", second);
+      quickBtn.classList.toggle("hidden", second);
+      prevBtn.classList.toggle("hidden", !second);
+      submitBtn.classList.toggle("hidden", !second);
+
+      stageBadge.textContent = second ? "STEP 02 · 정밀 맞춤 진단" : "STEP 01 · 3초 간편 진단";
+      stageTitle.textContent = second ? "조금 더 자세한 조건을 알려주세요." : "핵심 조건만 빠르게 입력하세요.";
+      stageDesc.textContent = second
+        ? "선택 정보를 추가하면 지원 정책과 주거 추천의 정확도를 높일 수 있어요. 모두 선택 사항이에요."
+        : "출퇴근 위치와 기본적인 소득·예산으로 빠르게 진단합니다.";
+      actionNote.textContent = second
+        ? "선택 항목은 비워둔 상태로도 진단할 수 있습니다."
+        : "핵심 조건 입력 후 상세 조건으로 이동하거나, 바로 3초 진단 결과를 볼 수 있어요.";
+
+      errorEl.classList.add("hidden");
+
+      // 고정 헤더에 카드 윗부분이 가려지지 않도록 헤더 높이만큼 띄워서 스크롤한다
+      const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--header-h"), 10) || 96;
+      const cardTop = form.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: Math.max(cardTop - headerH - 16, 0), behavior: "smooth" });
     }
 
     function showError(message) {
       errorEl.textContent = message;
       errorEl.classList.remove("hidden");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      errorEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
     // 1단계 필수값 검증. 문제가 있으면 안내 문구를, 없으면 null을 돌려준다.
@@ -409,17 +795,19 @@
       return null;
     }
 
-    document.getElementById("btn-next-to-step2").addEventListener("click", () => {
+    nextBtn.addEventListener("click", () => {
       const problem = validateStep1();
       if (problem) return showError(problem);
-      errorEl.classList.add("hidden");
       goToStep(2);
     });
 
-    document.getElementById("btn-prev-to-step1").addEventListener("click", () => goToStep(1));
+    prevBtn.addEventListener("click", () => goToStep(1));
 
     // 2단계를 건너뛰고 바로 진단. 입력하지 않은 나이/자산/직업/우대사항은 빈 값으로 보낸다(임의 기본값을 채우지 않음).
-    document.getElementById("btn-skip-to-result").addEventListener("click", () => form.requestSubmit());
+    quickBtn.addEventListener("click", () => {
+      quickMode = true;
+      form.requestSubmit();
+    });
 
     // ---------- 마이페이지에 저장된 프로필 자동 프리필 (로그인 사용자) ----------
     (async () => {
@@ -526,6 +914,9 @@
       e.preventDefault();
       errorEl.classList.add("hidden");
 
+      const wasQuick = quickMode;
+      quickMode = false;
+
       const problem = validateStep1();
       if (problem) {
         goToStep(1);
@@ -560,8 +951,9 @@
         preferredBuildingTypes: buildingTypes,
       };
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = "분석 중...";
+      // 진단 중에는 두 단계의 버튼 모두 잠그고, 누른 버튼에 진행 문구를 보여준다
+      [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = true));
+      (wasQuick ? quickBtn : submitBtn).textContent = wasQuick ? "3초 진단 중..." : "분석 중...";
 
       try {
         const result = await CustomHouseRecommendationApi.requestDiagnosis(condition);
@@ -569,8 +961,9 @@
         window.location.href = "report-result.html";
       } catch (err) {
         showError(err.message || "진단 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-        submitBtn.disabled = false;
+        [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = false));
         submitBtn.textContent = SUBMIT_LABEL;
+        quickBtn.textContent = QUICK_LABEL;
       }
     });
   </script>

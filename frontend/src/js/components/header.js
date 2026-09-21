@@ -23,26 +23,26 @@ function renderHeader(activeMenu = "") {
   const email = getLoggedInEmail();
 
   const authArea = email
-    ? `<div class="flex items-center gap-2">
-        <span id="header-user-name" class="inline-block truncate max-w-[7.5rem] sm:max-w-[13rem] text-xs text-gray-500"></span>
-        <button id="header-logout-btn" class="text-sm px-3 sm:px-4 py-2 rounded-xl text-white brand-gradient font-semibold whitespace-nowrap shrink-0">로그아웃</button>
+    ? `<div class="flex items-center gap-2 xl:gap-5 2xl:gap-6">
+        <span id="header-user-name" class="hidden lg:inline-block truncate lg:max-w-[9rem] xl:max-w-[12rem] 2xl:max-w-[16rem] min-[1800px]:max-w-[22rem] text-sm xl:text-base 2xl:text-lg min-[1800px]:text-xl text-gray-500"></span>
+        <button id="header-logout-btn" class="text-sm xl:text-[15px] 2xl:text-base min-[1800px]:text-lg px-4 xl:px-5 2xl:px-6 py-2 2xl:py-2.5 rounded-xl text-white brand-gradient font-semibold whitespace-nowrap shrink-0">로그아웃</button>
       </div>`
-    : `<a href="${computeHref("auth/login.html")}" class="text-sm px-5 py-2.5 rounded-xl text-white brand-gradient font-semibold inline-block">
+    : `<a href="${computeHref("auth/login.html")}" class="text-sm xl:text-[15px] 2xl:text-base min-[1800px]:text-lg px-5 xl:px-6 2xl:px-7 py-2.5 rounded-xl text-white brand-gradient font-semibold inline-block">
         로그인 / 회원가입
       </a>`;
 
   el.innerHTML = `
     <header class="w-full border-b border-slate-200 bg-white sticky top-0 z-10">
-      <div class="w-full px-6 sm:px-12 h-20 flex items-center justify-between">
+      <div class="w-full px-6 sm:px-12 h-20 xl:h-[5.5rem] 2xl:h-24 min-[1800px]:h-28 flex items-center justify-between">
 
         <a href="${computeHref("index.html")}" class="flex items-center shrink-0 -ml-2">
-          <img src="${computeHref("../assets/images/맞집 로고(최종).png")}" alt="맞집 로고" class="h-14 w-auto object-contain" />
+          <img src="${computeHref("../assets/images/맞집 로고(최종).png")}" alt="맞집 로고" class="h-14 xl:h-16 2xl:h-[4.5rem] min-[1800px]:h-20 w-auto object-contain" />
         </a>
 
-        <nav class="hidden sm:flex items-center gap-3 lg:absolute lg:left-1/2 lg:-translate-x-1/2 text-sm font-medium text-slate-500">
+        <nav class="hidden sm:flex items-center gap-0 lg:gap-1 xl:gap-3 2xl:gap-5 mx-2 lg:mx-4 xl:mx-0 min-[1800px]:absolute min-[1800px]:left-1/2 min-[1800px]:-translate-x-1/2 text-[14px] lg:text-[15px] xl:text-[16px] 2xl:text-[18px] min-[1800px]:text-[21px] font-semibold text-slate-500">
           ${menus
             .map(
-              (m) => `<a href="${m.href}" class="relative px-3 py-2 rounded-xl hover:bg-slate-100 hover:text-[var(--brand-600)] ${
+              (m) => `<a href="${m.href}" class="relative px-2 lg:px-3 xl:px-4 2xl:px-5 min-[1800px]:px-5 py-2.5 rounded-xl whitespace-nowrap hover:bg-slate-100 hover:text-[var(--brand-600)] ${
                 activeMenu === m.key ? "font-bold text-[var(--brand-600)]" : ""
               }" style="${activeMenu === m.key ? "color:var(--brand-600)" : ""}">
                 ${m.label}
@@ -55,6 +55,16 @@ function renderHeader(activeMenu = "") {
       </div>
     </header>
   `;
+
+  // 헤더 높이는 화면 폭에 따라 달라지므로, 페이지들이 sticky 위치를 맞출 수 있게 CSS 변수로 알려준다.
+  const headerEl = el.querySelector("header");
+  const syncHeaderHeight = () => document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px");
+  syncHeaderHeight();
+  // Tailwind CDN이 스타일을 입히기 전에는 높이가 다르게 측정되므로 로드 완료/크기 변경 때 다시 잰다.
+  window.addEventListener("load", syncHeaderHeight);
+  window.addEventListener("resize", syncHeaderHeight);
+  requestAnimationFrame(() => requestAnimationFrame(syncHeaderHeight));
+  if (window.ResizeObserver) new ResizeObserver(syncHeaderHeight).observe(headerEl);
 
   const logoutBtn = document.getElementById("header-logout-btn");
   if (logoutBtn) {
