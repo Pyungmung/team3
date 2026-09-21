@@ -203,6 +203,11 @@ def run_diagnosis(request) -> dict:
     # 보증금(deposit) 그대로 쓴다.
     effective_deposit = request.desired_deposit if request.desired_deposit is not None else request.deposit
 
+    # 희망 보증금/전세액(desired_deposit)이 있으면 그걸 "실제 계약에 쓸 금액"으로 보고 보증금
+    # 전환/대출 계산에 쓴다 (대출 등을 더해 현재 보유 보증금보다 클 수 있음). 없으면 현재 보유
+    # 보증금(deposit) 그대로 쓴다.
+    effective_deposit = request.desired_deposit if request.desired_deposit is not None else request.deposit
+
     conversion_rate_monthly = conversion_rate_annual / 12 / 100
     market_loan_rate_monthly = MARKET_LOAN_RATE_ANNUAL_PERCENT / 12 / 100
 
