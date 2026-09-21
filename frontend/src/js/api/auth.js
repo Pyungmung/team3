@@ -20,6 +20,16 @@ async function signup({ email, password, nickname }) {
   return body.data;
 }
 
+/** 이메일 중복 확인. 이미 사용 중이면 true, 사용 가능하면 false를 돌려준다. */
+async function checkEmail(email) {
+  const res = await fetch(`${AUTH_API_BASE}/check-email?email=${encodeURIComponent(email)}`);
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "이메일 중복 확인에 실패했습니다.");
+  }
+  return body.data;
+}
+
 async function login({ email, password }) {
   const res = await fetch(`${AUTH_API_BASE}/login`, {
     method: "POST",
@@ -90,6 +100,7 @@ function computeAuthHref(targetFromPagesRoot) {
 
 window.CustomHouseAuthApi = {
   signup,
+  checkEmail,
   login,
   refreshAccessToken,
   loginWithNaver,

@@ -90,7 +90,7 @@ python serve.py        # http://localhost:3000
 
 - 브라우저에서 http://localhost:3000/pages/index.html 접속
 - "내 주거비 절약 진단받기" → 조건 입력 → 결과 리포트까지 실제로 동작합니다.
-- 회원가입(`pages/auth/signup.html`) → 로그인(`pages/auth/login.html`)도 실제로 동작하며,
+- 회원가입/로그인은 `pages/auth/signup.html` 한 화면에서 탭으로 전환되며(`login.html`은 그 화면의 로그인 탭으로 연결) 실제로 동작하고,
   로그인하면 우측 상단이 "로그인" 버튼에서 이메일 + "로그아웃" 버튼으로 바뀝니다.
 
 ## 4. 핵심 기능 동작 확인 (curl)

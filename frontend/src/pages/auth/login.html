@@ -1,63 +1,12 @@
 <!DOCTYPE html>
-<!-- [담당: 양혜승] 로그인 페이지 (연동 대상 백엔드: domain/user, 담당 허겸) -->
+<!-- [담당: 양혜승] 로그인 진입 주소. 회원가입/로그인은 signup.html 한 화면의 탭으로 통합돼서,
+     헤더/마이페이지 등이 링크하는 이 주소는 그 화면의 로그인 탭으로 바로 보낸다. -->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="refresh" content="0; url=signup.html#login" />
   <title>맞집 | 로그인</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <script>window.location.replace("signup.html#login");</script>
 </head>
-<body>
-  <div id="app-header"></div>
-
-  <main class="max-w-sm mx-auto px-4 py-16">
-    <h1 class="text-2xl font-extrabold mb-6 text-center">로그인</h1>
-
-    <form id="login-form" class="card p-6 space-y-4">
-      <div>
-        <label class="block text-sm font-semibold mb-1">이메일</label>
-        <input type="email" name="email" required class="w-full border border-gray-200 rounded-lg px-3 py-2" />
-      </div>
-      <div>
-        <label class="block text-sm font-semibold mb-1">비밀번호</label>
-        <input type="password" name="password" required class="w-full border border-gray-200 rounded-lg px-3 py-2" />
-      </div>
-      <p id="form-msg" class="text-xs text-gray-400"></p>
-      <button type="submit" class="w-full py-3 rounded-full text-white font-semibold brand-gradient">로그인</button>
-      <button type="button" id="naver-login" class="w-full py-3 rounded-full font-semibold border border-gray-200">
-        네이버로 로그인
-      </button>
-      <p class="text-xs text-center text-gray-400">
-        계정이 없나요? <a href="signup.html" class="underline">회원가입</a>
-      </p>
-    </form>
-  </main>
-
-  <div id="app-footer"></div>
-
-  <script src="../../js/components/header.js?v=20260915b"></script>
-  <script src="../../js/components/footer.js?v=20260915b"></script>
-  <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script>
-    renderHeader("");
-    renderFooter();
-
-    document.getElementById("naver-login").addEventListener("click", () => CustomHouseAuthApi.loginWithNaver());
-
-    document.getElementById("login-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const msg = document.getElementById("form-msg");
-      msg.classList.remove("text-red-500");
-      msg.textContent = "로그인 중...";
-      try {
-        await CustomHouseAuthApi.login(Object.fromEntries(new FormData(e.target)));
-        window.location.href = "../index.html";
-      } catch (err) {
-        msg.classList.add("text-red-500");
-        msg.textContent = err.message;
-      }
-    });
-  </script>
-</body>
+<body></body>
 </html>
