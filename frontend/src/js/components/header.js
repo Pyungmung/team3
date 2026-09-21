@@ -6,6 +6,8 @@
  * localStorage를 직접 읽어 판단한다 (키 이름은 js/api/auth.js와 동일하게 맞춰둠).
  */
 const HEADER_ACCESS_TOKEN_KEY = "customhouse:accessToken";
+const HEADER_NICKNAME_CACHE_KEY = "customhouse:nicknameCache";
+const HEADER_USER_ME_URL = "http://localhost:8080/api/users/me";
 
 function renderHeader(activeMenu = "") {
   const el = document.getElementById("app-header");
@@ -21,7 +23,7 @@ function renderHeader(activeMenu = "") {
 
   const authArea = email
     ? `<div class="flex items-center gap-2">
-        <span class="hidden sm:inline text-xs text-gray-500">${email}</span>
+        <span id="header-user-name" class="hidden sm:inline text-xs text-gray-500"></span>
         <button id="header-logout-btn" class="text-sm px-4 py-2 rounded-xl text-white brand-gradient font-semibold">로그아웃</button>
       </div>`
     : `<a href="${computeHref("auth/login.html")}" class="text-sm px-5 py-2.5 rounded-xl text-white brand-gradient font-semibold inline-block">
@@ -58,8 +60,46 @@ function renderHeader(activeMenu = "") {
     logoutBtn.addEventListener("click", () => {
       localStorage.removeItem("customhouse:accessToken");
       localStorage.removeItem("customhouse:refreshToken");
+      localStorage.removeItem(HEADER_NICKNAME_CACHE_KEY);
       window.location.href = computeHref("index.html");
     });
+  }
+
+  if (email) showHeaderNickname(email);
+}
+
+/**
+ * 헤더에 이메일 대신 닉네임을 표시한다. 닉네임은 JWT에 없어서 GET /api/users/me로 가져온다.
+ * 페이지를 옮길 때마다 깜빡이지 않도록 마지막 값을 localStorage에 캐시하고(같은 이메일일 때만 사용),
+ * 조회에 실패하면(서버 꺼짐/토큰 만료 등) 이메일로 대신 표시한다.
+ * 닉네임은 사용자가 입력한 값이라 innerHTML이 아니라 textContent로만 넣는다.
+ */
+async function showHeaderNickname(email) {
+  const nameEl = document.getElementById("header-user-name");
+  if (!nameEl) return;
+
+  const cached = readHeaderNicknameCache();
+  if (cached && cached.email === email) nameEl.textContent = cached.nickname;
+
+  try {
+    const res = await fetch(HEADER_USER_ME_URL, {
+      headers: { Authorization: `Bearer ${localStorage.getItem(HEADER_ACCESS_TOKEN_KEY)}` },
+    });
+    const body = await res.json();
+    if (!res.ok || !body.data || !body.data.nickname) throw new Error("nickname unavailable");
+
+    nameEl.textContent = body.data.nickname;
+    localStorage.setItem(HEADER_NICKNAME_CACHE_KEY, JSON.stringify({ email, nickname: body.data.nickname }));
+  } catch {
+    if (!nameEl.textContent) nameEl.textContent = email;
+  }
+}
+
+function readHeaderNicknameCache() {
+  try {
+    return JSON.parse(localStorage.getItem(HEADER_NICKNAME_CACHE_KEY));
+  } catch {
+    return null;
   }
 }
 
