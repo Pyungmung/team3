@@ -6,19 +6,22 @@ from pydantic import BaseModel
 
 
 class MatchedPolicy(BaseModel):
+    """docs/housing_policy_list.csv 기반 실제 정책 매칭 결과. "주거정책 추천" 표에
+    보여주는 정보성 데이터이며, 지원혜택이 자유 텍스트라 real_housing_cost 계산에는
+    반영하지 않는다 (calculator.py/policy_matcher.py 참고)."""
+
     id: str
     name: str
-    type: str  # SUBSIDY | LOAN
-    description: str
-    monthly_benefit: int = 0  # 만원, SUBSIDY인 경우
-    loan_rate_annual_percent: float | None = None  # LOAN인 경우
+    agency: str  # 소관 기관명 (예: 국토교통부, 서울특별시, 주택도시기금)
+    description: str  # 지원혜택 내용 (자유 텍스트)
 
 
 class BuildingRecommendation(BaseModel):
     """지역 평균이 아니라 실제 국토부 실거래 내역 1건(개별 아파트 매물) 단위 추천."""
 
     region: str             # 구/시 (통근시간·정책·지도 마커 기준)
-    building_name: str      # 아파트명 (실거래 데이터 없으면 "OO구 평균 시세 (샘플)")
+    property_type: str = ""  # 아파트/오피스텔/연립다세대/단독다가구 (샘플 폴백 매물은 빈 문자열)
+    building_name: str      # 건물명 (건물명 없는 단독다가구는 "역삼동 다가구", 샘플이면 "OO구 평균 시세 (샘플)")
     dong: str = ""          # 법정동명 (예: 개포동)
     exclusive_area: float | None = None  # 전용면적(㎡)
     floor: str = ""
@@ -32,7 +35,7 @@ class BuildingRecommendation(BaseModel):
     maintenance_fee: int   # 만원
     loan_interest: int     # 만원 (월 환산)
     transportation_cost: int  # 만원
-    government_support: int   # 만원 (월 환산, 정책 지원금 합계)
+    government_support: int   # 만원, 항상 0 (정책이 자유 텍스트라 실질 주거비 계산엔 미반영 - matched_policies 참고)
     real_housing_cost: int    # 만원 = rent + maintenance_fee + loan_interest + transportation_cost - government_support
     baseline_cost: int        # 만원, 정책/보증금 최적화 미적용 시 비교 기준
     monthly_savings: int      # 만원, baseline_cost - real_housing_cost

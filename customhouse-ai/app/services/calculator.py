@@ -12,13 +12,17 @@
 4. 매물마다 "그 매물 실제 보증금"과 사용자의 보유 보증금을 비교하여
    - 보증금이 충분하면: 전월세전환율로 월세를 낮춰줌 (surplus 전환)
    - 보증금이 부족하면: 부족분(shortfall)을 대출로 가정하고 대출이자를 계산
-5. 정책 매칭 결과(policy_matcher)로 정부지원금을 반영
+5. 정책 매칭(policy_matcher)으로 매물 지역·사용자 조건에 맞는 정책을 찾는다.
+   2026-09-17: 실제 정책 데이터(docs/housing_policy_list.csv)는 지원혜택이 자유
+   텍스트라 정형 수치가 없어 government_support는 항상 0 - "주거정책 추천" 표에
+   보여주는 정보성 매칭일 뿐, 아래 공식의 정부지원금 항목에는 반영하지 않는다.
 6. data_analysis.rank_by_real_cost가 "기존 예상 주거비보다 실제로 더 저렴한" 매물만 골라
    실질 주거비 오름차순 상위 N개를 추천 리스트로 반환한다.
 """
 import json
 import logging
 import math
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from app.core.config import settings
@@ -135,7 +139,9 @@ def _candidate_buildings(region: RegionMeta) -> list[dict]:
         return [
             {
                 "region": region.name,
+                "property_type": "",
                 "building_name": f"{region.name} 평균 시세 (샘플)",
+                "unnamed": False,
                 "dong": "",
                 "deposit": region.base_deposit,
                 "monthly_rent": region.base_rent,
@@ -200,23 +206,26 @@ def run_diagnosis(request) -> dict:
     conversion_rate_monthly = conversion_rate_annual / 12 / 100
     market_loan_rate_monthly = MARKET_LOAN_RATE_ANNUAL_PERCENT / 12 / 100
 
-    # 정책 자격 사전 판단 (대출 금리 우대 여부에 사용)
-    policy_loan = policy_matcher.find_eligible_loan_policy(request)
-    loan_rate_monthly = (
-        (policy_loan["loan_rate_annual_percent"] / 12 / 100) if policy_loan else market_loan_rate_monthly
-    )
-
     results = []
-    seen_buildings: set[tuple[str, str, str]] = set()
+    seen_buildings: set[tuple] = set()
 
+    # 통근권 안에 드는 지역만 먼저 추린 뒤, 지역별 실거래 조회(네트워크 호출)를 동시에 시작한다.
+    # 순차로 하면 콜드 스타트 대기가 "지역 수 x 호출 시간"이 되어 백엔드 타임아웃(502)이 났다.
+    eligible = []
     for region in regions:
         commute = _estimate_commute_minutes(region.lat, region.lon, work_lat, work_lon)
-        if commute > request.max_commute_minutes:
-            continue
+        if commute <= request.max_commute_minutes:
+            eligible.append((region, commute))
 
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        candidates_by_region = dict(
+            zip((r.name for r, _ in eligible), pool.map(_candidate_buildings, (r for r, _ in eligible)))
+        )
+
+    for region, commute in eligible:
         transportation_cost = _transportation_cost(commute)
 
-        for building in _candidate_buildings(region):
+        for building in candidates_by_region[region.name]:
             # 희망 보증금/전세액·희망 월세를 입력했으면 "그 금액 이하"인 매물만 검색 대상으로
             # 삼는다 (전세는 월세가 항상 0이라 희망 월세 필터는 자동으로 통과된다).
             if request.desired_deposit is not None and building["deposit"] > request.desired_deposit:
@@ -225,6 +234,10 @@ def run_diagnosis(request) -> dict:
                 continue
 
             dedup_key = (region.name, building["building_name"], building["dong"])
+            if building["unnamed"]:
+                # 건물명 없는 매물(단독다가구 등)은 이름이 "동네+형태"로 같아서, 그대로 두면 동네당
+                # 1건만 남는다. 가격/면적까지 같아야 같은 매물로 본다.
+                dedup_key += (building["deposit"], building["monthly_rent"], building["exclusive_area"])
             if dedup_key in seen_buildings:
                 continue
             seen_buildings.add(dedup_key)
@@ -237,20 +250,17 @@ def run_diagnosis(request) -> dict:
                 loan_interest = 0
             else:
                 rent = building["monthly_rent"]
-                loan_interest = round(deposit_gap * loan_rate_monthly)
+                loan_interest = round(deposit_gap * market_loan_rate_monthly)
 
             maintenance_fee = region.maintenance_fee
 
-            # 2) 정책 매칭 (월세 지원금 등)
-            matched_policies = policy_matcher.match_policies(request, rent=rent, policy_loan=policy_loan)
-            # 지원금이 실제로 내는 돈보다 많을 수는 없다 (예: 보증금 전환으로 월세가 5만원까지 떨어진
-            # 매물에 정액 20만원 청년월세지원이 그대로 붙으면 실질 주거비가 음수(-1만원)가 되는 버그가 있었음).
-            actual_cost_before_support = rent + maintenance_fee + loan_interest + transportation_cost
-            government_support = min(
-                sum(p["monthly_benefit"] for p in matched_policies), actual_cost_before_support
-            )
+            # 2) 정책 매칭 - "주거정책 추천" 표에 보여줄 정보성 매칭 (매물 지역 기준).
+            # CSV 실데이터는 지원혜택이 자유 텍스트라 정형 수치가 없어 government_support는
+            # 항상 0 - policy_matcher.py 모듈 docstring 참고.
+            matched_policies = policy_matcher.match_display_policies(request, building_region=region.name)
+            government_support = 0
 
-            real_housing_cost = actual_cost_before_support - government_support
+            real_housing_cost = rent + maintenance_fee + loan_interest + transportation_cost - government_support
 
             # 3) 비교 기준(baseline): 정책/보증금 최적화 없이 그 매물 원래 월세 그대로 살았을 때 비용
             baseline_rent = request.desired_rent if request.desired_rent is not None else building["monthly_rent"]
@@ -273,6 +283,7 @@ def run_diagnosis(request) -> dict:
             results.append(
                 {
                     "region": region.name,
+                    "property_type": building["property_type"],
                     "building_name": building["building_name"],
                     "dong": building["dong"],
                     "exclusive_area": building["exclusive_area"],

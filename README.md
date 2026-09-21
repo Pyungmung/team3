@@ -20,7 +20,7 @@
 | 마이페이지 (조건 저장/조회/수정, 알림 수신여부 토글) | ✅ 완료 | 황진구 |
 | 토스페이먼츠 결제/구독 (단건 결제, 빌링/자동결제, 매일 09시 스케줄러) | ✅ 완료 (Toss 공개 테스트 키 연동) | 황진구 |
 | WatchList / 알림 (등록·조회·삭제, 시세 변동 감지, 허위매물 신고, 알림함) | ✅ 완료 | 김시연 |
-| 실제 공공 API 연동 — 국토부 아파트 전월세 실거래가 | ✅ 연동 코드 완료 (실제 서비스키로 검증 필요) | 송귀성 |
+| 실제 공공 API 연동 — 국토부 전월세 실거래가 4종(아파트/오피스텔/연립다세대/단독다가구) | ✅ 완료 (실제 서비스키로 검증됨) | 송귀성 |
 | 실제 공공 API 연동 — 주택금융공사/부동산원/SGIS/카카오맵 | 🔲 TODO (샘플 JSON 사용 중) | 송귀성 |
 
 각 코드 파일 상단에는 `[담당: 이름]` 주석이 달려 있어 누가 어떤 부분을 이어서
@@ -203,34 +203,31 @@ curl -X PATCH http://localhost:8080/api/notifications/{id}/read -H "Authorizatio
 프론트엔드는 `pages/watchlist/list.html`에서 등록·목록·가격 재확인(테스트)·신고·삭제와
 알림함(안읽음 뱃지 포함)이 실제로 동작합니다.
 
-## 9. 실제 공공 API 연동 — 국토교통부 아파트 전월세 실거래가
+## 9. 실제 공공 API 연동 — 국토교통부 전월세 실거래가 4종
 
-`customhouse-ai/app/services/api_collector.py`가 국토교통부 실거래가 API
-(`RTMSDataSvcAptRent`)를 실제로 호출하도록 구현되어 있습니다. **`DATA_GO_KR_API_KEY`를 안 채우면
-지금처럼 샘플 데이터(`regions.json`)로 자동 폴백**하고, 채우면 매물 단위 실거래 개별 건이
-후보 매물로 반영됩니다. 진단 결과의 각 매물에 `data_source` 필드로
-"국토부 실거래가 (YYYY-MM-DD 거래)" 또는 "샘플 데이터" 중 어느 쪽이 쓰였는지 표시됩니다.
+`customhouse-ai/app/services/api_collector.py`가 국토교통부 실거래가 API 4종
+(아파트 `RTMSDataSvcAptRent` / 오피스텔 `RTMSDataSvcOffiRent` / 연립다세대 `RTMSDataSvcRHRent` /
+단독다가구 `RTMSDataSvcSHRent`)를 실제로 호출합니다. **`DATA_GO_KR_API_KEY`를 안 채우면
+샘플 데이터(`regions.json`)로 자동 폴백**하고, 채우면 최근 3개월 실거래 개별 건이 후보 매물로
+반영됩니다. 진단 결과의 각 매물에 `data_source`("국토부 실거래가 (YYYY.M 거래)" 또는 "샘플 데이터")와
+`property_type`(주거 유형)이 표시됩니다. 4종 모두 같은 키 하나로 호출됩니다.
 
-**키 발급 방법**: [data.go.kr](https://www.data.go.kr) 회원가입 → "아파트 전월세 실거래가" 검색 →
-"국토교통부_아파트 전월세 실거래가 자료" 활용신청 (보통 즉시 승인) → 마이페이지 > 개발계정에서
-"일반 인증키(Decoding)" 복사 → `customhouse-ai/.env`에 `DATA_GO_KR_API_KEY=`로 붙여넣기.
-같은 키를 한국주택금융공사/법정동코드 API에도 공용으로 쓸 수 있습니다(아직 미구현).
+- 단독다가구는 응답에 건물명·층이 없어 "역삼동 다가구"처럼 동네+형태로 표시하고, 면적은 연면적입니다.
+- 지역·유형·월별 호출은 동시에(스레드풀) 보내고, 일부가 실패한 지역 결과는 캐시하지 않습니다
+  (성공 결과는 6시간 캐시). 서버를 막 켠 직후 첫 진단만 몇 초 걸립니다.
+
+**키 발급 방법**: [data.go.kr](https://www.data.go.kr) 회원가입 → "전월세 실거래가" 검색 →
+국토교통부 아파트/오피스텔/연립다세대/단독다가구 전월세 자료 활용신청 (보통 즉시 승인) →
+마이페이지 > 개발계정에서 "일반 인증키(Decoding)" 복사 → `customhouse-ai/.env`에
+`DATA_GO_KR_API_KEY=`로 붙여넣기.
 
 ```bash
-# 연동 확인 (data_source 필드로 실거래가 사용 여부 확인)
-curl -X POST http://localhost:8000/api/v1/diagnosis -H "Content-Type: application/json" \
-  -d '{"annualIncome":3400,"deposit":800,"workLocation":"강남구"}' \
-  | python -c "import sys,json; [print(r['region'], r['data_source']) for r in json.load(sys.stdin)['recommendations']]"
+# 연동 확인 (data_source / property_type 필드로 실거래가 사용 여부와 유형 확인)
+curl -X POST http://localhost:8000/api/v1/diagnosis -H "Content-Type: application/json"   -d '{"annualIncome":3400,"deposit":800,"workLocation":"강남구"}'   | python -c "import sys,json; d=json.load(sys.stdin); [print(r['region'], r['property_type'], r['data_source']) for r in d['wolse_recommendations']+d['jeonse_recommendations']]"
 ```
 
-> ⚠️ 이 세션에서는 실제 서비스키가 없어 인증 실패(403/키 미등록 응답)까지는 검증했지만, 정상
-> 응답의 JSON 필드명(`아파트`/`보증금액`/`월세금액` 등)까지는 확인하지 못했습니다. 실제 키를
-> 발급받은 뒤 첫 호출에서 지역별로 `data_source`가 "국토부 실거래가..."로 안 바뀌면,
-> `api_collector.py` 상단의 `FIELD_ALIASES`를 실제 응답 필드명에 맞게 고쳐주세요
-> (`logger.debug`가 원본 응답을 남기니 로그로 필드명을 바로 확인할 수 있습니다).
->
-> 나머지 3개 API(한국주택금융공사, 한국부동산원, SGIS)와 카카오맵은 아직 미연동 상태입니다
-> (`.env.example`에 키 자리만 준비되어 있음).
+> 한국주택금융공사, 한국부동산원, SGIS API는 아직 미연동입니다 (`.env.example`에 키 자리만 준비되어 있음).
+> 관리비(`regions.json`의 지역 평균)와 통근시간(직선거리 추정)은 아직 실데이터가 아닌 샘플/추정치입니다.
 
 ## 10. 알아두어야 할 것 (샘플 데이터 안내)
 
