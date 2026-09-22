@@ -1,0 +1,22 @@
+# Dockerfile이 backend/만 COPY하지만, .dockerignore가 없으면 로컬에서 빌드할 때
+# 이 폴더 전체(.venv 등)를 빌드 컨텍스트로 다 읽어 보낸다.
+# backend/.env(실제 비밀키)가 로컬에 있을 경우 이미지에 같이 구워지는 걸 막는 게 핵심이다.
+# (Render는 git 클론본으로 빌드하므로 .env 자체가 없지만, 로컬 docker build 대비 안전장치)
+
+.git
+
+# 백엔드 - 실제 비밀키가 든 파일은 이미지에 절대 포함 금지 (.env.example은 비밀값이 없어 상관없음)
+backend/.env
+backend/target
+
+# 프론트엔드 - 이 이미지(백엔드)와 무관
+frontend/
+
+# AI 엔진 - 이 이미지(백엔드)와 무관, .venv는 특히 용량이 크다
+customhouse-ai/
+
+# 기타
+docs/
+**/__pycache__/
+**/*.class
+**/node_modules/
