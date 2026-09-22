@@ -1,17 +1,15 @@
 package com.customhouse.domain.mypage.entity;
 
 import com.customhouse.global.common.BaseTimeEntity;
-import jakarta.persistence.CollectionTable;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,8 +17,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * [담당: 황진구] 마이페이지 도메인 - 사용자 주거 조건 엔티티
@@ -93,12 +93,24 @@ public class HousingCondition extends BaseTimeEntity {
 
     private Boolean noHouseholder; // 무주택여부
 
+    // 우대사항(다중 선택). 예전엔 @ElementCollection(값 컬렉션)이라 자체 기본키가 없는 테이블로 생성됐는데,
+    // Aiven 등 관리형 클라우드 MySQL은 `sql_require_primary_key`가 켜져 있어 그런 테이블 생성 자체가
+    // 거부됐다(2026-09-22). 그래서 board 도메인의 PostMeta처럼 자체 id를 가진 진짜 엔티티로 바꿨다.
+    // 바깥에서는 getPreferentialStatuses()/setPreferentialStatuses()로 예전처럼 Set으로만 다루면 된다.
     @Builder.Default
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "housing_condition_preferences", joinColumns = @JoinColumn(name = "housing_condition_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "preferential_status")
-    private Set<PreferentialStatus> preferentialStatuses = new HashSet<>(); // 우대사항 (다중 선택)
+    @OneToMany(mappedBy = "housingCondition", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<HousingConditionPreference> preferences = new ArrayList<>();
+
+    public Set<PreferentialStatus> getPreferentialStatuses() {
+        return preferences.stream().map(HousingConditionPreference::getPreferentialStatus).collect(Collectors.toSet());
+    }
+
+    /** 기존 목록을 통째로 새 목록으로 바꾼다 (orphanRemoval로 빠진 항목은 삭제됨). */
+    public void setPreferentialStatuses(Set<PreferentialStatus> statuses) {
+        preferences.clear();
+        Set<PreferentialStatus> safeStatuses = statuses != null ? statuses : Set.of();
+        safeStatuses.forEach(status -> preferences.add(HousingConditionPreference.of(this, status)));
+    }
 
     @Builder.Default
     @Column(nullable = false)

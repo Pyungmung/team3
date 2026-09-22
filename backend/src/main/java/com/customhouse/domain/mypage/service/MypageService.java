@@ -50,6 +50,13 @@ public class MypageService {
         condition.setOtherDebt(request.otherDebt());
         condition.setJobType(request.jobType());
         condition.setNoHouseholder(request.noHouseholder());
+
+        // 먼저 비우고 flush로 삭제(orphanRemoval)를 physical하게 반영한 뒤에 새로 채운다. 그래야
+        // "체크한 항목이 이전과 똑같은" 흔한 경우(폼은 매번 현재 선택 전체를 보내므로)에도 삭제 전
+        // 새 행이 먼저 insert되면서 유니크 제약(housing_condition_id, preferential_status)과
+        // 충돌하지 않는다 (board 도메인 PostService.update()의 메타 교체와 같은 패턴).
+        condition.setPreferentialStatuses(Set.of());
+        housingConditionRepository.flush();
         condition.setPreferentialStatuses(
                 request.preferentialStatuses() != null ? request.preferentialStatuses() : Set.of()
         );

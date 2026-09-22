@@ -1,18 +1,28 @@
-# [담당: 김시연] 로컬 MySQL 연동 프로필
-# 기본 dev 프로필(H2 인메모리) 대신, 각자 PC에 설치된 실제 MySQL로 붙여서 테스트하고 싶을 때 사용한다.
+# [담당: 김시연] MySQL 연동 프로필 (이름은 "local"이지만 DB_HOST를 채우기 나름 - 내 PC에 설치된 MySQL도,
+# Aiven 같은 클라우드 MySQL도 이 프로필 하나로 붙을 수 있다).
+# 기본 dev 프로필(H2 인메모리) 대신 실제 MySQL로 붙여서 테스트하고 싶을 때 사용한다.
 # 데이터가 서버 재시작해도 유지되고, DB구조도.html이 그리는 실제 테이블/제약조건을 직접 확인할 수 있다.
 #
 # 사용법
-#   1) backend/.env 에 DB_USERNAME / DB_PASSWORD 를 본인 MySQL 계정으로 채운다 (.env.example 참고)
+#   1) backend/.env 에 DB_HOST / DB_USERNAME / DB_PASSWORD 를 채운다 (.env.example 참고).
+#      - 내 PC에 설치된 MySQL이면 DB_HOST=localhost, DB_PORT/DB_NAME은 기본값(3306/customhouse) 그대로 둬도 된다.
+#      - Aiven 등 클라우드 MySQL이면 DB_HOST를 그 서비스 호스트로, DB_PORT를 콘솔에 나온 포트 번호로 반드시
+#        채워야 한다(클라우드 서비스는 3306이 아닌 서비스별 임의 포트를 쓴다 - 포트를 안 채우면 3306으로
+#        시도하다가 TCP 연결 자체가 타임아웃난다). 콘솔에 나온 데이터베이스 이름이 "customhouse"가 아니면
+#        DB_NAME도 채운다.
 #   2) 아래 두 방법 중 하나로 이 프로필을 "추가"로 활성화해서 실행한다 (dev와 함께 켜야 ai-engine 주소 등
 #      나머지 dev 설정도 같이 적용된다):
 #        PowerShell:  $env:SPRING_PROFILES_ACTIVE="dev,local-mysql"; .\mvnw.cmd spring-boot:run
 #        bash:        SPRING_PROFILES_ACTIVE=dev,local-mysql ./mvnw spring-boot:run
-#   3) createDatabaseIfNotExist=true 덕분에 customhouse 데이터베이스가 없으면 자동으로 생성된다.
-#      (MySQL 계정에 CREATE DATABASE 권한이 있어야 함 - 보통 root면 충분)
+#   3) createDatabaseIfNotExist=true 덕분에 DB_NAME 데이터베이스가 없으면 자동으로 생성된다.
+#      (MySQL 계정에 CREATE DATABASE 권한이 있어야 함 - 로컬은 보통 root면 충분, Aiven avnadmin도 보통 가능).
+#      클라우드 서비스가 이미 기본 데이터베이스(예: defaultdb)를 만들어줬다면 DB_NAME을 그 이름으로 맞춘다.
+#   4) sslMode=REQUIRED: 접속 구간을 암호화만 하고 서버 인증서 검증은 안 한다(중간자 공격엔 취약, 하지만
+#      Aiven처럼 자체 CA를 쓰는 클라우드 MySQL에 별도 인증서 설정 없이 바로 붙을 수 있어 기본값으로 뒀다).
+#      로컬 MySQL 8.x는 기본 설치 시 자체서명 인증서가 자동 생성되어 있어 이 옵션으로도 문제없이 붙는다.
 spring:
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/customhouse?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:customhouse}?createDatabaseIfNotExist=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&sslMode=REQUIRED
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver

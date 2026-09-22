@@ -20,8 +20,16 @@
 
 ### 로컬 MySQL로 실행하기
 
-1. `backend/.env` 파일을 열어서 (없으면 `backend/.env.example`을 복사) `DB_USERNAME`, `DB_PASSWORD`를
-   본인 MySQL 계정 정보로 채웁니다. **비밀번호는 여기(.env)에만 적고, 깃/채팅에는 절대 올리지 마세요.**
+이름은 "local-mysql"이지만 `DB_HOST`를 채우기 나름이라 내 PC에 설치된 MySQL뿐 아니라 Aiven 같은
+클라우드 MySQL에도 이 프로필 하나로 붙을 수 있습니다.
+
+1. `backend/.env` 파일을 열어서 (없으면 `backend/.env.example`을 복사) `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`를
+   본인 MySQL 접속 정보로 채웁니다. **비밀번호는 여기(.env)에만 적고, 깃/채팅에는 절대 올리지 마세요.**
+   - **클라우드 MySQL(Aiven 등)이면 `DB_PORT`를 반드시 채워야 합니다.** 클라우드 서비스는 3306이 아니라
+     서비스별로 다른 포트를 쓰기 때문에, 안 채우면 3306으로 접속을 시도하다가 TCP 연결 타임아웃이 납니다
+     (콘솔의 접속 정보에서 포트 번호를 확인하세요). 콘솔에 나온 기본 데이터베이스 이름이 "customhouse"가
+     아니면(예: Aiven 기본값 `defaultdb`) `DB_NAME`도 함께 채우세요.
+   - 로컬 PC에 설치한 MySQL이면 `DB_PORT`/`DB_NAME`은 기본값(3306/customhouse) 그대로 둬도 됩니다.
 2. `dev`와 `local-mysql` 프로필을 함께 켜서 실행합니다 (dev의 나머지 설정 + MySQL 접속 정보를 같이 적용):
 
    ```powershell
@@ -99,8 +107,12 @@
 | notification_enabled | BOOLEAN | NOT NULL | ⭐ WatchList 알림 발송 여부를 여기서 최종 판단함 (9-2 참고) |
 
 우대사항(preferentialStatuses, 다중 선택)은 별도 테이블 `housing_condition_preferences`
-(`housing_condition_id` FK + `preferential_status` VARCHAR)에 사용자당 0~N건으로 저장된다
-(JPA `@ElementCollection`).
+(id PK, `housing_condition_id` FK, `preferential_status` VARCHAR, UNIQUE(housing_condition_id, preferential_status))에
+사용자당 0~N건으로 저장된다. 2026-09-22 이전엔 JPA `@ElementCollection`(자체 기본키 없는 값 컬렉션)이었는데,
+Aiven 등 관리형 클라우드 MySQL은 `sql_require_primary_key`가 켜져 있어 기본키 없는 테이블 생성 자체가
+거부돼(`Unable to create or change a table without a primary key`) 실전 연동 중 발견했다. board 도메인의
+PostMeta처럼 자체 id를 가진 진짜 엔티티(`HousingConditionPreference`)로 바꿔서 어떤 MySQL 설정에서도
+동작하게 했다 (H2/로컬 MySQL은 원래도 문제없었음).
 
 ### payments (단건 결제)
 | 컬럼 | 타입 | 제약 | 설명 |
