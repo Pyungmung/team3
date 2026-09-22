@@ -87,7 +87,9 @@
 | age | INT | | 나이(만) |
 | annual_income | INT | NOT NULL | 소득(연소득, 만원) — 2026-09-16 이전엔 월급(월 단위)이었다가 연소득으로 통합 |
 | couple_annual_income | INT | | 부부합산 연소득(만원, 선택) — 계산 시 annual_income과 비교해 더 큰 값을 씀 |
-| work_location | VARCHAR | | 직장 위치 |
+| work_location | VARCHAR | | 직장 위치 (자치구 이름, 예: "강남구") |
+| work_address | VARCHAR(255) | | 카카오 주소검색으로 찾은 직장의 실제 도로명/지번 주소 (선택) — 2026-09-22 추가, 운영(`validate`)은 `ALTER TABLE housing_conditions ADD COLUMN work_address VARCHAR(255);` 수동 적용 필요 |
+| work_lat / work_lon | DOUBLE | | 위 주소의 정확한 위도/경도 (선택, 함께 저장됨) — AI 진단 시 work_location 대표 좌표 대신 이 좌표로 통근시간 계산. 운영은 `ALTER TABLE housing_conditions ADD COLUMN work_lat DOUBLE, ADD COLUMN work_lon DOUBLE;` 수동 적용 필요 |
 | desired_deposit | INT | | 희망 보증금(만원) |
 | desired_rent | INT | | 희망 월세(만원) |
 | real_estate_asset / car_asset / financial_asset / other_asset | INT | | 자산 구성(부동산/자동차/금융자산/일반자산, 만원) |

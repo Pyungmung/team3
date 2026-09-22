@@ -55,7 +55,14 @@ public class HousingCondition extends BaseTimeEntity {
 
     private Integer coupleAnnualIncome; // 부부합산 연소득 (만원, 선택) - 계산 시 annualIncome과 비교해 더 큰 값을 씀
 
-    private String workLocation;     // 직장 위치
+    private String workLocation;     // 직장 위치 (자치구 이름, 예: "강남구")
+
+    @Column(length = 255)
+    private String workAddress;      // 카카오 주소검색으로 찾은 직장의 실제 도로명/지번 주소 (선택, 없으면 workLocation만 있음)
+
+    private Double workLat;          // 위 workAddress의 정확한 위도 (선택, workAddress와 함께 저장됨)
+
+    private Double workLon;          // 위 workAddress의 정확한 경도 (선택, workLat과 함께 옴)
 
     private Integer desiredDeposit;  // 희망 보증금 (만원)
 

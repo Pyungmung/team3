@@ -37,6 +37,9 @@ public class MypageService {
         condition.setAnnualIncome(request.annualIncome());
         condition.setCoupleAnnualIncome(request.coupleAnnualIncome());
         condition.setWorkLocation(request.workLocation());
+        condition.setWorkAddress(request.workAddress());
+        condition.setWorkLat(request.workLat());
+        condition.setWorkLon(request.workLon());
         condition.setDesiredDeposit(request.desiredDeposit());
         condition.setDesiredRent(request.desiredRent());
         condition.setRealEstateAsset(request.realEstateAsset());

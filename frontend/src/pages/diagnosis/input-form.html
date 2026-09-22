@@ -519,6 +519,8 @@
           <div class="full">
             <label class="flabel">희망 최대 통근시간</label>
             <select name="maxCommuteMinutes" class="select">
+              <option value="10">10분 이내</option>
+              <option value="20">20분 이내</option>
               <option value="30">30분 이내</option>
               <option value="40" selected>40분 이내</option>
               <option value="50">50분 이내</option>
@@ -825,7 +827,19 @@
       if (condition.coupleAnnualIncome != null) form.coupleAnnualIncome.value = condition.coupleAnnualIncome;
       if (condition.workLocation) {
         form.workLocation.value = condition.workLocation;
-        document.getElementById("work-address-display").value = `${condition.workLocation} (마이페이지 저장 위치)`;
+
+        if (condition.workAddress && condition.workLat != null && condition.workLon != null) {
+          // 마이페이지에서 주소 검색으로 저장해둔 정확한 주소/좌표가 있으면 그대로 불러온다.
+          // 자치구 대표 좌표 대신 이 좌표로 통근시간을 계산해 더 정확한 진단이 나온다.
+          document.getElementById("work-address-display").value = condition.workAddress;
+          document.getElementById("work-lat-input").value = condition.workLat;
+          document.getElementById("work-lon-input").value = condition.workLon;
+          const hubMatchEl = document.getElementById("work-hub-match");
+          hubMatchEl.textContent = `→ 마이페이지에 저장된 주소로 정확하게 통근시간을 계산해요 (참고: "${condition.workLocation}" 권역).`;
+          hubMatchEl.classList.remove("hidden");
+        } else {
+          document.getElementById("work-address-display").value = `${condition.workLocation} (마이페이지 저장 위치)`;
+        }
       }
       if (condition.desiredDeposit != null) form.desiredDeposit.value = condition.desiredDeposit;
       if (condition.desiredRent != null) form.desiredRent.value = condition.desiredRent;
@@ -908,6 +922,17 @@
         });
       });
     })();
+
+    // 자치구 드롭다운을 사용자가 "직접" 바꾸면(주소검색으로 프로그램이 채운 게 아니라), 이전에
+    // 채워져 있던 정확한 좌표(마이페이지 프리필 또는 이전 주소검색 결과)는 그 구와 더 이상 맞지
+    // 않으므로 함께 지운다. 카카오 키가 없어 주소검색 UI 자체가 없는 세션에서도 동작해야 하므로
+    // setupWorkLocationAddressSearch()와 별개로 항상 걸어둔다.
+    document.getElementById("work-location-select").addEventListener("change", () => {
+      document.getElementById("work-lat-input").value = "";
+      document.getElementById("work-lon-input").value = "";
+      const hubMatchEl = document.getElementById("work-hub-match");
+      if (hubMatchEl) hubMatchEl.classList.add("hidden");
+    });
 
     // ---------- 제출 ----------
     form.addEventListener("submit", async (e) => {

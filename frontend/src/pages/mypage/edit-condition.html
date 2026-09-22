@@ -875,6 +875,11 @@
                     <p id="work-hub-match" class="text-xs text-slate-600 mt-2 hidden"></p>
                   </div>
 
+                  <!-- 주소 검색으로 얻은 실제 주소/좌표. 있으면 진단 폼이 자치구 대신 이 값으로 정확한 통근시간을 계산한다. -->
+                  <input type="hidden" name="workAddress" id="work-address-input">
+                  <input type="hidden" name="workLat" id="work-lat-input">
+                  <input type="hidden" name="workLon" id="work-lon-input">
+
                   <select name="workLocation" id="work-location-select" required class="select">
                     <option value="">직장 위치를 선택하세요</option>
                     <option value="강남구">강남구</option>
@@ -1324,6 +1329,9 @@
     const addressDisplay = document.getElementById("work-address-display");
     const hubMatchEl = document.getElementById("work-hub-match");
     const searchBtn = document.getElementById("search-address-btn");
+    const workAddressInput = document.getElementById("work-address-input");
+    const workLatInput = document.getElementById("work-lat-input");
+    const workLonInput = document.getElementById("work-lon-input");
 
     function waitForKakaoServices(retriesLeft, cb) {
       if (window.kakao && window.kakao.maps) {
@@ -1348,6 +1356,10 @@
           oncomplete: data => {
             const address = data.roadAddress || data.jibunAddress;
             addressDisplay.value = address;
+            // 좌표 조회 전까지는 이전 검색 결과가 남아있지 않도록 비워둔다.
+            workAddressInput.value = "";
+            workLatInput.value = "";
+            workLonInput.value = "";
 
             const geocoder = new kakao.maps.services.Geocoder();
 
@@ -1364,9 +1376,15 @@
               const lon = parseFloat(result[0].x);
               const nearest = CustomHouseAddressMatchUtil.findNearestWorkHub(lat, lon);
 
+              // 자치구 select는 그대로 저장하고(대략적인 위치 표시/폴백용), 실제 주소와 정확한
+              // 좌표는 별도로 저장해서 진단 폼이 자치구 대표 좌표 대신 이 값을 쓸 수 있게 한다.
               workSelect.value = nearest.hub;
+              workAddressInput.value = address;
+              workLatInput.value = lat;
+              workLonInput.value = lon;
               hubMatchEl.textContent =
-                `→ "${nearest.label}"로 저장돼요 (입력한 주소에서 직선거리 약 ${nearest.distanceKm.toFixed(1)}km)`;
+                `→ "${nearest.label}" 권역으로 분류돼요 (입력한 주소에서 직선거리 약 ${nearest.distanceKm.toFixed(1)}km). ` +
+                `AI 진단에서는 이 주소로 정확한 통근시간을 계산해요.`;
               hubMatchEl.classList.remove("hidden");
             });
           }
@@ -1374,6 +1392,18 @@
       });
     });
   })();
+
+  // 사용자가 자치구 드롭다운을 "직접" 바꾸면(주소 검색 결과로 프로그램이 채운 게 아니라), 이전에
+  // 저장돼 있던 정확한 주소/좌표는 그 구와 더 이상 맞지 않으므로 함께 지운다. 카카오 키가 없어서
+  // 주소검색 UI 자체가 안 뜨는 세션에서도(예: 이전에 저장한 정확한 주소가 남아있는 경우) 동작해야
+  // 하므로 setupWorkLocationAddressSearch()와 별개로 항상 걸어둔다.
+  document.getElementById("work-location-select").addEventListener("change", () => {
+    form.workAddress.value = "";
+    form.workLat.value = "";
+    form.workLon.value = "";
+    const hubMatchEl = document.getElementById("work-hub-match");
+    if (hubMatchEl) hubMatchEl.classList.add("hidden");
+  });
 
   /* 순자산 = 자산 합 - 부채 합 */
   function recalcNetAsset() {
@@ -1399,6 +1429,18 @@
       form.annualIncome.value = condition.annualIncome ?? "";
       form.coupleAnnualIncome.value = condition.coupleAnnualIncome ?? "";
       form.workLocation.value = condition.workLocation ?? "";
+      form.workAddress.value = condition.workAddress ?? "";
+      form.workLat.value = condition.workLat ?? "";
+      form.workLon.value = condition.workLon ?? "";
+      if (condition.workAddress) {
+        const addressDisplay = document.getElementById("work-address-display");
+        const hubMatchEl = document.getElementById("work-hub-match");
+        if (addressDisplay) addressDisplay.value = condition.workAddress;
+        if (hubMatchEl) {
+          hubMatchEl.textContent = `→ "${condition.workLocation}" 권역으로 분류돼요. AI 진단에서는 이 주소로 정확한 통근시간을 계산해요.`;
+          hubMatchEl.classList.remove("hidden");
+        }
+      }
       form.desiredDeposit.value = condition.desiredDeposit ?? "";
       form.desiredRent.value = condition.desiredRent ?? "";
       form.realEstateAsset.value = condition.realEstateAsset ?? 0;
@@ -1441,6 +1483,9 @@
       annualIncome: Number(fd.get("annualIncome")),
       coupleAnnualIncome: fd.get("coupleAnnualIncome") ? Number(fd.get("coupleAnnualIncome")) : null,
       workLocation: fd.get("workLocation"),
+      workAddress: fd.get("workAddress") || null,
+      workLat: fd.get("workLat") ? Number(fd.get("workLat")) : null,
+      workLon: fd.get("workLon") ? Number(fd.get("workLon")) : null,
       desiredDeposit: Number(fd.get("desiredDeposit")),
       desiredRent: fd.get("desiredRent") ? Number(fd.get("desiredRent")) : null,
       realEstateAsset: Number(fd.get("realEstateAsset")) || 0,
