@@ -41,11 +41,11 @@ body {
 .home-intro-bg {
   position: relative;
   background-image:
-    linear-gradient(
-      rgba(247, 248, 250, 0.86),
-      rgba(247, 248, 250, 0.94)
-    ),
-    url("https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2000&q=80");
+  linear-gradient(
+  rgba(247, 248, 250, 0.86),
+  rgba(247, 248, 250, 0.94)
+  ),
+  url("https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2000&q=80");
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -65,7 +65,7 @@ Home
 }
 
 .home-section-heading {
-  margin-bottom: 72px;
+  margin-bottom: 52px;
   text-align: center;
 }
 
@@ -102,22 +102,22 @@ Hero
   min-height: 580px;
   overflow: hidden;
   background:
-    radial-gradient(
-      circle at 75% 35%,
-      rgba(255, 255, 255, 0.96),
-      rgba(247, 248, 250, 0.7) 42%,
-      rgba(247, 248, 250, 0.95) 100%
-    );
+  radial-gradient(
+  circle at 75% 35%,
+  rgba(255, 255, 255, 0.96),
+  rgba(247, 248, 250, 0.7) 42%,
+  rgba(247, 248, 250, 0.95) 100%
+  );
 }
 
 .home-hero-bg {
   position: relative;
   background-image:
-    linear-gradient(
-      rgba(247, 248, 250, 0.86),
-      rgba(247, 248, 250, 0.94)
-    ),
-    url("https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2000&q=80");
+  linear-gradient(
+  rgba(247, 248, 250, 0.86),
+  rgba(247, 248, 250, 0.94)
+  ),
+  url("https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2000&q=80");
   background-size: cover;
   background-position: center;
 }
@@ -196,9 +196,9 @@ Hero Button Group
   text-decoration: none;
   box-shadow: 0 10px 24px rgba(27, 42, 74, 0.18);
   transition:
-    transform 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transform 0.2s ease,
+  background-color 0.2s ease,
+  box-shadow 0.2s ease;
 }
 
 .home-primary-button:hover {
@@ -227,17 +227,46 @@ Hero Diagnosis Card
   z-index: 1;
   flex: 0 0 460px;
   transform: translateX(-60px);
-  padding: 26px 30px 18px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.97);
+  padding: 26px 28px 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 26px;
+  background:
+  linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.9)),
+  rgba(255, 255, 255, 0.9);
   box-shadow:
-    0 24px 60px rgba(15, 23, 42, 0.12),
-    0 4px 12px rgba(15, 23, 42, 0.05);
-  backdrop-filter: blur(10px);
+  0 30px 70px rgba(15, 23, 42, 0.14),
+  0 10px 26px rgba(27, 42, 74, 0.08),
+  inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(18px);
+}
+
+.home-diagnosis-card::before {
+  content: "";
+  position: absolute;
+  top: -100px;
+  right: -80px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(148, 163, 184, 0.18), transparent 68%);
+  pointer-events: none;
+}
+
+.home-diagnosis-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-600), #64748b 55%, transparent);
+  opacity: 0.85;
 }
 
 .home-diagnosis-card-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -245,11 +274,11 @@ Hero Diagnosis Card
 }
 
 .home-diagnosis-card-eyebrow {
-  margin: 0 0 5px;
+  margin: 0 0 6px;
   color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
 }
 
 .home-diagnosis-card-header strong {
@@ -257,7 +286,7 @@ Hero Diagnosis Card
   color: var(--ink-900);
   font-size: 20px;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
 }
 
 .home-diagnosis-status {
@@ -265,18 +294,24 @@ Hero Diagnosis Card
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  padding: 8px 13px;
-  border: 1px solid var(--brand-100);
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid #dbe4ef;
   border-radius: 999px;
-  background: var(--brand-50);
-  color: var(--brand-500);
-  font-size: 11px;
-  font-weight: 700;
+  background: rgba(241, 245, 249, 0.88);
+  color: #475569;
+  font-size: 10px;
+  font-weight: 800;
   white-space: nowrap;
 }
 
 .home-diagnosis-status-dot {
-  display: none;
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+  box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.1);
 }
 
 /* ========================================
@@ -285,22 +320,36 @@ Hero Diagnosis Main Result
 
 .home-diagnosis-main {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  min-height: 140px;
+  min-height: 154px;
   margin-top: 20px;
-  padding: 18px 20px;
+  padding: 20px 22px;
   overflow: hidden;
-  border: 1px solid #e2ebf8;
-  border-radius: 16px;
-  background: linear-gradient(
-    135deg,
-    #f1f6fd 0%,
-    #edf4fc 65%,
-    #f7faff 100%
-  );
+  border: 1px solid #dbe5f0;
+  border-radius: 18px;
+  background:
+  radial-gradient(circle at 90% 50%, rgba(148, 163, 184, 0.16), transparent 30%),
+  linear-gradient(135deg, #f3f7fc 0%, #eaf1f9 58%, #f8fafc 100%);
+}
+
+.home-diagnosis-main::after {
+  content: "";
+  position: absolute;
+  right: -35px;
+  bottom: -50px;
+  width: 150px;
+  height: 150px;
+  border: 1px solid rgba(100, 116, 139, 0.1);
+  border-radius: 50%;
+}
+
+.home-diagnosis-main-content {
+  position: relative;
+  z-index: 1;
 }
 
 .home-diagnosis-main-title {
@@ -313,52 +362,162 @@ Hero Diagnosis Main Result
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background: #dceafe;
-  color: #4d78b8;
+  border: 1px solid #d2deec;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--brand-600);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
 }
 
 .home-diagnosis-house-icon svg {
-  width: 19px;
-  height: 19px;
+  width: 18px;
+  height: 18px;
 }
 
 .home-diagnosis-label {
   margin: 0;
-  color: #334155;
-  font-size: 14px;
-  font-weight: 700;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .home-diagnosis-price {
-  margin: 8px 0 0 43px;
+  margin: 9px 0 0 45px;
   color: var(--brand-600);
-  font-size: 38px;
-  font-weight: 800;
-  letter-spacing: -0.05em;
+  font-size: 40px;
+  font-weight: 850;
+  letter-spacing: -0.06em;
   line-height: 1;
 }
 
 .home-diagnosis-price span {
-  margin-left: 3px;
+  margin-left: 4px;
   color: #334155;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
   letter-spacing: 0;
 }
 
 .home-diagnosis-subtext {
+  max-width: 205px;
   margin: 10px 0 0 43px;
   color: #64748b;
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.55;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
 }
 
+/* 예상 적정 주거비 - 주거 공간 그래픽 */
 .home-diagnosis-visual {
-  display: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  flex-shrink: 0;
+  transform: translateX(8px);
+}
+
+/* 집 뒤쪽의 은은한 빛 */
+.home-diagnosis-visual-glow {
+  position: absolute;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.18);
+  filter: blur(14px);
+}
+
+/* 집 평면도 */
+.home-diagnosis-house {
+  position: relative;
+  z-index: 1;
+  width: 132px;
+  height: 132px;
+  overflow: visible;
+}
+
+/* 집 외곽 */
+.home-diagnosis-house-outline {
+  fill: rgba(255, 255, 255, 0.7);
+  stroke: #1b2a4a;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* 지붕 */
+.home-diagnosis-house-roof {
+  stroke: #1b2a4a;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 내부 공간 구분선 */
+.home-diagnosis-house-line {
+  stroke: #94a3b8;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+/* 문 */
+.home-diagnosis-house-door {
+  fill: #e2e8f0;
+  stroke: #64748b;
+  stroke-width: 1.4;
+}
+
+/* 창문 */
+.home-diagnosis-house-window {
+  fill: #f8fafc;
+  stroke: #64748b;
+  stroke-width: 1.3;
+}
+
+/* 창문 십자 */
+.home-diagnosis-house-window-line {
+  stroke: #94a3b8;
+  stroke-width: 1;
+}
+
+/* 장식 점 */
+.home-diagnosis-visual-dot {
+  position: absolute;
+  z-index: 2;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.home-diagnosis-visual-dot-1 {
+  top: 15px;
+  right: 20px;
+}
+
+.home-diagnosis-visual-dot-2 {
+  bottom: 13px;
+  left: 10px;
+  width: 5px;
+  height: 5px;
+  background: #cbd5e1;
+}
+
+/* 작은 + 장식 */
+.home-diagnosis-visual-plus {
+  position: absolute;
+  z-index: 2;
+  top: 19px;
+  left: 20px;
+  color: #94a3b8;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
 }
 
 /* ========================================
@@ -366,17 +525,19 @@ Hero Diagnosis Info
 ======================================== */
 
 .home-diagnosis-info {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  margin-top: 10px;
+  margin-top: 9px;
 }
 
 .home-diagnosis-info-item {
   display: grid;
-  grid-template-columns: 44px 36px minmax(0, 1fr);
+  grid-template-columns: 40px 34px minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 10px;
-  padding: 15px 0;
+  padding: 13px 0;
 }
 
 .home-diagnosis-info-item + .home-diagnosis-info-item {
@@ -387,13 +548,14 @@ Hero Diagnosis Info
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 15px;
-  background: #f1f6fc;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
   color: var(--brand-600);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 850;
 }
 
 .home-diagnosis-info-icon {
@@ -402,27 +564,38 @@ Hero Diagnosis Info
   justify-content: center;
   width: 34px;
   height: 34px;
-  color: #38567e;
+  color: #475f80;
 }
 
 .home-diagnosis-info-icon svg {
-  width: 27px;
-  height: 27px;
+  width: 24px;
+  height: 24px;
 }
 
 .home-diagnosis-info-item p {
-  margin: 0 0 4px;
+  margin: 0 0 3px;
   color: #94a3b8;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .home-diagnosis-info-item strong {
   display: block;
   color: #1e293b;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+.home-diagnosis-info-badge {
+  padding: 6px 9px;
+  border: 1px solid #dbe3ec;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 /* ========================================
@@ -430,18 +603,22 @@ Hero Diagnosis Footer
 ======================================== */
 
 .home-diagnosis-card-footer {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 9px;
   margin-top: 4px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: #f4f8fc;
+  padding: 11px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.9);
   color: #64748b;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .home-diagnosis-card-footer p {
+  flex: 1;
   margin: 0;
 }
 
@@ -452,11 +629,16 @@ Hero Diagnosis Footer
   width: 23px;
   height: 23px;
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: 8px;
   background: var(--brand-600);
   color: #fff;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.home-diagnosis-card-footer-arrow {
+  color: #94a3b8;
+  font-size: 15px;
 }
 
 /* ========================================
@@ -464,75 +646,168 @@ Process
 ======================================== */
 
 .home-process-section {
-  padding-top: 88px;
-  padding-bottom: 72px;
-  background: #fff;
+  position: relative;
+  padding-top: 92px;
+  padding-bottom: 88px;
+  background:
+  linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.home-process-section .home-section-heading {
+  margin-bottom: 62px;
 }
 
 .home-process-grid {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto 1fr auto 1fr;
-  align-items: center;
-  gap: 24px;
+  align-items: stretch;
+  gap: 22px;
 }
 
 .home-process-card {
-  min-height: 300px;
-  padding: 36px 32px;
-  border: 1px solid #dbe3ed;
-  border-radius: 20px;
-  background: #f8fafc;
-  text-align: center;
+  position: relative;
+  min-height: 320px;
+  padding: 30px 30px 28px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.82);
   box-shadow:
-    0 8px 24px rgba(15, 23, 42, 0.05),
-    0 1px 2px rgba(15, 23, 42, 0.03);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+  0 10px 30px rgba(15, 23, 42, 0.045),
+  0 2px 6px rgba(15, 23, 42, 0.025);
 }
 
-.home-process-card:hover {
-  border-color: #cbd5e1;
-  box-shadow:
-    0 14px 30px rgba(15, 23, 42, 0.08),
-    0 2px 4px rgba(15, 23, 42, 0.04);
-  transform: translateY(-3px);
+.home-process-card::after {
+  content: "";
+  position: absolute;
+  right: -35px;
+  bottom: -45px;
+  width: 120px;
+  height: 120px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 50%;
+}
+
+.home-process-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .home-process-number {
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  color: #b8c5d6;
+  font-size: 38px;
+  font-weight: 850;
+  letter-spacing: -0.06em;
+  line-height: 1;
 }
 
 .home-process-icon {
-  margin: 22px 0 18px;
-  font-size: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border: 1px solid #dbe3ed;
+  border-radius: 15px;
+  background: #f8fafc;
+  color: var(--brand-600);
+}
+
+.home-process-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+.home-process-kicker {
+  display: inline-flex;
+  margin-top: 34px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
 }
 
 .home-process-card h3 {
-  margin: 0;
+  margin: 8px 0 0;
   color: #17233b;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .home-process-card p {
-  margin: 14px 0 0;
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.7;
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.home-process-detail {
+  display: inline-flex;
+  margin-top: 22px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1f5;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .home-process-arrow {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 48px;
+  color: #64748b;
+  font-size: 18px;
+}
+
+.home-process-arrow span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  color: #64748b;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* ========================================
+Process → Service Divider
+======================================== */
+
+.home-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
   color: #94a3b8;
-  font-size: 24px;
-  font-weight: 300;
+}
+
+.home-section-divider > span {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e2e8f0);
+}
+
+.home-section-divider > span:last-child {
+  background: linear-gradient(90deg, #e2e8f0, transparent);
+}
+
+.home-section-divider-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
 }
 
 /* ========================================
@@ -540,73 +815,158 @@ Service
 ======================================== */
 
 .home-service-section {
-  background: #fff;
+  position: relative;
+  background:
+  linear-gradient(180deg, #f8fafc 0%, #fff 100%);
 }
 
 .home-service-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(230px, 1fr));
+  gap: 18px;
 }
 
 .home-service-card {
-  display: block;
-  min-height: 270px;
-  padding: 30px;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  background: #fff;
+  position: relative;
+  display: flex;
+  min-height: 230px;
+  padding: 26px 28px 26px 52px;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.76);
   color: inherit;
   text-decoration: none;
   box-shadow:
-    0 4px 16px rgba(15, 23, 42, 0.04),
-    0 1px 2px rgba(15, 23, 42, 0.02);
+  0 8px 26px rgba(15, 23, 42, 0.045),
+  inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
+  transform 0.28s ease,
+  box-shadow 0.28s ease,
+  border-color 0.28s ease,
+  background-color 0.28s ease;
+}
+
+.home-service-card:first-child {
+  min-height: 230px;
+  padding: 26px 28px 26px 52px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.home-service-card::after {
+  content: "";
+  position: absolute;
+  right: -60px;
+  bottom: -70px;
+  width: 180px;
+  height: 180px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 50%;
+  transition: transform 0.35s ease;
 }
 
 .home-service-card:hover {
   border-color: #cbd5e1;
+  background: #fff;
   box-shadow:
-    0 14px 30px rgba(15, 23, 42, 0.08),
-    0 2px 4px rgba(15, 23, 42, 0.03);
-  transform: translateY(-4px);
+  0 20px 42px rgba(15, 23, 42, 0.09),
+  0 4px 10px rgba(15, 23, 42, 0.035);
+  transform: translateY(-5px);
+}
+
+.home-service-card:hover::after {
+  transform: scale(1.12);
 }
 
 .home-service-card-top {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .home-service-icon {
-  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #dbe3ed;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: var(--brand-600);
 }
 
-.home-service-arrow {
+.home-service-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.home-service-kicker {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  margin-top: 20px;
   color: #94a3b8;
-  font-size: 22px;
-  transition: transform 0.2s ease;
-}
-
-.home-service-card:hover .home-service-arrow {
-  transform: translateX(4px);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
 }
 
 .home-service-card h3 {
-  margin: 24px 0 12px;
+  position: relative;
+  z-index: 1;
+  margin: 7px 0 9px;
   color: var(--ink-900);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .home-service-card p {
+  position: relative;
+  z-index: 1;
   margin: 0;
   color: #64748b;
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.home-service-link {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 16px;
+  color: var(--brand-600);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.home-service-link span {
+  transition: transform 0.25s ease;
+}
+
+.home-service-card:hover .home-service-link span {
+  transform: translateX(4px);
+}
+
+.home-service-card-featured {
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.home-service-card-featured .home-service-icon {
+  background: #f8fafc;
+}
+
+.home-service-card-policy {
+  background: #fbfcfd;
 }
 
 /* ========================================
@@ -614,44 +974,102 @@ Bottom CTA
 ======================================== */
 
 .home-cta-section {
-  padding: 100px 0;
+  padding: 104px 0 0;
   background: #fff;
 }
 
 .home-cta {
-  padding: 80px 40px;
-  border-radius: 28px;
-  background: var(--brand-600);
+  position: relative;
+  min-height: 330px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  overflow: hidden;
+  padding: 72px 40px;
+  border-top: 1px solid rgba(100, 116, 139, 0.22);
+  border-bottom: 1px solid rgba(100, 116, 139, 0.22);
+  background:
+  radial-gradient(circle at 15% 15%, rgba(148, 163, 184, 0.18), transparent 28%),
+  radial-gradient(circle at 88% 85%, rgba(226, 232, 240, 0.14), transparent 28%),
+  linear-gradient(135deg, #1B2A4A 0%, #16233f 52%, #020617 100%);
   text-align: center;
-  box-shadow: 0 20px 50px rgba(27, 42, 74, 0.15);
+  box-shadow:
+  0 28px 65px rgba(27, 42, 74, 0.2),
+  0 5px 16px rgba(15, 23, 42, 0.08);
+}
+
+.home-cta::before {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  pointer-events: none;
+}
+
+.home-cta-glow {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.home-cta-glow-left {
+  left: -120px;
+  top: -130px;
+  background: radial-gradient(circle, rgba(148, 163, 184, 0.2), transparent 68%);
+}
+
+.home-cta-glow-right {
+  right: -120px;
+  bottom: -140px;
+  background: radial-gradient(circle, rgba(203, 213, 225, 0.14), transparent 68%);
+}
+
+.home-cta-content {
+  position: relative;
+  z-index: 1;
 }
 
 .home-cta .home-section-eyebrow {
+  margin-bottom: 14px;
   color: #cbd5e1;
 }
 
 .home-cta h2 {
   margin: 0;
   color: #fff;
-  font-size: 40px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  font-size: 42px;
+  font-weight: 850;
+  letter-spacing: -0.05em;
 }
 
-.home-cta > p:not(.home-section-eyebrow) {
-  margin: 16px 0 0;
+.home-cta > .home-cta-content > p:not(.home-section-eyebrow) {
+  margin: 15px 0 0;
   color: #cbd5e1;
-  font-size: 16px;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .home-cta .home-primary-button {
+  margin-top: 30px;
   background: #fff;
   color: var(--brand-600);
-  box-shadow: none;
+  box-shadow:
+  0 14px 28px rgba(2, 6, 23, 0.24),
+  0 2px 5px rgba(2, 6, 23, 0.16);
 }
 
 .home-cta .home-primary-button:hover {
   background: #f8fafc;
+  box-shadow:
+  0 18px 34px rgba(2, 6, 23, 0.3),
+  0 3px 7px rgba(2, 6, 23, 0.18);
+  transform: translateY(-3px);
 }
 
 /* ========================================
@@ -662,55 +1080,74 @@ Responsive
   .home-hero-inner {
     gap: 48px;
   }
-
+  
   .home-diagnosis-card {
     flex-basis: 440px;
+    transform: translateX(-20px);
   }
-
+  
   .home-service-grid {
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: none;
   }
-
+  
+  .home-service-card:first-child {
+    grid-row: auto;
+  }
+  
   .home-process-grid {
     grid-template-columns: 1fr;
     gap: 18px;
   }
-
+  
   .home-process-arrow {
+    width: auto;
+    height: 22px;
     transform: rotate(90deg);
-    text-align: center;
   }
-
+  
+  .home-process-card {
+    min-height: 270px;
+  }
 }
 
 @media (max-width: 768px) {
   .home-container {
     width: min(100% - 32px, 600px);
   }
-
+  
   .home-section {
     padding: 80px 0;
   }
-
+  
   .home-process-section {
     padding-top: 72px;
     padding-bottom: 56px;
   }
-
+  
   .home-service-section {
     padding-top: 56px;
     padding-bottom: 72px;
   }
-
-
+  
+  .home-section-divider {
+    width: min(100% - 32px, 600px);
+  }
+  
+  .home-process-arrow {
+    width: 48px;
+    height: 24px;
+    transform: rotate(90deg);
+  }
+  
   /* ========================================
   Hero
   ======================================== */
-
+  
   .home-hero {
     min-height: auto;
   }
-
+  
   .home-hero-inner {
     min-height: auto;
     flex-direction: column;
@@ -718,81 +1155,98 @@ Responsive
     padding: 72px 0;
     gap: 48px;
   }
-
+  
   .home-hero-copy {
     max-width: none;
   }
-
+  
   .home-hero-title {
     font-size: 48px;
   }
-
+  
   .home-hero-description {
     font-size: 16px;
   }
-
+  
   .home-hero-button-group {
     width: 100%;
     align-items: stretch;
   }
-
+  
   .home-primary-button {
     width: 100%;
   }
-
+  
   .home-hero-caption {
     width: 100%;
     text-align: center;
   }
-
+  
   .home-diagnosis-card {
     flex-basis: auto;
     width: 100%;
     transform: none;
   }
-
+  
   /* ========================================
   Process
   ======================================== */
-
+  
   .home-process-grid {
     grid-template-columns: 1fr;
   }
-
+  
   .home-process-card {
     min-height: auto;
   }
-
+  
   .home-process-arrow {
+    height: 24px;
     transform: rotate(90deg);
   }
-
+  
+  .home-process-detail {
+    margin-top: 18px;
+  }
+  
   /* ========================================
   Section Heading
   ======================================== */
-
+  
   .home-section-heading h2 {
     font-size: 30px;
   }
-
+  
   /* ========================================
   Service
   ======================================== */
-
+  
   .home-service-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
   }
-
+  
+  .home-service-card:first-child {
+    min-height: 230px;
+  }
+  
   /* ========================================
   CTA
   ======================================== */
-
+  
   .home-cta {
+    min-height: 300px;
     padding: 60px 24px;
+    border-radius: 0;
   }
-
+  
   .home-cta h2 {
     font-size: 30px;
+  }
+  
+  .home-cta::before {
+    inset: 10px;
+    border-radius: 18px;
   }
 }
 
@@ -800,49 +1254,100 @@ Responsive
   .home-hero-inner {
     padding: 56px 0;
   }
-
+  
   .home-hero-title {
     font-size: 40px;
   }
-
+  
   .home-eyebrow {
     margin-bottom: 20px;
     font-size: 12px;
   }
-
+  
   .home-diagnosis-card {
-    padding: 24px 20px 18px;
+    padding: 24px 18px 16px;
     border-radius: 20px;
   }
-
-  .home-diagnosis-main {
-    padding: 18px;
+  
+  .home-diagnosis-card-header {
+    gap: 10px;
   }
-
+  
+  .home-diagnosis-card-header strong {
+    font-size: 18px;
+  }
+  
+  .home-diagnosis-status {
+    padding: 7px 9px;
+    font-size: 9px;
+  }
+  
+  .home-diagnosis-main {
+    min-height: 142px;
+    padding: 17px;
+  }
+  
   .home-diagnosis-price {
     font-size: 34px;
   }
-
+  
   .home-diagnosis-visual {
+    width: 82px;
+    height: 82px;
+  }
+  
+  .home-diagnosis-info-item {
+    grid-template-columns: 38px 30px minmax(0, 1fr);
+    column-gap: 7px;
+  }
+  
+  .home-diagnosis-info-number {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .home-diagnosis-info-badge {
     display: none;
   }
-
-  .home-diagnosis-info-item {
-    grid-template-columns: 42px 32px minmax(0, 1fr);
-    column-gap: 8px;
-  }
-
-  .home-diagnosis-info-number {
-    width: 42px;
-    height: 42px;
-  }
-
+  
   .home-diagnosis-info-item strong {
+    font-size: 12px;
+  }
+  
+  .home-diagnosis-card-footer {
+    align-items: flex-start;
+  }
+  
+  .home-process-card {
+    padding: 26px 24px;
+    border-radius: 20px;
+  }
+  
+  .home-process-number {
+    font-size: 32px;
+  }
+  
+  .home-service-card,
+  .home-service-card:first-child {
+    min-height: 230px;
+    padding: 26px 24px;
+    border-radius: 20px;
+  }
+  
+  .home-cta-section {
+    padding: 72px 0 0;
+  }
+  
+  .home-cta {
+    padding: 54px 20px;
+  }
+  
+  .home-cta h2 {
+    font-size: 28px;
+    line-height: 1.3;
+  }
+  
+  .home-cta > .home-cta-content > p:not(.home-section-eyebrow) {
     font-size: 13px;
   }
-
-  .home-process-card {
-    min-height: auto;
-  }
-
 }
