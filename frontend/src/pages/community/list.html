@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- [담당: 미정 - 커뮤니티 게시판] 게시글 목록 (연동 대상 백엔드: domain/board) -->
+<!-- [담당: 미정 - 커뮤니티 게시판] 게시글 목록 (연동 대상 백엔드: domain/board)
+     레이아웃/톤은 마이페이지(pages/mypage/edit-condition.html)와 통일: 홈 배너 히어로 + 좌측 사이드 카드 + 우측 콘텐츠 카드. -->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -7,40 +8,417 @@
   <title>맞집 | 커뮤니티</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+
+  <style>
+    /* 마이페이지(edit-condition.html)와 같은 톤의 전용 스타일. 색상은 전역 브랜드 토큰(--brand-*, main.css)을 따른다. */
+    :root {
+      --navy: var(--brand-600);
+      --blue: var(--brand-500);
+      --ink: #10213a;
+      --muted: #64748b;
+      --line: #e7edf4;
+      --bg: #f6f8fb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg) !important;
+    }
+
+    /* ===== HERO: 메인 홈 배너(.home-intro-bg, main.css)와 같은 배경/톤 ===== */
+    .community-hero {
+      position: relative;
+      color: var(--ink, #0f172a);
+    }
+
+    .hero-inner {
+      max-width: 1180px;
+      margin: auto;
+      padding: 72px 24px 72px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-label {
+      display: inline-block;
+      padding: 5px 14px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      background: var(--brand-100);
+      color: var(--brand-700);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: clamp(32px, 4.4vw, 48px);
+      line-height: 1.3;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      color: #0f172a;
+    }
+
+    .hero-title .accent { color: var(--brand-600); }
+
+    .hero-desc {
+      max-width: 38rem;
+      margin-top: 18px;
+      font-size: 17px;
+      line-height: 1.75;
+      color: #4b5563;
+    }
+
+    /* ===== 페이지 셀 / 좌측 사이드 + 우측 콘텐츠 (마이페이지와 동일 그리드) ===== */
+    .page-shell {
+      max-width: 1180px;
+      margin: 8px auto 80px;
+      padding: 0 24px;
+      position: relative;
+      z-index: 5;
+    }
+
+    .community-grid {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .side-card,
+    .content-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 16px 45px rgba(15, 23, 42, .07);
+    }
+
+    .side-card {
+      padding: 23px;
+      position: sticky;
+      top: calc(var(--header-h, 96px) + 24px);
+    }
+
+    .side-head {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid #edf1f5;
+    }
+
+    .side-icon {
+      width: 48px;
+      height: 48px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--brand-50);
+      color: var(--brand-600);
+      font-size: 21px;
+    }
+
+    .side-title { font-size: 16px; font-weight: 850; }
+    .side-note { margin-top: 2px; font-size: 11px; color: #929cab; line-height: 1.5; }
+
+    .side-nav {
+      display: grid;
+      gap: 6px;
+      margin-top: 18px;
+    }
+
+    .side-nav button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 12px 14px;
+      border-radius: 11px;
+      color: #5f6e82;
+      font-size: 14px;
+      font-weight: 750;
+      cursor: pointer;
+      transition: .18s;
+    }
+
+    .side-nav button:hover { background: #f4f7fb; color: var(--navy); }
+
+    .side-nav button.active {
+      color: #fff;
+      background: var(--navy);
+      box-shadow: 0 7px 18px rgba(27, 42, 74, .18);
+    }
+
+    .write-side-btn {
+      display: block;
+      width: 100%;
+      margin-top: 26px;
+      padding: 12px;
+      border-radius: 11px;
+      background: var(--navy);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 850;
+      text-align: center;
+      cursor: pointer;
+      transition: .18s;
+    }
+
+    .write-side-btn:hover { background: var(--brand-700); transform: translateY(-1px); }
+
+    .content-card { padding: 30px; }
+
+    .section-eyebrow {
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      margin-bottom: 7px;
+    }
+
+    .section-title { margin: 0; font-size: 25px; font-weight: 900; letter-spacing: -.035em; }
+    .section-sub { margin-top: 6px; color: var(--muted); font-size: 14px; }
+
+    .panel {
+      margin-top: 23px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .select-sm {
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid #dfe6ee;
+      border-radius: 9px;
+      background: #fff;
+      font-size: 12px;
+      color: #34435a;
+    }
+
+    .select-sm:focus { outline: 0; border-color: var(--brand-500); }
+
+    /* ===== 게시글 목록 ===== */
+    .post-list { display: grid; gap: 12px; margin-top: 18px; }
+
+    .post-card {
+      display: flex;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      transition: .15s;
+    }
+
+    .post-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, .06);
+      transform: translateY(-1px);
+    }
+
+    .post-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--brand-50);
+      color: var(--brand-600);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .post-badge.solved { background: #ecfdf5; color: #047857; }
+
+    .post-title {
+      margin-top: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .post-meta {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 12px;
+      font-size: 11px;
+      color: #9aa5b4;
+    }
+
+    .post-thumb {
+      width: 72px;
+      height: 72px;
+      flex: none;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #f1f5f9;
+    }
+
+    /* ===== 안내 / 빈 상태 / 페이지네이션 ===== */
+    .notice-box {
+      margin-top: 18px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+      background: #fff;
+    }
+
+    .empty-box {
+      margin-top: 18px;
+      padding: 42px 20px;
+      border: 1px dashed #dce2ea;
+      border-radius: 15px;
+      text-align: center;
+      color: #9ca5b2;
+      font-size: 13px;
+      background: #fbfcfd;
+    }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 22px;
+    }
+
+    .pager button {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 9px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #526075;
+      cursor: pointer;
+    }
+
+    .pager button:hover:not(:disabled) { background: #f8fafc; }
+    .pager button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .pager button:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ===== 모바일 탭 (마이페이지와 동일 패턴) ===== */
+    .mobile-tabs {
+      display: none;
+      gap: 7px;
+      overflow-x: auto;
+      margin-bottom: 14px;
+      padding-bottom: 4px;
+    }
+
+    .mobile-tab {
+      flex: none;
+      padding: 9px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: #5f6e82;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .mobile-tab.active { border-color: var(--navy); background: var(--navy); color: #fff; }
+
+    @media (max-width: 850px) {
+      .hero-inner { padding: 48px 20px; }
+      .hero-title { font-size: 30px; }
+      .page-shell { margin: 0 auto 60px; padding: 18px 15px; }
+      .community-grid { display: block; }
+      .side-card { display: none; }
+      .mobile-tabs { display: flex; }
+      .content-card { padding: 21px; border-radius: 16px; }
+      .post-thumb { width: 56px; height: 56px; }
+    }
+
+    @media (max-width: 460px) {
+      .post-card { gap: 10px; }
+    }
+  </style>
 </head>
 <body>
   <div id="app-header"></div>
 
-  <main class="max-w-3xl mx-auto px-4 py-10">
-    <div class="flex items-end justify-between gap-3 mb-5">
-      <div>
-        <h1 class="text-2xl font-extrabold">커뮤니티</h1>
-        <p id="tab-desc" class="text-sm text-gray-500 mt-1">자취·주거 고민을 함께 나눠요</p>
+  <!-- HERO -->
+  <section class="community-hero home-intro-bg">
+    <div class="hero-inner">
+      <div class="hero-label">COMMUNITY</div>
+      <h1 class="hero-title">자취·주거 이야기를<br /><span class="accent">함께 나눠보세요.</span></h1>
+      <p class="hero-desc">집 구하기 고민부터 인테리어, 전세사기·법률 상담까지 — 비슷한 고민을 가진 사람들과 이야기해요.</p>
+    </div>
+  </section>
+
+  <main class="page-shell">
+    <!-- 모바일 카테고리 탭 -->
+    <div class="mobile-tabs" id="mobile-tabs"></div>
+
+    <div class="community-grid">
+
+      <!-- 좌측: 카테고리 사이드 카드 -->
+      <aside class="side-card">
+        <div class="side-head">
+          <div class="side-icon">💬</div>
+          <div>
+            <div class="side-title">커뮤니티</div>
+            <div class="side-note">고민을 나누고 함께 답을 찾아요.</div>
+          </div>
+        </div>
+
+        <nav class="side-nav" id="tabs"></nav>
+
+        <a href="write.html" id="write-btn" class="write-side-btn">+ 글쓰기</a>
+      </aside>
+
+      <!-- 우측: 목록 콘텐츠 카드 -->
+      <div class="content-card">
+        <div class="section-eyebrow" id="tab-eyebrow">COMMUNITY</div>
+        <h2 class="section-title" id="tab-title">전체</h2>
+        <p class="section-sub" id="tab-desc">자취·주거 고민을 함께 나눠요</p>
+
+        <div class="panel">
+          <div class="panel-head">
+            <span id="total" class="text-xs text-gray-400"></span>
+            <select id="sort" class="select-sm">
+              <option value="latest">최신순</option>
+              <option value="popular">인기순</option>
+              <option value="views">조회순</option>
+            </select>
+          </div>
+
+          <div id="notice" class="hidden notice-box"></div>
+          <ul id="list" class="post-list"></ul>
+          <div id="empty" class="hidden empty-box">아직 게시글이 없어요. 첫 글을 남겨보세요!</div>
+        </div>
+
+        <div id="pager" class="pager"></div>
       </div>
-      <a id="write-btn" href="write.html" class="text-sm px-4 py-2 rounded-xl text-white brand-gradient font-semibold shrink-0">글쓰기</a>
     </div>
-
-    <!-- 카테고리 탭 -->
-    <div id="tabs" class="flex gap-2 overflow-x-auto pb-2 mb-3"></div>
-
-    <div class="flex items-center justify-between mb-3">
-      <span id="total" class="text-xs text-gray-400"></span>
-      <select id="sort" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white">
-        <option value="latest">최신순</option>
-        <option value="popular">인기순</option>
-        <option value="views">조회순</option>
-      </select>
-    </div>
-
-    <div id="notice" class="hidden card p-6 text-center text-sm text-gray-500 mb-3"></div>
-    <ul id="list" class="space-y-3"></ul>
-    <div id="empty" class="hidden text-sm text-gray-400 text-center py-12">아직 게시글이 없어요. 첫 글을 남겨보세요!</div>
-    <div id="pager" class="flex items-center justify-center gap-1 mt-6"></div>
   </main>
 
   <div id="app-footer"></div>
 
-  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/header.js?v=20260921a"></script>
   <script src="../../js/components/footer.js?v=20260915b"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/community.js?v=20260921"></script>
@@ -59,28 +437,35 @@
     const TABS = [{ key: "ALL", label: "전체" }, ...API.CATEGORIES, { key: "SCRAPS", label: "내 스크랩" }];
     const PAGE_SIZE = 10;
 
+    function tabButton(t, isMobile) {
+      const on = t.key === state.tab;
+      const cls = isMobile ? "mobile-tab" : "";
+      return `<button type="button" data-tab="${t.key}" class="${cls}${on ? " active" : ""}">${API.esc(t.label)}</button>`;
+    }
+
     function renderTabs() {
-      document.getElementById("tabs").innerHTML = TABS.map((t) => {
-        const on = t.key === state.tab;
-        return `<button data-tab="${t.key}" class="whitespace-nowrap text-sm px-4 py-2 rounded-full border ${
-          on ? "text-white font-semibold" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-        }" style="${on ? "background:var(--brand-600);border-color:var(--brand-600)" : ""}">${t.label}</button>`;
-      }).join("");
+      document.getElementById("tabs").innerHTML = TABS.map((t) => tabButton(t, false)).join("");
+      document.getElementById("mobile-tabs").innerHTML = TABS.map((t) => tabButton(t, true)).join("");
 
       const cat = API.CATEGORIES.find((c) => c.key === state.tab);
+      document.getElementById("tab-eyebrow").textContent = state.tab === "SCRAPS" ? "SCRAP" : state.tab === "ALL" ? "COMMUNITY" : cat.key;
+      document.getElementById("tab-title").textContent = cat ? cat.label : state.tab === "SCRAPS" ? "내 스크랩" : "전체";
       document.getElementById("tab-desc").textContent = cat ? cat.desc : state.tab === "SCRAPS" ? "스크랩한 글을 모아봐요" : "자취·주거 고민을 함께 나눠요";
       document.getElementById("sort").classList.toggle("hidden", state.tab === "SCRAPS");
       document.getElementById("write-btn").href = "write.html" + (cat ? `?category=${cat.key}` : "");
     }
 
-    document.getElementById("tabs").addEventListener("click", (e) => {
+    function onTabClick(e) {
       const btn = e.target.closest("[data-tab]");
       if (!btn) return;
       state.tab = btn.dataset.tab;
       state.page = 0;
       renderTabs();
       load();
-    });
+    }
+    document.getElementById("tabs").addEventListener("click", onTabClick);
+    document.getElementById("mobile-tabs").addEventListener("click", onTabClick);
+
     document.getElementById("sort").addEventListener("change", (e) => {
       state.sort = e.target.value;
       state.page = 0;
@@ -91,14 +476,14 @@
       const thumb = API.safeUrl(p.thumbnailUrl);
       return `
         <li>
-          <a href="detail.html?id=${p.id}" class="card p-4 flex gap-3 hover:shadow-md transition-shadow">
+          <a href="detail.html?id=${p.id}" class="post-card">
             <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-1.5 mb-1.5">
-                <span class="text-[11px] px-2 py-0.5 rounded-full" style="background:var(--brand-50);color:var(--brand-600)">${API.esc(API.categoryLabel(p.category))}</span>
-                ${p.solved ? '<span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold">채택 완료</span>' : ""}
+              <div class="flex items-center gap-1.5">
+                <span class="post-badge">${API.esc(API.categoryLabel(p.category))}</span>
+                ${p.solved ? '<span class="post-badge solved">채택 완료</span>' : ""}
               </div>
-              <div class="font-semibold text-sm truncate">${API.esc(p.title)}</div>
-              <div class="text-xs text-gray-400 mt-2 flex flex-wrap gap-x-3 gap-y-1">
+              <div class="post-title">${API.esc(p.title)}</div>
+              <div class="post-meta">
                 <span>${API.esc(p.writerName)}</span>
                 <span>${API.timeAgo(p.createdAt)}</span>
                 <span>조회 ${p.viewCount}</span>
@@ -106,7 +491,7 @@
                 <span>댓글 ${p.commentCount}</span>
               </div>
             </div>
-            ${thumb ? `<img src="${API.esc(thumb)}" alt="" class="w-20 h-20 rounded-lg object-cover shrink-0 bg-slate-100" onerror="this.remove()" />` : ""}
+            ${thumb ? `<img src="${API.esc(thumb)}" alt="" class="post-thumb" onerror="this.remove()" />` : ""}
           </a>
         </li>`;
     }
@@ -120,9 +505,7 @@
       const start = Math.max(0, Math.min(data.page - 2, data.totalPages - 5));
       const end = Math.min(data.totalPages, start + 5);
       const btn = (label, page, { on = false, disabled = false } = {}) =>
-        `<button data-page="${page}" ${disabled ? "disabled" : ""} class="min-w-9 h-9 px-2 rounded-lg text-sm ${
-          on ? "text-white font-semibold" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-        } disabled:opacity-40" style="${on ? "background:var(--brand-600)" : ""}">${label}</button>`;
+        `<button type="button" data-page="${page}" ${disabled ? "disabled" : ""} class="${on ? "active" : ""}">${label}</button>`;
       let html = btn("‹", data.page - 1, { disabled: data.page === 0 });
       for (let i = start; i < end; i++) html += btn(i + 1, i, { on: i === data.page });
       html += btn("›", data.page + 1, { disabled: data.page >= data.totalPages - 1 });
@@ -142,11 +525,11 @@
       const notice = document.getElementById("notice");
       notice.classList.add("hidden");
       emptyEl.classList.add("hidden");
+      document.getElementById("pager").innerHTML = "";
 
       if (state.tab === "SCRAPS" && !CustomHouseAuthApi.isLoggedIn()) {
         listEl.innerHTML = "";
         document.getElementById("total").textContent = "";
-        document.getElementById("pager").innerHTML = "";
         notice.innerHTML = '로그인하면 스크랩한 글을 볼 수 있어요.<br><a href="../auth/login.html" class="inline-block mt-3 text-sm px-4 py-2 rounded-xl text-white brand-gradient">로그인하기</a>';
         notice.classList.remove("hidden");
         return;
