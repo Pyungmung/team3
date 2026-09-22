@@ -4,16 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맞집 | 청년 맞춤형 주거 케어</title>
-
+  
   <script src="https://cdn.tailwindcss.com"></script>
-
+  
   <link rel="stylesheet" href="../css/main.css?v=20260918a" />
 </head>
 
 <body>
   <!-- Header -->
   <div id="app-header"></div>
-
+  
   <main>
     <!-- Hero -->
     <section class="home-hero home-hero-bg">
@@ -22,27 +22,29 @@
           <p class="home-eyebrow">
             AI 맞춤형 청년 주거 케어
           </p>
-
+          
           <h1 class="home-hero-title">
             더 가벼운 주거,<br />
             더 나은 내일
           </h1>
-
+          
           <p class="home-hero-description">
             월급·보증금·직장 위치를 입력하면<br />
             나에게 맞는 주거비와 주거지를 찾아드려요.
           </p>
-
-          <a href="./diagnosis/input-form.html" class="home-primary-button">
-            내 주거비 진단하기
-            <span aria-hidden="true">→</span>
-          </a>
-
-          <p class="home-hero-caption">
-            로그인 없이 바로 시작할 수 있어요
-          </p>
+          
+          <div class="home-hero-button-group">
+            <a href="./diagnosis/input-form.html" class="home-primary-button">
+              내 주거비 진단하기
+              <span aria-hidden="true">→</span>
+            </a>
+            
+            <p class="home-hero-caption">
+              로그인 없이 바로 시작할 수 있어요
+            </p>
+          </div>
         </div>
-
+        
         <div class="home-diagnosis-card">
           <!-- Card Header -->
           <div class="home-diagnosis-card-header">
@@ -50,18 +52,18 @@
               <p class="home-diagnosis-card-eyebrow">
                 CUSTOM HOUSE AI
               </p>
-
+              
               <strong>
-                주거 진단 리포트
+                AI 주거 진단 미리보기
               </strong>
             </div>
-
+            
             <span class="home-diagnosis-status">
               <span class="home-diagnosis-status-dot"></span>
-              분석 완료
+              분석 예시
             </span>
           </div>
-
+          
           <!-- Main Result -->
           <div class="home-diagnosis-main">
             <div class="home-diagnosis-main-content">
@@ -69,334 +71,449 @@
                 <span class="home-diagnosis-house-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none">
                     <path
-                      d="M3 10.5L12 3L21 10.5V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10.5Z"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linejoin="round"
+                    d="M3 10.5L12 3L21 10.5V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V10.5Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
                     />
                     <path
-                      d="M9 21V13H15V21"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linejoin="round"
+                    d="M9 21V13H15V21"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
                     />
                   </svg>
                 </span>
-
+                
                 <p class="home-diagnosis-label">
                   예상 적정 주거비
                 </p>
               </div>
-
+              
               <p class="home-diagnosis-price">
                 ₩ 58<span>만원</span>
               </p>
-
+              
               <p class="home-diagnosis-subtext">
                 월 소득과 보증금을 기준으로 분석한 금액이에요.
               </p>
             </div>
-
+            
             <div class="home-diagnosis-visual" aria-hidden="true">
-              <div class="home-diagnosis-visual-house">
-                <svg viewBox="0 0 80 80" fill="none">
-                  <path
-                    d="M14 38L40 17L66 38"
-                    stroke="currentColor"
-                    stroke-width="5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M21 35V62H59V35"
-                    stroke="currentColor"
-                    stroke-width="5"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M34 62V45H46V62"
-                    stroke="currentColor"
-                    stroke-width="5"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </div>
-
-              <div class="home-diagnosis-visual-chart">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
+              <span class="home-diagnosis-visual-glow"></span>
+              
+              <svg
+              class="home-diagnosis-house"
+              viewBox="0 0 92 92"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              >
+              <!-- 집 외곽 -->
+              <path
+              class="home-diagnosis-house-outline"
+              d="M22 43.5L46 24L70 43.5V68C70 70.2 68.2 72 66 72H26C23.8 72 22 70.2 22 68V43.5Z"
+              />
+              
+              <!-- 지붕 -->
+              <path
+              class="home-diagnosis-house-roof"
+              d="M17 47L46 22L75 47"
+              />
+              
+              <!-- 내부 공간 구분 -->
+              <path
+              class="home-diagnosis-house-line"
+              d="M46 45V68"
+              />
+              
+              <path
+              class="home-diagnosis-house-line"
+              d="M22 52H46"
+              />
+              
+              <!-- 문 -->
+              <path
+              class="home-diagnosis-house-door"
+              d="M52 72V57C52 55.9 52.9 55 54 55H62C63.1 55 64 55.9 64 57V72"
+              />
+              
+              <!-- 작은 창 -->
+              <rect
+              class="home-diagnosis-house-window"
+              x="29"
+              y="39"
+              width="10"
+              height="9"
+              rx="1.5"
+              />
+              
+              <!-- 창 십자 -->
+              <path
+              class="home-diagnosis-house-window-line"
+              d="M34 39V48M29 43.5H39"
+              />
+            </svg>
+            
+            <!-- 장식 점 -->
+            <span class="home-diagnosis-visual-dot home-diagnosis-visual-dot-1"></span>
+            <span class="home-diagnosis-visual-dot home-diagnosis-visual-dot-2"></span>
+            <span class="home-diagnosis-visual-plus">+</span>
           </div>
-
+          
+          </div>
+          
           <!-- Recommendation Info -->
           <div class="home-diagnosis-info">
             <div class="home-diagnosis-info-item">
               <span class="home-diagnosis-info-number">
                 01
               </span>
-
+              
               <span class="home-diagnosis-info-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
                   <path
-                    d="M12 21C16.5 16.7 19 13.4 19 9.8C19 5.9 15.9 3 12 3C8.1 3 5 5.9 5 9.8C5 13.4 7.5 16.7 12 21Z"
-                    stroke="currentColor"
-                    stroke-width="1.8"
+                  d="M12 21C16.5 16.7 19 13.4 19 9.8C19 5.9 15.9 3 12 3C8.1 3 5 5.9 5 9.8C5 13.4 7.5 16.7 12 21Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
                   />
                   <circle
-                    cx="12"
-                    cy="9"
-                    r="2.5"
-                    stroke="currentColor"
-                    stroke-width="1.8"
+                  cx="12"
+                  cy="9"
+                  r="2.5"
+                  stroke="currentColor"
+                  stroke-width="1.8"
                   />
                 </svg>
               </span>
-
+              
               <div>
                 <p>
                   추천 지역
                 </p>
-
+                
                 <strong>
                   관악구 · 동작구 · 구로구
                 </strong>
               </div>
+              
+              <span class="home-diagnosis-info-badge">
+                추천
+              </span>
             </div>
-
+            
             <div class="home-diagnosis-info-item">
               <span class="home-diagnosis-info-number">
                 02
               </span>
-
+              
               <span class="home-diagnosis-info-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
                   <rect
-                    x="4"
-                    y="4"
-                    width="16"
-                    height="14"
-                    rx="3"
-                    stroke="currentColor"
-                    stroke-width="1.8"
+                  x="4"
+                  y="4"
+                  width="16"
+                  height="14"
+                  rx="3"
+                  stroke="currentColor"
+                  stroke-width="1.8"
                   />
                   <path
-                    d="M7 18L6 21M17 18L18 21"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
+                  d="M7 18L6 21M17 18L18 21"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
                   />
                   <path
-                    d="M7 9H17"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
+                  d="M7 9H17"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
                   />
                   <circle cx="8" cy="14" r="1" fill="currentColor" />
                   <circle cx="16" cy="14" r="1" fill="currentColor" />
                 </svg>
               </span>
-
+              
               <div>
                 <p>
                   평균 통근시간
                 </p>
-
+                
                 <strong>
                   32분
                 </strong>
               </div>
+              
+              <span class="home-diagnosis-info-badge">
+                30~40분
+              </span>
             </div>
           </div>
-
+          
           <!-- Card Footer -->
           <div class="home-diagnosis-card-footer">
             <span class="home-diagnosis-card-footer-icon" aria-hidden="true">
               ✓
             </span>
-
+            
             <p>
-              내 조건을 바탕으로 AI가 분석한 결과예요.
+              개인별 주거 조건을 분석해 맞춤형 결과를 제공합니다.
             </p>
+            
+
           </div>
         </div>
       </div>
     </section>
-
+    
     <!-- Process -->
     <section class="home-process-section home-section">
       <div class="home-container">
         <div class="home-section-heading">
           <p class="home-section-eyebrow">HOW IT WORKS</p>
-
+          
           <h2>
             맞집은 이렇게 찾아드려요
           </h2>
-
+          
           <p>
             복잡한 주거 고민을 세 단계로 간단하게 해결해보세요.
           </p>
         </div>
-
+        
         <div class="home-process-grid">
           <div class="home-process-card">
-            <div class="home-process-number">01</div>
-
-            <div class="home-process-icon">📝</div>
-
+            <div class="home-process-card-header">
+              <div class="home-process-number">01</div>
+              
+              <div class="home-process-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M6 4H18C19.1 4 20 4.9 20 6V20H4V6C4 4.9 4.9 4 6 4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                  <path d="M8 8H16M8 12H16M8 16H13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </div>
+            
+            <span class="home-process-kicker">INPUT</span>
+            
             <h3>조건 입력</h3>
-
+            
             <p>
               월급, 보증금, 월세,<br />
               직장 위치 등 내 조건을 입력해요.
             </p>
+            
+            <span class="home-process-detail">나에게 맞는 기준부터 시작</span>
           </div>
-
+          
           <div class="home-process-arrow" aria-hidden="true">
-            →
+            <span>→</span>
           </div>
-
+          
           <div class="home-process-card">
-            <div class="home-process-number">02</div>
-
-            <div class="home-process-icon">🤖</div>
-
+            <div class="home-process-card-header">
+              <div class="home-process-number">02</div>
+              
+              <div class="home-process-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 3V6M12 18V21M3 12H6M18 12H21M5.64 5.64L7.76 7.76M16.24 16.24L18.36 18.36M18.36 5.64L16.24 7.76M7.76 16.24L5.64 18.36" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                  <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.7"/>
+                </svg>
+              </div>
+            </div>
+            
+            <span class="home-process-kicker">ANALYZE</span>
+            
             <h3>AI 분석</h3>
-
+            
             <p>
               내 소득과 주거 조건을 분석해<br />
               적정 주거비와 이동 범위를 계산해요.
             </p>
+            
+            <span class="home-process-detail">예산과 통근시간을 함께 분석</span>
           </div>
-
+          
           <div class="home-process-arrow" aria-hidden="true">
-            →
+            <span>→</span>
           </div>
-
+          
           <div class="home-process-card">
-            <div class="home-process-number">03</div>
-
-            <div class="home-process-icon">🏠</div>
-
+            <div class="home-process-card-header">
+              <div class="home-process-number">03</div>
+              
+              <div class="home-process-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M3 11L12 4L21 11V20C21 20.55 20.55 21 20 21H4C3.45 21 3 20.55 3 20V11Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                  <path d="M9 21V14H15V21M8 10H16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            
+            <span class="home-process-kicker">RECOMMEND</span>
+            
             <h3>맞춤 추천</h3>
-
+            
             <p>
               통근시간과 예산에 맞는<br />
               지역·매물·주거정책을 추천해드려요.
             </p>
+            
+            <span class="home-process-detail">내 생활에 맞는 주거 선택지 확인</span>
           </div>
         </div>
       </div>
     </section>
-
+    
+    <!-- Process → Service Divider -->
+    <div class="home-section-divider" aria-hidden="true">
+      <span></span>
+      <div class="home-section-divider-arrow">↓</div>
+      <span></span>
+    </div>
     <!-- Service -->
     <section class="home-service-section home-section">
       <div class="home-container">
         <div class="home-section-heading">
           <p class="home-section-eyebrow">CUSTOM HOUSE</p>
-
+          
           <h2>
             내 조건에 맞는 주거 정보를<br />
             한눈에 확인하세요
           </h2>
-
+          
           <p>
             주거비부터 추천 지역, 매물과 정책까지 한 번에 확인할 수 있어요.
           </p>
         </div>
-
+        
         <div class="home-service-grid">
-          <a href="./diagnosis/input-form.html" class="home-service-card">
+          <a href="./diagnosis/input-form.html" class="home-service-card home-service-card-featured">
             <div class="home-service-card-top">
-              <span class="home-service-icon">📊</span>
-              <span class="home-service-arrow">→</span>
+              <span class="home-service-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M4 19V5M4 19H20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                  <path d="M7 15L10 11L13 13L18 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
             </div>
-
+            
+            <span class="home-service-kicker">01 · ANALYSIS</span>
+            
             <h3>주거비 분석</h3>
-
+            
             <p>
               내 소득과 보증금을 기준으로<br />
               부담 가능한 적정 주거비를 확인해보세요.
             </p>
+            
+            <span class="home-service-link">진단 시작하기 <span>→</span></span>
           </a>
-
-          <a href="#" class="home-service-card">
+          
+          <a href="./diagnosis/input-form.html" class="home-service-card">
             <div class="home-service-card-top">
-              <span class="home-service-icon">📍</span>
-              <span class="home-service-arrow">→</span>
+              <span class="home-service-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 21C16.5 16.7 19 13.4 19 9.8C19 5.9 15.9 3 12 3C8.1 3 5 5.9 5 9.8C5 13.4 7.5 16.7 12 21Z" stroke="currentColor" stroke-width="1.7"/>
+                  <circle cx="12" cy="9" r="2.5" stroke="currentColor" stroke-width="1.7"/>
+                </svg>
+              </span>
             </div>
-
+            
+            <span class="home-service-kicker">02 · LOCATION</span>
+            
             <h3>추천 지역</h3>
-
+            
             <p>
               직장까지의 통근시간과 예산을 고려해<br />
               나에게 맞는 지역을 찾아드려요.
             </p>
+            
+            <span class="home-service-link">지역 확인하기 <span>→</span></span>
           </a>
-
-          <a href="#" class="home-service-card">
+          
+          <a href="./watchlist/list.html" class="home-service-card">
             <div class="home-service-card-top">
-              <span class="home-service-icon">🏠</span>
-              <span class="home-service-arrow">→</span>
+              <span class="home-service-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M4 10.5L12 4L20 10.5V19C20 20.1 19.1 21 18 21H6C4.9 21 4 20.1 4 19V10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                  <path d="M9 21V14H15V21" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                </svg>
+              </span>
             </div>
-
+            
+            <span class="home-service-kicker">03 · PROPERTY</span>
+            
             <h3>추천 매물</h3>
-
+            
             <p>
               내 조건에 맞는 주거 매물을 확인하고<br />
               관심 매물로 저장할 수 있어요.
             </p>
+            
+            <span class="home-service-link">매물 둘러보기 <span>→</span></span>
           </a>
-
-          <a href="#" class="home-service-card">
+          
+          <a href="./diagnosis/input-form.html" class="home-service-card home-service-card-policy">
             <div class="home-service-card-top">
-              <span class="home-service-icon">🎁</span>
-              <span class="home-service-arrow">→</span>
+              <span class="home-service-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M5 5.5C5 4.67 5.67 4 6.5 4H19V18H6.5C5.67 18 5 18.67 5 19.5V5.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                  <path d="M5 19.5C5 20.33 5.67 21 6.5 21H19M9 8H15M9 12H16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+              </span>
             </div>
-
+            
+            <span class="home-service-kicker">04 · SUPPORT</span>
+            
             <h3>주거지원 정책</h3>
-
+            
             <p>
               내가 받을 수 있는 청년 주거지원 정책을<br />
               한눈에 확인할 수 있어요.
             </p>
+            
+            <span class="home-service-link">정책 확인하기 <span>→</span></span>
           </a>
         </div>
       </div>
     </section>
-
     <!-- Bottom CTA -->
     <section class="home-cta-section">
       <div class="home-container">
         <div class="home-cta">
-          <p class="home-section-eyebrow">
-            START WITH CUSTOM HOUSE
-          </p>
-
-          <h2>
-            내 주거비, 한번 진단해볼까요?
-          </h2>
-
-          <p>
-            월급·보증금·직장 위치만 입력하면 돼요.
-          </p>
-
-          <a href="./diagnosis/input-form.html" class="home-primary-button">
-            내 주거비 진단하기
-            <span aria-hidden="true">→</span>
-          </a>
+          <span class="home-cta-glow home-cta-glow-left" aria-hidden="true"></span>
+          <span class="home-cta-glow home-cta-glow-right" aria-hidden="true"></span>
+          
+          <div class="home-cta-content">
+            <p class="home-section-eyebrow">
+              START WITH CUSTOM HOUSE
+            </p>
+            
+            <h2>
+              내 주거비, 한번 진단해볼까요?
+            </h2>
+            
+            <p>
+              월급·보증금·직장 위치만 입력하면 돼요.
+            </p>
+            
+            <a href="./diagnosis/input-form.html" class="home-primary-button">
+              내 주거비 진단하기
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
         </div>
       </div>
     </section>
   </main>
-
+  
   <!-- Footer -->
   <div id="app-footer"></div>
-
+  
   <script src="../js/components/header.js?v=20260918a"></script>
   <script src="../js/components/footer.js?v=20260918a"></script>
-
+  
   <script>
     renderHeader("");
     renderFooter();
