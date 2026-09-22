@@ -156,7 +156,11 @@ def _candidate_buildings(region: RegionMeta) -> list[dict]:
 
 
 def _transportation_cost(commute_minutes: int) -> int:
-    """통근시간 구간별 월 교통비(만원) 추정치. (정기권 기준 샘플)"""
+    """통근시간 구간별 월 교통비(만원) 추정치. (정기권 기준 샘플)
+    COMMUTE_BASE_MINUTES가 10이라 10분은 "직장 바로 근처(도보권)"에 해당하는 최소치라,
+    도보·자전거로 볼 수 있게 20분 이하 구간과 분리해 더 낮은 교통비를 매긴다."""
+    if commute_minutes <= 10:
+        return 3
     if commute_minutes <= 20:
         return 6
     if commute_minutes <= 30:
