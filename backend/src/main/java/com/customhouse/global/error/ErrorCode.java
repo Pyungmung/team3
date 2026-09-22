@@ -29,7 +29,10 @@ public enum ErrorCode {
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
     ALREADY_VOTED(HttpStatus.CONFLICT, "이미 투표에 참여했습니다."),
-    ALREADY_SELECTED(HttpStatus.CONFLICT, "이미 채택된 답변이 있습니다.");
+    ALREADY_SELECTED(HttpStatus.CONFLICT, "이미 채택된 답변이 있습니다."),
+
+    // --- 고객센터 (담당: 미정) ---
+    MAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "문의 메일 발송 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String defaultMessage;
