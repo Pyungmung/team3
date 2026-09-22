@@ -1,17 +1,17 @@
 /*
-  [담당: 양혜승] 글로벌 디자인 시스템 - 공통 스타일 (Tailwind 유틸리티로 커버되지 않는 부분)
-  모든 페이지가 이 파일과 Tailwind CDN을 함께 로드한다.
+[담당: 양혜승] 글로벌 디자인 시스템 - 공통 스타일 (Tailwind 유틸리티로 커버되지 않는 부분)
+모든 페이지가 이 파일과 Tailwind CDN을 함께 로드한다.
 */
 
 :root {
-  /* 메인 컬러: 다크 네이비(#1B2A4A) + 쿨톤 오프화이트(회색 살짝 섞인 화이트). brand-600이 실제 primary 컬러. */
-  --brand-50: #f1f5f9;   /* 쿨톤(slate) 배지 배경 */
-  --brand-100: #e2e8f0;  /* 배지/보더 */
-  --brand-500: #334155;  /* 단색 배경용 메인 톤 */
-  --brand-600: #1B2A4A;  /* PRIMARY */
-  --brand-700: #020617;  /* hover 네이비 */
-  --ink-900: #0f172a;    /* 본문 텍스트 컬러 */
-  --off-white: #f7f8fa;  /* 배경: 회색이 살짝 섞인 쿨톤 화이트 */
+  /* 메인 컬러: 다크 네이비(#1B2A4A) + 쿨톤 오프화이트 */
+  --brand-50: #f1f5f9;
+  --brand-100: #e2e8f0;
+  --brand-500: #334155;
+  --brand-600: #1B2A4A;
+  --brand-700: #020617;
+  --ink-900: #0f172a;
+  --off-white: #f7f8fa;
 }
 
 html {
@@ -34,7 +34,9 @@ body {
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
 }
 
-/* 메인 홈 Hero 배경 영역 */
+/* ========================================
+메인 홈 Hero 배경 영역
+======================================== */
 
 .home-intro-bg {
   position: relative;
@@ -50,25 +52,25 @@ body {
 }
 
 /* ========================================
-  Home
+Home
 ======================================== */
 
 .home-container {
-  width: min(1200px, calc(100% - 48px));
+  width: min(1120px, calc(100% - 48px));
   margin: 0 auto;
 }
 
 .home-section {
-  padding: 120px 0;
+  padding: 96px 0;
 }
 
 .home-section-heading {
-  margin-bottom: 56px;
+  margin-bottom: 72px;
   text-align: center;
 }
 
 .home-section-eyebrow {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   color: var(--brand-600);
   font-size: 12px;
   font-weight: 800;
@@ -81,18 +83,18 @@ body {
   font-size: 38px;
   font-weight: 800;
   letter-spacing: -0.04em;
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
 .home-section-heading p:last-child {
-  margin-top: 16px;
+  margin-top: 10px;
   color: #64748b;
   font-size: 16px;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 /* ========================================
-  Hero
+Hero
 ======================================== */
 
 .home-hero {
@@ -125,7 +127,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 80px;
+  gap: 40px;
   padding: 60px 0;
 }
 
@@ -166,7 +168,7 @@ body {
 }
 
 /* ========================================
-  Hero Button Group
+Hero Button Group
 ======================================== */
 
 .home-hero-button-group {
@@ -217,14 +219,14 @@ body {
 }
 
 /* ========================================
-  Hero Diagnosis Card
+Hero Diagnosis Card
 ======================================== */
 
 .home-diagnosis-card {
   position: relative;
   z-index: 1;
-  flex: 0 0 500px;
-  transform: translateX(-40px);
+  flex: 0 0 460px;
+  transform: translateX(-60px);
   padding: 26px 30px 18px;
   border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: 24px;
@@ -278,7 +280,7 @@ body {
 }
 
 /* ========================================
-  Hero Diagnosis Main Result
+Hero Diagnosis Main Result
 ======================================== */
 
 .home-diagnosis-main {
@@ -301,11 +303,6 @@ body {
   );
 }
 
-.home-diagnosis-main-content {
-  position: relative;
-  z-index: 2;
-}
-
 .home-diagnosis-main-title {
   display: flex;
   align-items: center;
@@ -318,6 +315,7 @@ body {
   justify-content: center;
   width: 32px;
   height: 32px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: #dceafe;
   color: #4d78b8;
@@ -336,7 +334,7 @@ body {
 }
 
 .home-diagnosis-price {
-  margin: 8px 0 0;
+  margin: 8px 0 0 43px;
   color: var(--brand-600);
   font-size: 38px;
   font-weight: 800;
@@ -353,7 +351,7 @@ body {
 }
 
 .home-diagnosis-subtext {
-  margin: 10px 0 0;
+  margin: 10px 0 0 43px;
   color: #64748b;
   font-size: 11px;
   line-height: 1.5;
@@ -364,7 +362,7 @@ body {
 }
 
 /* ========================================
-  Hero Diagnosis Info
+Hero Diagnosis Info
 ======================================== */
 
 .home-diagnosis-info {
@@ -428,7 +426,7 @@ body {
 }
 
 /* ========================================
-   Hero Diagnosis Footer
+Hero Diagnosis Footer
 ======================================== */
 
 .home-diagnosis-card-footer {
@@ -462,10 +460,12 @@ body {
 }
 
 /* ========================================
-  Process
+Process
 ======================================== */
 
 .home-process-section {
+  padding-top: 88px;
+  padding-bottom: 72px;
   background: #fff;
 }
 
@@ -477,17 +477,31 @@ body {
 }
 
 .home-process-card {
-  min-height: 280px;
-  padding: 32px;
-  border: 1px solid #e2e8f0;
+  min-height: 300px;
+  padding: 36px 32px;
+  border: 1px solid #dbe3ed;
   border-radius: 20px;
-  background: #fff;
+  background: #f8fafc;
   text-align: center;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.05),
+    0 1px 2px rgba(15, 23, 42, 0.03);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.home-process-card:hover {
+  border-color: #cbd5e1;
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.08),
+    0 2px 4px rgba(15, 23, 42, 0.04);
+  transform: translateY(-3px);
 }
 
 .home-process-number {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -500,26 +514,29 @@ body {
 
 .home-process-card h3 {
   margin: 0;
-  color: var(--ink-900);
+  color: #17233b;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .home-process-card p {
   margin: 14px 0 0;
-  color: #64748b;
+  color: #475569;
   font-size: 14px;
   line-height: 1.7;
 }
 
 .home-process-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #94a3b8;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 300;
 }
 
 /* ========================================
-  Service
+Service
 ======================================== */
 
 .home-service-section {
@@ -534,14 +551,16 @@ body {
 
 .home-service-card {
   display: block;
-  min-height: 250px;
-  padding: 28px;
+  min-height: 270px;
+  padding: 30px;
   border: 1px solid #e2e8f0;
   border-radius: 20px;
   background: #fff;
   color: inherit;
   text-decoration: none;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  box-shadow:
+    0 4px 16px rgba(15, 23, 42, 0.04),
+    0 1px 2px rgba(15, 23, 42, 0.02);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -550,7 +569,9 @@ body {
 
 .home-service-card:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.08),
+    0 2px 4px rgba(15, 23, 42, 0.03);
   transform: translateY(-4px);
 }
 
@@ -575,7 +596,7 @@ body {
 }
 
 .home-service-card h3 {
-  margin: 34px 0 12px;
+  margin: 24px 0 12px;
   color: var(--ink-900);
   font-size: 20px;
   font-weight: 700;
@@ -589,7 +610,7 @@ body {
 }
 
 /* ========================================
-  Bottom CTA
+Bottom CTA
 ======================================== */
 
 .home-cta-section {
@@ -634,7 +655,7 @@ body {
 }
 
 /* ========================================
-   Responsive
+Responsive
 ======================================== */
 
 @media (max-width: 1024px) {
@@ -652,12 +673,14 @@ body {
 
   .home-process-grid {
     grid-template-columns: 1fr;
+    gap: 18px;
   }
 
   .home-process-arrow {
     transform: rotate(90deg);
     text-align: center;
   }
+
 }
 
 @media (max-width: 768px) {
@@ -668,6 +691,21 @@ body {
   .home-section {
     padding: 80px 0;
   }
+
+  .home-process-section {
+    padding-top: 72px;
+    padding-bottom: 56px;
+  }
+
+  .home-service-section {
+    padding-top: 56px;
+    padding-bottom: 72px;
+  }
+
+
+  /* ========================================
+  Hero
+  ======================================== */
 
   .home-hero {
     min-height: auto;
@@ -713,13 +751,41 @@ body {
     transform: none;
   }
 
+  /* ========================================
+  Process
+  ======================================== */
+
+  .home-process-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-process-card {
+    min-height: auto;
+  }
+
+  .home-process-arrow {
+    transform: rotate(90deg);
+  }
+
+  /* ========================================
+  Section Heading
+  ======================================== */
+
   .home-section-heading h2 {
     font-size: 30px;
   }
 
+  /* ========================================
+  Service
+  ======================================== */
+
   .home-service-grid {
     grid-template-columns: 1fr;
   }
+
+  /* ========================================
+  CTA
+  ======================================== */
 
   .home-cta {
     padding: 60px 24px;
@@ -778,4 +844,5 @@ body {
   .home-process-card {
     min-height: auto;
   }
+
 }
