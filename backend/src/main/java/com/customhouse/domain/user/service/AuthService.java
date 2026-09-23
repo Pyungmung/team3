@@ -35,6 +35,8 @@ public class AuthService {
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
+                .phone(request.phone() == null || request.phone().isBlank() ? null : request.phone().trim())
+                .marketingConsent(request.isMarketingConsent())
                 .provider("LOCAL")
                 .build();
 

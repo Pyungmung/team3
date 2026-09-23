@@ -7,11 +7,11 @@ const AUTH_API_BASE = "http://localhost:8080/api/auth";
 const ACCESS_TOKEN_KEY = "customhouse:accessToken";
 const REFRESH_TOKEN_KEY = "customhouse:refreshToken";
 
-async function signup({ email, password, nickname }) {
+async function signup({ email, password, nickname, phone, marketingConsent }) {
   const res = await fetch(`${AUTH_API_BASE}/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, nickname }),
+    body: JSON.stringify({ email, password, nickname, phone: phone || null, marketingConsent: !!marketingConsent }),
   });
   const body = await res.json();
   if (!res.ok || body.success === false) {

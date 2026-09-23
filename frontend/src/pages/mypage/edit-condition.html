@@ -453,6 +453,82 @@
       font-size:13px;
     }
 
+    .policy-content h4 {
+      margin:16px 0 6px;
+      font-size:13px;
+      font-weight:800;
+      color:#34435a;
+    }
+
+    .policy-content h4:first-child { margin-top:0; }
+
+    .policy-content p {
+      margin-top:8px;
+      line-height:1.65;
+    }
+
+    .policy-content ol,
+    .policy-content ul {
+      margin-top:6px;
+      padding-left:18px;
+      line-height:1.65;
+    }
+
+    .policy-content li { margin-top:4px; }
+
+    .policy-table-wrap {
+      margin-top:10px;
+      overflow-x:auto;
+      border:1px solid #edf1f5;
+      border-radius:10px;
+    }
+
+    .policy-table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:12px;
+      min-width:680px;
+    }
+
+    .policy-table th,
+    .policy-table td {
+      padding:10px 12px;
+      text-align:left;
+      border-bottom:1px solid #edf1f5;
+      vertical-align:top;
+      line-height:1.55;
+    }
+
+    .policy-table tr:last-child th,
+    .policy-table tr:last-child td { border-bottom:0; }
+
+    .policy-table th {
+      width:38%;
+      background:#f8fafc;
+      color:#34435a;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .policy-consent-row {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-top:16px;
+      padding:16px;
+      background:#f8fafc;
+      border-radius:12px;
+    }
+
+    .policy-content .policy-meta {
+      margin-top:18px;
+      padding-top:12px;
+      border-top:1px dashed #e2e8f0;
+      font-size:12px;
+      color:#9aa5b4;
+    }
+
     .housing-grid {
       display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));
@@ -864,17 +940,316 @@
           <div class="policy-list">
             <details class="policy-row">
               <summary><span>이용약관</span><span>＋</span></summary>
-              <div class="policy-content">임시 문구 - 확정본으로 교체 필요</div>
+              <div class="policy-content">
+                <h4>제1조 목적</h4>
+                <p>본 약관은 맞집이 제공하는 주거정보 검색, 주거비 분석, 주거 추천, 전월세 실거래가 조회, 정책정보 안내, 위치기반 주변정보 제공 등 서비스의 이용조건과 회사와 이용자의 권리·의무 및 책임사항을 규정함을 목적으로 합니다.</p>
+
+                <h4>제2조 서비스의 내용</h4>
+                <p>본 서비스는 다음과 같은 기능을 제공할 수 있습니다.</p>
+                <ol>
+                  <li>아파트, 오피스텔, 연립·다세대, 단독·다가구 등의 전월세 정보 제공</li>
+                  <li>이용자의 조건에 따른 주거지역 및 주택 추천</li>
+                  <li>국토교통부 등 공공기관의 데이터를 활용한 실거래가 정보 제공</li>
+                  <li>청년 주거지원 정책 및 금융지원 정보 안내</li>
+                  <li>이용자의 위치정보를 활용한 주변 주거지역 및 생활편의시설 정보 제공</li>
+                  <li>기타 서비스 운영자가 추가로 제공하는 주거 관련 서비스</li>
+                </ol>
+
+                <h4>제3조 제공 정보의 성격</h4>
+                <p>서비스에서 제공하는 실거래가, 주거정책, 대출, 주택 및 지역 관련 정보는 이용자의 의사결정을 돕기 위한 참고자료입니다.</p>
+                <p>서비스는 국토교통부 등 공공기관 또는 외부기관에서 제공하는 자료를 활용할 수 있으며, 원천 데이터의 변경, 갱신 지연 또는 오류로 실제 정보와 차이가 발생할 수 있습니다.</p>
+                <p>이용자는 실제 부동산 계약 또는 금융상품 이용 전 관련 기관 및 공식 자료를 통해 최신 정보를 직접 확인하여야 합니다.</p>
+
+                <h4>제4조 이용자의 의무</h4>
+                <p>이용자는 다음 행위를 하여서는 안 됩니다.</p>
+                <ol>
+                  <li>허위 정보를 입력하거나 타인의 정보를 무단으로 사용하는 행위</li>
+                  <li>서비스의 정상적인 운영을 방해하는 행위</li>
+                  <li>서비스를 이용하여 법령을 위반하는 행위</li>
+                  <li>서비스 또는 타인의 권리를 침해하는 행위</li>
+                </ol>
+
+                <h4>제5조 서비스의 변경 및 중단</h4>
+                <p>서비스 운영자는 시스템 점검, 공공데이터 API 장애, 서버 장애, 서비스 개선 또는 기타 운영상 필요한 경우 서비스의 일부 또는 전부를 변경하거나 일시적으로 중단할 수 있습니다.</p>
+
+                <h4>제6조 지식재산권</h4>
+                <p>서비스의 프로그램, 화면 구성 및 서비스 운영자가 직접 제작한 콘텐츠에 관한 권리는 서비스 운영자에게 있습니다.</p>
+                <p>다만, 국토교통부 등 공공기관 또는 제3자가 제공하는 데이터 및 자료에 대한 권리는 해당 제공기관의 정책과 관련 법령에 따릅니다.</p>
+
+                <h4>제7조 책임의 제한</h4>
+                <p>서비스 운영자는 이용자가 서비스에서 제공된 정보를 참고하여 체결한 부동산 계약, 대출 또는 기타 거래의 당사자가 아닙니다.</p>
+                <p>이용자는 실제 계약 전 등기사항증명서, 건축물대장, 실거래가, 계약 조건 및 관련 기관의 최신 정보를 직접 확인하여야 합니다.</p>
+                <p>서비스 운영자는 천재지변, 서버 장애, 통신 장애, 공공데이터 제공기관의 장애 등 합리적으로 통제하기 어려운 사유로 발생한 서비스 이용 장애에 대해서는 관련 법령이 허용하는 범위에서 책임을 부담하지 않습니다.</p>
+
+                <h4>제8조 약관의 변경</h4>
+                <p>서비스 운영자는 관련 법령을 위반하지 않는 범위에서 본 약관을 변경할 수 있습니다.</p>
+                <p>약관을 변경하는 경우 시행일과 주요 변경내용을 서비스 화면 또는 기타 적절한 방법으로 안내합니다.</p>
+
+                <h4>제9조 준거법</h4>
+                <p>본 약관은 대한민국 법령에 따라 해석되고 적용됩니다.</p>
+
+                <p class="policy-meta">시행일: 2026년 9월 22일</p>
+              </div>
             </details>
 
             <details class="policy-row">
               <summary><span>개인정보 처리방침</span><span>＋</span></summary>
-              <div class="policy-content">임시 문구 - 확정본으로 교체 필요</div>
+              <div class="policy-content">
+                <p>맞집은 이용자의 개인정보를 중요하게 생각하며 개인정보 보호법 등 관련 법령을 준수합니다.</p>
+
+                <h4>1. 개인정보의 처리 목적</h4>
+                <p>서비스는 다음의 목적으로 개인정보를 처리할 수 있습니다.</p>
+                <ul>
+                  <li>회원가입 및 회원관리</li>
+                  <li>이용자 식별 및 로그인 관리</li>
+                  <li>맞춤형 주거정보 및 주거지역 추천</li>
+                  <li>이용자의 주거조건 저장 및 관리</li>
+                  <li>고객문의 및 민원 처리</li>
+                  <li>서비스 이용현황 분석 및 서비스 개선</li>
+                  <li>부정 이용 방지 및 서비스 보안</li>
+                </ul>
+
+                <h4>2. 처리하는 개인정보 항목</h4>
+                <p>서비스는 다음과 같은 개인정보를 처리할 수 있습니다.</p>
+                <p><strong>회원가입 시</strong></p>
+                <ul>
+                  <li>이메일 주소</li>
+                  <li>로그인 식별정보</li>
+                  <li>비밀번호 등 인증정보</li>
+                </ul>
+                <p><strong>서비스 이용자가 직접 입력하는 정보</strong></p>
+                <ul>
+                  <li>희망 주거지역</li>
+                  <li>주거 예산</li>
+                  <li>희망 주택유형</li>
+                  <li>주거조건 및 검색조건</li>
+                </ul>
+                <p><strong>서비스 이용 과정에서 자동으로 생성될 수 있는 정보</strong></p>
+                <ul>
+                  <li>접속기록</li>
+                  <li>서비스 이용기록</li>
+                  <li>접속 일시</li>
+                  <li>브라우저 및 기기 관련 정보</li>
+                  <li>IP 주소</li>
+                </ul>
+                <p><strong>위치기반 기능 이용 시</strong></p>
+                <ul>
+                  <li>이용자가 위치정보 이용에 동의한 경우 현재 위치정보 또는 이용자가 직접 지정한 위치정보</li>
+                </ul>
+
+                <h4>3. 개인정보의 처리 및 이용 목적</h4>
+                <p>수집된 개인정보는 서비스 제공에 필요한 범위에서만 처리하며, 수집 목적을 벗어나 이용하지 않습니다.</p>
+                <p>개인정보를 수집할 때에는 관련 법령에 따라 이용자에게 수집 목적, 수집 항목, 보유 및 이용기간 등을 안내합니다.</p>
+
+                <h4>4. 개인정보의 보유 및 이용기간</h4>
+                <p>이용자의 개인정보는 원칙적으로 회원 탈퇴 또는 개인정보 처리 목적이 달성될 때까지 보유합니다.</p>
+                <p>다만, 관련 법령에 따라 일정 기간 보존할 필요가 있는 경우에는 해당 기간 동안 별도로 보관할 수 있습니다.</p>
+
+                <h4>5. 개인정보의 제3자 제공</h4>
+                <p>서비스는 이용자의 개인정보를 원칙적으로 외부에 제공하지 않습니다.</p>
+                <p>다만 다음의 경우에는 예외로 할 수 있습니다.</p>
+                <ul>
+                  <li>이용자가 사전에 동의한 경우</li>
+                  <li>법령에 특별한 규정이 있는 경우</li>
+                  <li>관계기관이 법령에 따라 적법하게 요청한 경우</li>
+                </ul>
+
+                <h4>6. 개인정보 처리업무의 위탁</h4>
+                <p>서비스 운영자가 서버 운영, 이메일 발송, 본인인증 등 개인정보 처리업무의 일부를 외부 업체에 위탁하는 경우 관련 법령에 따라 수탁자와 위탁업무의 내용을 공개합니다.</p>
+
+                <h4>7. 개인정보의 파기</h4>
+                <p>개인정보의 처리 목적이 달성되거나 보유기간이 종료된 경우 해당 개인정보를 지체 없이 파기합니다.</p>
+                <p>전자적 파일 형태의 개인정보는 복구하기 어려운 방법으로 삭제하고, 종이 문서 형태의 개인정보는 파쇄 또는 소각 등의 방법으로 파기합니다.</p>
+
+                <h4>8. 이용자의 권리</h4>
+                <p>이용자는 자신의 개인정보에 대해 다음의 권리를 행사할 수 있습니다.</p>
+                <ul>
+                  <li>개인정보 열람 요구</li>
+                  <li>개인정보 정정 요구</li>
+                  <li>개인정보 삭제 요구</li>
+                  <li>개인정보 처리정지 요구</li>
+                  <li>개인정보 수집·이용 동의 철회</li>
+                </ul>
+
+                <h4>9. 개인정보의 안전성 확보조치</h4>
+                <p>서비스 운영자는 개인정보 보호를 위해 다음과 같은 조치를 시행할 수 있습니다.</p>
+                <ul>
+                  <li>개인정보 접근권한 관리</li>
+                  <li>개인정보 접근통제</li>
+                  <li>개인정보 전송 및 저장 시 보호조치</li>
+                  <li>접속기록 관리</li>
+                  <li>보안 프로그램 사용</li>
+                  <li>개인정보 취급자 최소화</li>
+                </ul>
+
+                <h4>10. 개인정보 보호책임자</h4>
+                <p>
+                  개인정보 보호책임자: 맞집 운영팀<br>
+                  이메일: rnltjd747@gmail.com<br>
+                  연락처: 해당사항 없음
+                </p>
+                <p>이용자는 개인정보 보호와 관련된 문의, 불만 처리 또는 피해구제를 개인정보 보호책임자에게 요청할 수 있습니다.</p>
+
+                <h4>11. 개인정보 처리방침 변경</h4>
+                <p>본 개인정보 처리방침이 변경되는 경우 서비스 내 공지 또는 기타 적절한 방법을 통해 변경내용과 시행일을 안내합니다.</p>
+
+                <p class="policy-meta">시행일: 2026년 9월 22일</p>
+              </div>
             </details>
 
             <details class="policy-row">
               <summary><span>위치기반 서비스 이용약관</span><span>＋</span></summary>
-              <div class="policy-content">임시 문구 - 확정본으로 교체 필요</div>
+              <div class="policy-content">
+                <h4>제1조 목적</h4>
+                <p>본 약관은 맞집이 이용자의 위치정보를 활용하여 제공하는 위치기반서비스와 관련하여 서비스 운영자와 이용자의 권리·의무 및 기타 필요한 사항을 규정함을 목적으로 합니다.</p>
+
+                <h4>제2조 위치기반서비스의 내용</h4>
+                <p>서비스는 이용자의 동의를 받아 현재 위치 또는 이용자가 직접 지정한 위치를 기준으로 다음과 같은 위치기반서비스를 제공할 수 있습니다.</p>
+                <ol>
+                  <li>주변 주거지역 및 주거정보 검색</li>
+                  <li>현재 위치와 관심지역 간 거리 및 접근성 정보 제공</li>
+                  <li>주변 교통시설 및 생활편의시설 정보 제공</li>
+                  <li>이용자의 주거조건과 위치정보를 활용한 지역 추천</li>
+                  <li>기타 주거정보 제공을 위해 필요한 위치기반 기능</li>
+                </ol>
+
+                <h4>제3조 위치정보의 이용</h4>
+                <p>서비스 운영자는 위치기반서비스 제공에 필요한 범위에서만 이용자의 위치정보를 이용합니다.</p>
+                <p>이용자의 위치정보는 이용자의 동의 없이 본 약관에서 정한 목적 외의 용도로 이용하지 않습니다.</p>
+
+                <h4>제4조 이용자의 동의</h4>
+                <p>서비스 운영자는 개인위치정보를 이용하여 위치기반서비스를 제공하는 경우 관련 법령에 따라 이용자에게 서비스 내용 및 위치정보 이용 목적을 안내하고 동의를 받습니다.</p>
+                <p>이용자는 위치정보 이용에 동의하지 않을 수 있습니다.</p>
+                <p>다만, 위치정보 이용에 동의하지 않는 경우 현재 위치를 기반으로 하는 주변 검색 및 위치 맞춤 추천 등의 일부 기능 이용이 제한될 수 있습니다.</p>
+
+                <h4>제5조 개인위치정보의 제3자 제공</h4>
+                <p>서비스 운영자는 이용자의 개인위치정보를 원칙적으로 제3자에게 제공하지 않습니다.</p>
+                <p>개인위치정보를 제3자에게 제공할 필요가 있는 경우 관련 법령에 따라 제공받는 자, 제공 목적 및 기타 필요한 사항을 이용자에게 안내하고 동의를 받습니다.</p>
+
+                <h4>제6조 위치정보 이용·제공사실 확인자료</h4>
+                <p>서비스 운영자는 관련 법령에서 요구하는 경우 위치정보 이용·제공사실 확인자료를 기록 및 보관할 수 있습니다.</p>
+                <p>해당 자료는 법령 또는 서비스 운영정책에서 정한 보유기간 동안 보관하며, 보유기간이 종료되면 지체 없이 파기합니다.</p>
+
+                <h4>제7조 이용자의 권리</h4>
+                <p>이용자는 언제든지 개인위치정보 이용에 대한 동의를 철회할 수 있습니다.</p>
+                <p>이용자는 자신의 개인위치정보 이용 또는 제공 내역에 대한 확인을 요구할 수 있습니다.</p>
+                <p>관련 법령이 정하는 경우 이용자는 위치정보의 이용 또는 제공을 일시적으로 중지하도록 요구할 수 있습니다.</p>
+
+                <h4>제8조 위치정보의 보호</h4>
+                <p>서비스 운영자는 개인위치정보가 분실, 도난, 유출, 변조 또는 훼손되지 않도록 관련 법령에서 요구하는 보호조치를 시행합니다.</p>
+
+                <h4>제9조 서비스의 변경 및 중단</h4>
+                <p>서비스 운영자는 다음과 같은 경우 위치기반서비스의 일부 또는 전부를 변경하거나 일시적으로 중단할 수 있습니다.</p>
+                <ul>
+                  <li>시스템 점검 또는 장애</li>
+                  <li>통신망 장애</li>
+                  <li>외부 지도 또는 데이터 제공서비스 장애</li>
+                  <li>서비스 개선</li>
+                  <li>기타 정상적인 서비스 제공이 어려운 경우</li>
+                </ul>
+
+                <h4>제10조 위치정보관리책임자</h4>
+                <p>
+                  위치정보관리책임자: 맞집 운영팀<br>
+                  이메일: rnltjd747@gmail.com<br>
+                  연락처: 해당사항 없음
+                </p>
+
+                <h4>제11조 사업자 또는 서비스 운영자 정보</h4>
+                <p>
+                  서비스명: 맞집(CustomHouse)<br>
+                  운영자 또는 팀명: Custom House (SMU 11기 · Team3)<br>
+                  주소: 해당사항 없음(비사업자 프로젝트)<br>
+                  이메일: rnltjd747@gmail.com<br>
+                  연락처: 해당사항 없음
+                </p>
+
+                <h4>제12조 준거법</h4>
+                <p>본 약관에서 정하지 않은 사항은 위치정보의 보호 및 이용 등에 관한 법률, 개인정보 보호법 및 기타 대한민국의 관련 법령에 따릅니다.</p>
+
+                <p class="policy-meta">시행일: 2026년 9월 22일</p>
+              </div>
+            </details>
+
+            <details class="policy-row">
+              <summary><span>광고·마케팅 목적의 개인정보 수집 및 이용 동의 (선택)</span><span>＋</span></summary>
+              <div class="policy-content">
+                <p>맞집은 더 나은 서비스를 제공하고자 광고·마케팅 목적의 개인정보 수집 및 이용에 대한 동의를 받고자 합니다.</p>
+                <p>수집된 개인정보는 이메일, 앱/웹 알림 등 영리목적의 광고성 정보 전달에 활용되거나 영업 및 마케팅 목적으로 활용될 수 있습니다.</p>
+
+                <div class="policy-table-wrap">
+                  <table class="policy-table">
+                    <tbody>
+                      <tr>
+                        <th>개인정보의 수집·이용 목적</th>
+                        <td>맞집 및 제휴사의 상품·서비스에 대한 광고·홍보·프로모션 제공</td>
+                      </tr>
+                      <tr>
+                        <th>수집하는 개인정보의 항목</th>
+                        <td>이메일 주소, 연락처(입력한 경우), 희망 주거지역·주거조건, 이용자가 AI 주거비 진단에 입력한 정보</td>
+                      </tr>
+                      <tr>
+                        <th>개인정보의 보유 및 이용기간</th>
+                        <td>회원 탈퇴 시 또는 아래 동의 철회 시 즉시 삭제</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <p>동의를 거부하시는 경우에도 서비스는 이용 가능합니다.</p>
+                <p>또한, 광고·마케팅 동의는 이 화면에서 언제든지 동의 내용을 철회하실 수 있습니다.</p>
+
+                <div class="policy-consent-row">
+                  <div>
+                    <div class="font-extrabold text-sm">광고·마케팅 정보 수신 동의</div>
+                    <div id="marketing-consent-state" class="text-xs text-gray-400 mt-1">동의 안 함</div>
+                  </div>
+                  <input type="checkbox" id="marketing-consent-toggle" class="switch">
+                </div>
+                <p id="marketing-consent-msg" class="text-sm text-gray-500 mt-3"></p>
+              </div>
+            </details>
+
+            <details class="policy-row">
+              <summary><span>개인정보 제3자 제공 동의</span><span>＋</span></summary>
+              <div class="policy-content">
+                <p><strong>[개인정보 제3자 제공 동의]</strong></p>
+                <p>맞집은 아래와 같이 이용자의 개인정보를 제3자에게 제공합니다. 현재 서비스에서 실제로 이용 중이거나 도입 예정인 항목만 안내합니다.</p>
+                <p>정보주체는 본 개인정보 제공에 관한 동의를 거부하실 권리가 있으나, 아래 항목 중 서비스 제공에 필요한 최소한의 정보(카카오맵 주소·지도 표시 등)는 동의해주셔야 관련 기능을 이용하실 수 있습니다.</p>
+                <p>보다 자세한 내용은 위 개인정보 처리방침을 참조하여 주시기 바랍니다.</p>
+
+                <div class="policy-table-wrap">
+                  <table class="policy-table">
+                    <thead>
+                      <tr>
+                        <th>정보주체</th>
+                        <th>제공받는 자</th>
+                        <th>제공 정보</th>
+                        <th>목적</th>
+                        <th>보유 및 이용기간</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>이용자</td>
+                        <td>카카오(카카오맵)</td>
+                        <td>검색·입력한 주소, 위치정보</td>
+                        <td>지도 표시, 주소-좌표 변환(지오코딩)</td>
+                        <td>서비스 이용 목적 달성 시까지</td>
+                      </tr>
+                      <tr>
+                        <td>이용자</td>
+                        <td>토스페이먼츠(결제대행사)</td>
+                        <td>주문정보, 결제금액 등 결제에 필요한 최소 정보</td>
+                        <td>결제 처리 및 환불·취소 대응</td>
+                        <td>전자상거래법 등 관련 법령에 따른 보관기간</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <p class="policy-meta">※ 결제(토스페이먼츠) 기능은 현재 준비 중이며, 실제 결제 이용 시점부터 해당 항목이 적용됩니다.</p>
+              </div>
             </details>
           </div>
         </section>
@@ -1290,6 +1665,12 @@
     document.getElementById("sidebar-email").textContent = email || "로그인 계정";
     document.getElementById("profile-avatar").textContent =
       (nickname || email || "M").trim().charAt(0).toUpperCase();
+
+    // 광고·마케팅 동의는 회원(User) 정보에 저장되므로 여기서 함께 초기화한다 (주거 조건과 무관).
+    if (marketingConsentToggle) {
+      marketingConsentToggle.checked = !!user?.marketingConsent;
+      updateMarketingConsentStateText();
+    }
   }
 
   /* 휴대폰 번호 입력 중 자동 하이픈 (01012345678 → 010-1234-5678) */
@@ -1481,6 +1862,37 @@
       }
     } finally {
       notificationToggle.disabled = false;
+    }
+  });
+
+  /* 광고·마케팅 동의: 알림 설정과 같은 방식 - 토글하는 즉시 저장하고, 실패하면 원래대로 되돌린다. */
+  const marketingConsentToggle = document.getElementById("marketing-consent-toggle");
+  const marketingConsentState = document.getElementById("marketing-consent-state");
+  const marketingConsentMsg = document.getElementById("marketing-consent-msg");
+
+  function updateMarketingConsentStateText() {
+    marketingConsentState.textContent = marketingConsentToggle.checked ? "동의함" : "동의 안 함";
+  }
+
+  marketingConsentToggle.addEventListener("change", async () => {
+    const wanted = marketingConsentToggle.checked;
+    updateMarketingConsentStateText();
+    setMsg(marketingConsentMsg, "저장 중...");
+    marketingConsentToggle.disabled = true;
+
+    try {
+      await CustomHouseUserApi.setMarketingConsent(wanted);
+      setMsg(marketingConsentMsg, "저장되었습니다.", "ok");
+    } catch (err) {
+      marketingConsentToggle.checked = !wanted;
+      updateMarketingConsentStateText();
+      if (isPreparingError(err)) {
+        setMsg(marketingConsentMsg, "준비 중");
+      } else {
+        showError(marketingConsentMsg, err, "동의 설정 저장에 실패했습니다.");
+      }
+    } finally {
+      marketingConsentToggle.disabled = false;
     }
   });
 

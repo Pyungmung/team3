@@ -1,6 +1,8 @@
 package com.customhouse.domain.user.controller;
 
 import com.customhouse.domain.user.dto.ChangePasswordRequest;
+import com.customhouse.domain.user.dto.DeleteAccountRequest;
+import com.customhouse.domain.user.dto.MarketingConsentRequest;
 import com.customhouse.domain.user.dto.UpdateProfileRequest;
 import com.customhouse.domain.user.dto.UserResponse;
 import com.customhouse.domain.user.entity.User;
@@ -14,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * [담당: 허겸] 회원 도메인 - 로그인한 내 정보 조회 / 수정 / 비밀번호 변경.
+ * [담당: 허겸] 회원 도메인 - 로그인한 내 정보 조회 / 수정 / 비밀번호 변경 / 회원 탈퇴.
  * JWT 인증이 필요한 보호된(authenticated) 엔드포인트 (SecurityConfig 참고).
  */
 @RestController
@@ -45,10 +48,23 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok("회원정보가 저장되었습니다.", userService.updateProfile(principal.id(), request)));
     }
 
+    @PutMapping("/me/marketing-consent")
+    public ResponseEntity<ApiResponse<UserResponse>> updateMarketingConsent(
+            @AuthenticationPrincipal AuthenticatedUser principal, @RequestBody MarketingConsentRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.updateMarketingConsent(principal.id(), request)));
+    }
+
     @PutMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal AuthenticatedUser principal, @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(principal.id(), request);
         return ResponseEntity.ok(ApiResponse.ok("비밀번호가 변경되었습니다.", null));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> deleteMe(
+            @AuthenticationPrincipal AuthenticatedUser principal, @RequestBody(required = false) DeleteAccountRequest request) {
+        userService.deleteAccount(principal.id(), request != null ? request : new DeleteAccountRequest(null));
+        return ResponseEntity.ok(ApiResponse.ok("회원 탈퇴가 완료되었습니다.", null));
     }
 }

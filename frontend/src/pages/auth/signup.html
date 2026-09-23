@@ -188,6 +188,48 @@
     .switch-link { margin-top: 18px; text-align: center; font-size: 13px; color: #64748b; }
     .switch-link button { background: none; color: #1B2A4A; font-size: 13px; font-weight: 700; text-decoration: underline; }
 
+    .field-error { min-height: 16px; margin-top: 6px; font-size: 12px; color: #dc2626; }
+
+    /* 약관 동의 체크박스 목록 */
+    .terms-box {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    .terms-all {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 14px;
+      font-weight: 800;
+      color: #1B2A4A;
+    }
+
+    .terms-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .terms-box input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      flex: none;
+      accent-color: #1B2A4A;
+      cursor: pointer;
+    }
+
+    .terms-required { color: #94a3b8; font-size: 12px; margin-left: 2px; }
+
     @media (max-width: 800px) {
       .container { grid-template-columns: 1fr; max-width: 520px; }
       .intro { padding: 35px; }
@@ -234,10 +276,45 @@
           <button type="button" id="toggle-signup-password-btn" class="small-btn">보기</button>
         </div>
 
+        <label class="label" for="signup-password-confirm">비밀번호 확인</label>
+        <input id="signup-password-confirm" name="passwordConfirm" type="password" placeholder="비밀번호를 다시 입력해주세요" autocomplete="new-password" />
+        <div id="password-confirm-message" class="field-error"></div>
+
         <label class="label" for="signup-nickname">이름 (닉네임)</label>
         <input id="signup-nickname" name="nickname" type="text" maxlength="50" placeholder="화면에 표시될 이름" autocomplete="nickname" />
 
-        <button type="submit" id="signup-btn" class="main-btn">회원가입</button>
+        <label class="label" for="signup-phone">휴대폰 번호 <span class="terms-required">(선택)</span></label>
+        <input id="signup-phone" name="phone" type="tel" maxlength="13" placeholder="010-0000-0000" autocomplete="tel" />
+
+        <div class="terms-box">
+          <label class="terms-all">
+            <input type="checkbox" id="terms-all-checkbox" />
+            약관 전체 동의
+          </label>
+
+          <label class="terms-item">
+            <input type="checkbox" class="terms-required-checkbox" data-terms="service" />
+            이용약관 동의 <span class="terms-required">(필수)</span>
+          </label>
+          <label class="terms-item">
+            <input type="checkbox" class="terms-required-checkbox" data-terms="privacy" />
+            개인정보 처리방침 동의 <span class="terms-required">(필수)</span>
+          </label>
+          <label class="terms-item">
+            <input type="checkbox" class="terms-required-checkbox" data-terms="location" />
+            위치기반 서비스 이용약관 동의 <span class="terms-required">(필수)</span>
+          </label>
+          <label class="terms-item">
+            <input type="checkbox" class="terms-required-checkbox" data-terms="third-party" />
+            개인정보 제3자 제공 동의 <span class="terms-required">(필수)</span>
+          </label>
+          <label class="terms-item">
+            <input type="checkbox" id="terms-marketing-checkbox" />
+            광고·마케팅 목적의 개인정보 수집 및 이용에 대한 동의 <span class="terms-required">(선택)</span>
+          </label>
+        </div>
+
+        <button type="submit" id="signup-btn" class="main-btn" disabled>회원가입</button>
         <div id="signup-message" class="message"></div>
 
         <p class="switch-link">이미 계정이 있나요? <button type="button" data-switch="login">로그인</button></p>
@@ -319,6 +396,48 @@
     bindPasswordToggle("toggle-signup-password-btn", "signup-password");
     bindPasswordToggle("toggle-login-password-btn", "login-password");
 
+    // ---------- 휴대폰 번호 입력 중 자동 하이픈 (01012345678 → 010-1234-5678) ----------
+    $("signup-phone").addEventListener("input", () => {
+      const digits = $("signup-phone").value.replace(/\D/g, "").slice(0, 11);
+      let out = digits;
+      if (digits.length > 7) out = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+      else if (digits.length > 3) out = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      $("signup-phone").value = out;
+    });
+
+    // ---------- 비밀번호 확인 일치 여부 실시간 체크 ----------
+    function checkPasswordMatch() {
+      const password = $("signup-password").value;
+      const confirm = $("signup-password-confirm").value;
+      const matches = !confirm || password === confirm;
+      $("password-confirm-message").textContent = matches ? "" : "비밀번호가 일치하지 않습니다.";
+      return !confirm ? null : matches; // null = 아직 입력 안 함 (제출 시 별도 체크)
+    }
+    $("signup-password").addEventListener("input", checkPasswordMatch);
+    $("signup-password-confirm").addEventListener("input", checkPasswordMatch);
+
+    // ---------- 약관 동의: 필수 4개를 모두 체크해야 회원가입 버튼이 활성화된다 ----------
+    const requiredTermsCheckboxes = Array.from(document.querySelectorAll(".terms-required-checkbox"));
+    const termsAllCheckbox = $("terms-all-checkbox");
+    const termsMarketingCheckbox = $("terms-marketing-checkbox");
+    const allTermsCheckboxes = [...requiredTermsCheckboxes, termsMarketingCheckbox];
+
+    function updateSignupButtonState() {
+      $("signup-btn").disabled = !requiredTermsCheckboxes.every((box) => box.checked);
+    }
+
+    termsAllCheckbox.addEventListener("change", () => {
+      allTermsCheckboxes.forEach((box) => (box.checked = termsAllCheckbox.checked));
+      updateSignupButtonState();
+    });
+
+    allTermsCheckboxes.forEach((box) => {
+      box.addEventListener("change", () => {
+        termsAllCheckbox.checked = allTermsCheckboxes.every((b) => b.checked);
+        updateSignupButtonState();
+      });
+    });
+
     // ---------- 회원가입 ----------
     // 이메일 중복확인을 통과한 이메일. 입력이 바뀌면 다시 확인해야 한다.
     let checkedEmail = null;
@@ -357,7 +476,10 @@
 
       const email = $("signup-email").value.trim();
       const password = $("signup-password").value;
+      const passwordConfirm = $("signup-password-confirm").value;
       const nickname = $("signup-nickname").value.trim();
+      const phone = $("signup-phone").value.trim();
+      const marketingConsent = termsMarketingCheckbox.checked;
 
       if (checkedEmail !== email) {
         setMessage("signup-message", "이메일 중복확인을 먼저 해주세요.", false);
@@ -367,8 +489,21 @@
         setMessage("signup-message", "비밀번호는 8~64자로 입력해주세요.", false);
         return;
       }
+      if (password !== passwordConfirm) {
+        setMessage("signup-message", "비밀번호가 일치하지 않습니다.", false);
+        $("password-confirm-message").textContent = "비밀번호가 일치하지 않습니다.";
+        return;
+      }
       if (!nickname) {
         setMessage("signup-message", "이름(닉네임)을 입력해주세요.", false);
+        return;
+      }
+      if (phone && !/^010-\d{4}-\d{4}$/.test(phone)) {
+        setMessage("signup-message", "휴대폰 번호는 010-0000-0000 형식으로 입력해주세요.", false);
+        return;
+      }
+      if (!requiredTermsCheckboxes.every((box) => box.checked)) {
+        setMessage("signup-message", "필수 약관에 모두 동의해주세요.", false);
         return;
       }
 
@@ -376,7 +511,7 @@
       setMessage("signup-message", "가입 처리 중...", true);
 
       try {
-        await CustomHouseAuthApi.signup({ email, password, nickname });
+        await CustomHouseAuthApi.signup({ email, password, nickname, phone, marketingConsent });
 
         // 가입이 끝나면 같은 화면에서 로그인 탭으로 넘어가고, 방금 쓴 이메일을 채워둔다.
         $("login-email").value = email;
@@ -384,8 +519,9 @@
         $("signup-form").reset();
         checkedEmail = null;
         $("email-message").textContent = "";
+        $("password-confirm-message").textContent = "";
         $("signup-message").textContent = "";
-        $("signup-btn").disabled = false;
+        updateSignupButtonState(); // reset()으로 필수 체크박스가 다시 풀렸으니 버튼도 다시 비활성화
         showTab("login");
         setMessage("login-message", "회원가입 성공! 비밀번호를 입력해 로그인해주세요.", true);
         $("login-password").focus();

@@ -68,6 +68,17 @@ async function updateMe({ nickname, phone }) {
 const changePassword = ({ currentPassword, newPassword }) =>
   userFetch("/me/password", { method: "PUT", body: { currentPassword, newPassword } });
 
+/** 회원 탈퇴. 성공하면 저장된 토큰/닉네임 캐시를 지워서 다음 페이지 이동 시 로그아웃 상태가 되게 한다. */
+async function deleteAccount(password) {
+  await userFetch("/me", { method: "DELETE", body: { password: password || null } });
+  CustomHouseAuthApi.clearTokens();
+  try {
+    localStorage.removeItem(USER_NICKNAME_CACHE_KEY);
+  } catch {
+    /* 캐시는 없어도 무방 */
+  }
+}
+
 /**
  * 관심 매물 변동 알림 수신 여부. 이 값은 주거 조건(housing_conditions)에 저장되므로 조건이 먼저 있어야 한다.
  * 저장된 조건을 읽어 알림 값만 바꿔 다시 저장한다 (다른 항목은 그대로 유지).
@@ -80,4 +91,11 @@ async function setNotification(enabled) {
   return CustomHouseMypageApi.updateMyCondition({ ...condition, notificationEnabled: enabled });
 }
 
-window.CustomHouseUserApi = { getMe, updateMe, changePassword, setNotification };
+/**
+ * 광고·마케팅 목적 개인정보 수집·이용 동의 여부 (선택). 회원(User) 엔티티에 바로 저장되는
+ * 별도 엔드포인트라 notificationEnabled와 달리 주거 조건이 없어도(회원가입 직후에도) 바로 쓸 수 있다.
+ */
+const setMarketingConsent = (enabled) =>
+  userFetch("/me/marketing-consent", { method: "PUT", body: { marketingConsent: enabled } });
+
+window.CustomHouseUserApi = { getMe, updateMe, changePassword, deleteAccount, setNotification, setMarketingConsent };
