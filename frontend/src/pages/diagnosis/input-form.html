@@ -521,8 +521,8 @@
             <select name="maxCommuteMinutes" class="select">
               <option value="10">10분 이내</option>
               <option value="20">20분 이내</option>
-              <option value="30">30분 이내</option>
-              <option value="40" selected>40분 이내</option>
+              <option value="30" selected>30분 이내</option>
+              <option value="40">40분 이내</option>
               <option value="50">50분 이내</option>
             </select>
           </div>
@@ -841,7 +841,10 @@
           document.getElementById("work-address-display").value = `${condition.workLocation} (마이페이지 저장 위치)`;
         }
       }
-      if (condition.desiredDeposit != null) form.desiredDeposit.value = condition.desiredDeposit;
+      if (condition.desiredDeposit != null) {
+        form.desiredDeposit.value = condition.desiredDeposit;
+        if (form.deposit.value === "") form.deposit.value = condition.desiredDeposit;
+      }
       if (condition.desiredRent != null) form.desiredRent.value = condition.desiredRent;
       if (condition.netAsset != null) form.assets.value = condition.netAsset;
       if (condition.jobType) form.jobType.value = condition.jobType;
@@ -932,6 +935,14 @@
       document.getElementById("work-lon-input").value = "";
       const hubMatchEl = document.getElementById("work-hub-match");
       if (hubMatchEl) hubMatchEl.classList.add("hidden");
+    });
+
+    // 희망 보증금을 입력하면, 아직 비어있는 현재 보증금에 그 값을 기본값으로 채워준다
+    // (사용자가 현재 보증금을 직접 입력/수정했으면 덮어쓰지 않는다).
+    form.desiredDeposit.addEventListener("input", () => {
+      if (form.deposit.value === "") {
+        form.deposit.value = form.desiredDeposit.value;
+      }
     });
 
     // ---------- 제출 ----------

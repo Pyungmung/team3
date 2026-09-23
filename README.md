@@ -208,7 +208,7 @@ curl -X PATCH http://localhost:8080/api/notifications/{id}/read -H "Authorizatio
 `customhouse-ai/app/services/api_collector.py`가 국토교통부 실거래가 API 4종
 (아파트 `RTMSDataSvcAptRent` / 오피스텔 `RTMSDataSvcOffiRent` / 연립다세대 `RTMSDataSvcRHRent` /
 단독다가구 `RTMSDataSvcSHRent`)를 실제로 호출합니다. **`DATA_GO_KR_API_KEY`를 안 채우면
-샘플 데이터(`regions.json`)로 자동 폴백**하고, 채우면 최근 3개월 실거래 개별 건이 후보 매물로
+샘플 데이터(`regions.json`)로 자동 폴백**하고, 채우면 최근 2개월 실거래 개별 건이 후보 매물로
 반영됩니다. 진단 결과의 각 매물에 `data_source`("국토부 실거래가 (YYYY.M 거래)" 또는 "샘플 데이터")와
 `property_type`(주거 유형)이 표시됩니다. 4종 모두 같은 키 하나로 호출됩니다.
 

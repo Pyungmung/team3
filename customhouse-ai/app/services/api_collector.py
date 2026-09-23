@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 MOLIT_BASE_URL = "https://apis.data.go.kr/1613000/"
 REQUEST_TIMEOUT_SEC = 8
-MONTHS_BACK = 3  # 실거래 신고는 계약 후 30일 이내라 당월은 비어있을 수 있어 최근 3개월을 모은다.
+MONTHS_BACK = 2  # 실거래 신고는 계약 후 30일 이내라 당월은 비어있을 수 있어 최근 2개월을 모은다.
 
 # 유형별 엔드포인트와 응답 필드 매핑. name_field가 None이면 건물명이 없는 유형(단독다가구).
 PROPERTY_TYPES = {

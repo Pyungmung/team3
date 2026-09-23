@@ -839,7 +839,7 @@
       </section>
 
       <!-- 알림 설정 / 고객센터 / 약관 / 주거 조건 (알림 수신 여부와 모든 주거조건은 condition-form 안에 있어야 함께 저장된다) -->
-      <form id="condition-form">
+      <form id="condition-form" novalidate>
 
         <!-- 알림 -->
         <section class="content-card tab-section" data-section="notification">
@@ -2049,6 +2049,16 @@
   /* 주거 조건 저장 */
   form.addEventListener("submit", async e => {
     e.preventDefault();
+
+    if (!form.annualIncome.value || Number(form.annualIncome.value) < 0) {
+      return setMsg(msg, "연소득을 입력해주세요.", "error");
+    }
+    if (!form.workLocation.value) {
+      return setMsg(msg, "직장 위치를 선택해주세요.", "error");
+    }
+    if (form.desiredDeposit.value === "" || Number(form.desiredDeposit.value) < 0) {
+      return setMsg(msg, "희망 보증금을 입력해주세요.", "error");
+    }
 
     setMsg(msg, "저장 중...");
     submitBtn.disabled = true;

@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     reb_api_key: str | None = None         # 한국부동산원 (data.go.kr 소속이 아니라 별도 발급)
     sgis_api_key: str | None = None        # SGIS 통계지리정보서비스 (Open API 인증키 1개만 발급됨, 별도 시크릿 없음)
     kakao_map_app_key: str | None = None   # 카카오맵
+    kakao_rest_app_key: str | None = None  # 카카오모빌리티 길찾기(자동차) REST API - services/kakao_mobility.py
     pinecone_api_key: str | None = None    # Pinecone (RAG, 심화 단계). 서버리스 API라 environment 값은 불필요.
 
 

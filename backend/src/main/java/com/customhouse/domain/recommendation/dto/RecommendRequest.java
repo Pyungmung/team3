@@ -41,7 +41,7 @@ public record RecommendRequest(
         Double workLon, // 선택, workLat과 함께 옴
 
         @Min(value = 10, message = "희망 통근시간은 최소 10분 이상이어야 합니다.")
-        Integer maxCommuteMinutes, // 선택, 기본값 40분
+        Integer maxCommuteMinutes, // 선택, 기본값 30분
 
         Integer age, // 선택, 정부 지원정책 자격 판별용
 

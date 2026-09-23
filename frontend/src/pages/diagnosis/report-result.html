@@ -70,12 +70,16 @@
       <p id="policy-empty" class="text-sm text-gray-400 mb-8 hidden">매칭된 지원 정책이 없어요.</p>
 
       <h2 class="font-bold mb-3">월세 매물 추천</h2>
-      <ul id="wolse-list" class="space-y-3 mb-8"></ul>
+      <div id="wolse-box" class="card p-4 mb-8" style="max-height: 640px; overflow-y: auto">
+        <ul id="wolse-list" class="space-y-3"></ul>
+      </div>
       <p id="wolse-empty" class="text-sm text-gray-400 mb-8 hidden">조건에 맞는 월세 매물을 찾지 못했어요.</p>
 
       <h2 class="font-bold mb-3">전세 매물 추천</h2>
       <p class="text-xs text-gray-400 mb-3">전세는 월세가 없는 대신, 부족한 보증금을 대출로 채웠을 때의 이자 부담 중심으로 비교해요.</p>
-      <ul id="jeonse-list" class="space-y-3"></ul>
+      <div id="jeonse-box" class="card p-4" style="max-height: 640px; overflow-y: auto">
+        <ul id="jeonse-list" class="space-y-3"></ul>
+      </div>
       <p id="jeonse-empty" class="text-sm text-gray-400 hidden">조건에 맞는 전세 매물을 찾지 못했어요.</p>
 
       <p class="text-xs text-gray-400 mt-8" id="disclaimer"></p>
@@ -164,7 +168,7 @@
                   ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ml-1" style="background:#fef3c7;color:#92400e" title="보증금을 크게 걸고 월세는 소액만 내는 매물이에요. 보증금이 부담되면 아래 '희망 보증금' 필터로 제외할 수 있어요.">반전세형</span>`
                   : ""
               }
-              <span class="text-xs text-gray-400 ml-1">통근 약 ${r.commute_minutes}분</span>
+              <span class="text-xs text-gray-400 ml-1" title="${r.commute_source || "직선거리 추정"}">통근 약 ${r.commute_minutes}분</span>
             </div>
             <div class="text-right">
               ${headerRight}
@@ -215,8 +219,28 @@
       const wolseListEl = document.getElementById("wolse-list");
       const jeonseListEl = document.getElementById("jeonse-list");
 
-      wolseListEl.innerHTML = wolseList.map(renderBuildingCard).join("");
-      jeonseListEl.innerHTML = jeonseList.map(renderBuildingCard).join("");
+      // 박스 안 목록을 스크롤로 계속 불러온다 - 지도에는 전체(최대 50개)가 이미 다 표시되고,
+      // 이 목록은 한 번에 다 그리면 페이지가 너무 길어지니 스크롤 시 다음 묶음만 추가로 그린다.
+      const LIST_PAGE_SIZE = 10;
+
+      function renderInfiniteList(boxEl, listEl, items) {
+        let rendered = 0;
+
+        function loadMore() {
+          if (rendered >= items.length) return;
+          const batch = items.slice(rendered, rendered + LIST_PAGE_SIZE);
+          listEl.insertAdjacentHTML("beforeend", batch.map((r, i) => renderBuildingCard(r, rendered + i)).join(""));
+          rendered += batch.length;
+        }
+
+        loadMore();
+        boxEl.addEventListener("scroll", () => {
+          if (boxEl.scrollTop + boxEl.clientHeight >= boxEl.scrollHeight - 100) loadMore();
+        });
+      }
+
+      renderInfiniteList(document.getElementById("wolse-box"), wolseListEl, wolseList);
+      renderInfiniteList(document.getElementById("jeonse-box"), jeonseListEl, jeonseList);
       renderPolicyTable(allResults);
 
       document.getElementById("wolse-empty").classList.toggle("hidden", wolseList.length > 0);

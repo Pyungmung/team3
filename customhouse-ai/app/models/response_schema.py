@@ -29,6 +29,7 @@ class BuildingRecommendation(BaseModel):
     lease_type: str = "월세"  # "전세" | "월세"
     is_semi_jeonse: bool = False  # 월세인데 보증금이 커서(반전세 성격) 별도 배지로 구분할 매물
     commute_minutes: int
+    commute_source: str = "직선거리 추정"  # "카카오 길찾기 API(자동차)" / "카카오맵 API(대중교통)" / "카카오맵 API(도보)" / "직선거리 추정"
     listing_deposit: int      # 만원, 그 매물의 실제 보증금 (실거래가 원본)
     listing_monthly_rent: int  # 만원, 그 매물의 실제 월세 (실거래가 원본, 보증금 전환 적용 전)
     rent: int              # 만원, 사용자 보증금으로 전환/대출 계산까지 적용한 후의 월세

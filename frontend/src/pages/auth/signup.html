@@ -249,7 +249,6 @@
         나에게 맞는 주거비 절약 진단과<br>
         청년 주거지원 정책을 받아보세요.
       </p>
-      <div class="badge">비밀번호는 암호화되어 안전하게 보관돼요</div>
     </div>
 
     <div class="form-area">
@@ -513,18 +512,10 @@
       try {
         await CustomHouseAuthApi.signup({ email, password, nickname, phone, marketingConsent });
 
-        // 가입이 끝나면 같은 화면에서 로그인 탭으로 넘어가고, 방금 쓴 이메일을 채워둔다.
-        $("login-email").value = email;
-        $("login-password").value = "";
-        $("signup-form").reset();
-        checkedEmail = null;
-        $("email-message").textContent = "";
-        $("password-confirm-message").textContent = "";
-        $("signup-message").textContent = "";
-        updateSignupButtonState(); // reset()으로 필수 체크박스가 다시 풀렸으니 버튼도 다시 비활성화
-        showTab("login");
-        setMessage("login-message", "회원가입 성공! 비밀번호를 입력해 로그인해주세요.", true);
-        $("login-password").focus();
+        // 가입 직후 방금 입력한 정보로 바로 로그인하고, 주거조건 입력 화면으로 이동한다.
+        setMessage("signup-message", "가입 완료! 자동으로 로그인하고 있어요...", true);
+        await CustomHouseAuthApi.login({ email, password });
+        window.location.href = "../mypage/edit-condition.html#housing";
       } catch (err) {
         setMessage("signup-message", err.message || "회원가입 중 오류가 발생했습니다.", false);
         $("signup-btn").disabled = false;
