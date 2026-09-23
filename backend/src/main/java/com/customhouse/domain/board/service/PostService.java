@@ -189,7 +189,7 @@ public class PostService {
             }
         }
         List<PostSummaryResponse> content = posts.stream()
-                .map(p -> PostSummaryResponse.of(p, names.get(p.getWriterId()), thumbnails.get(p.getId())))
+                .map(p -> PostSummaryResponse.of(p, support.postWriterName(p, names), thumbnails.get(p.getId())))
                 .toList();
         return PageResponse.of(result, content);
     }
