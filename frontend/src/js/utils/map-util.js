@@ -1,10 +1,16 @@
 /**
  * [담당: 양혜승] Kakao Map 연동 유틸
- * 추천 지역을 지도 위에 마커로 표시한다. config.js에 카카오맵 앱 키가 없으면
+ * 추천 매물을 지도 위에 마커로 표시한다. config.js에 카카오맵 앱 키가 없으면
  * 지도 대신 지역 목록 카드로 대체 렌더링(폴백)한다.
+ *
+ * 2026-09-28: 매물마다 실제 좌표(lat/lon, customhouse-ai의 kakao_geocode.py가 도로명/지번주소를
+ * 지오코딩)가 오게 되면서, 좌표가 있는 매물은 그 정확한 위치에 마커 1개씩 찍는다. 좌표가 없는
+ * 매물(단독다가구처럼 애초에 주소 자체가 없는 경우)만 예전처럼 지역 대표 좌표(REGION_COORDS)에
+ * 지역당 마커 1개로 묶어서 보여준다 - 좌표가 없는데 억지로 흩뿌리면(예전 황금각 지터 방식)
+ * 실제 위치와 무관한 도넛 모양 착시가 생겼던 문제(2026-09-27)가 재발한다.
  */
 
-// 자치구 대표 좌표 (구청 기준 근사값). regions.json에 좌표 데이터가 없어 여기서 관리한다.
+// 자치구 대표 좌표 (구청 기준 근사값) - 좌표를 못 구한 매물(단독다가구 등)의 지역 대표 마커용.
 const REGION_COORDS = {
   관악구: [37.4784, 126.9516],
   동작구: [37.5124, 126.9393],
@@ -33,10 +39,24 @@ const REGION_COORDS = {
   중구: [37.5641, 126.9979],
 };
 
+// 직장/학교 위치 기준점 마커 - 매물 마커(기본 파란 핀)와 확실히 구분되도록 크고 빨간 핀으로
+// 그린다 (2026-09-28: "핀포인트 더 잘 보이게 해달라"는 요청). data URI라 별도 이미지 호스팅이
+// 필요 없다.
+const WORK_MARKER_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="44" viewBox="0 0 40 44">' +
+  '<path d="M20 0C9 0 0 9 0 20c0 15 20 24 20 24s20-9 20-24C40 9 31 0 20 0z" fill="#E11D48" stroke="#ffffff" stroke-width="2.5"/>' +
+  '<circle cx="20" cy="19" r="7" fill="#ffffff"/>' +
+  "</svg>";
+const WORK_MARKER_IMAGE_SRC = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(WORK_MARKER_SVG);
+
 // 지도 핀 <-> 우측 매물 목록 상호 이동에 쓰는 현재 지도 상태. 렌더링할 때마다 갱신된다.
+// key는 정확한 좌표가 있는 매물이면 그 매물의 인덱스(숫자), 좌표가 없는 매물이면 지역명 문자열이다
+// (같은 지역의 좌표 없는 매물끼리는 마커 하나를 공유하므로 markerKeyByIdx로 실제 매물 인덱스 ->
+// 공유 키를 한 번 더 찾아간다).
 let currentMap = null;
-const markersByRegion = new Map();
-const infoWindowsByRegion = new Map();
+const markersByKey = new Map();
+const infoWindowsByKey = new Map();
+const markerKeyByIdx = new Map();
 
 function renderFallbackList(el, recommendations) {
   el.innerHTML = `
@@ -54,52 +74,100 @@ function renderFallbackList(el, recommendations) {
   `;
 }
 
-function renderKakaoMap(mapEl, recommendations, onMarkerClick) {
+function renderKakaoMap(mapEl, recommendations, onMarkerClick, workLocation) {
   const map = new window.kakao.maps.Map(mapEl, {
     center: new window.kakao.maps.LatLng(37.5665, 126.978),
     level: 8,
   });
 
   currentMap = map;
-  markersByRegion.clear();
-  infoWindowsByRegion.clear();
+  markersByKey.clear();
+  infoWindowsByKey.clear();
+  markerKeyByIdx.clear();
 
-  // 국토부 실거래가 데이터에는 매물 개별 좌표가 없고 "구" 단위 대표좌표(REGION_COORDS)만 있다.
-  // 예전엔 매물 개수만큼 같은 좌표 주변에 황금각+고정 반지름으로 점을 흩뿌렸는데, 반지름이
-  // 전부 같다 보니 매물이 많은 지역마다 마커가 도넛(원형 고리) 모양으로 뭉쳐 보이는 문제가 있었다
-  // (2026-09-27 발견 - 실제 위치와 무관한 착시라 "직장 위치 기준 통근권과 안 맞는다"는 오해를 줌).
-  // 없는 정밀도를 억지로 흉내내는 대신, 지역당 마커 1개 + "매물 N건, 최저 OO만원" 요약으로 바꾼다.
   const bounds = new window.kakao.maps.LatLngBounds();
-  const byRegion = new Map();
-  recommendations.forEach((r) => {
-    if (!byRegion.has(r.region)) byRegion.set(r.region, []);
-    byRegion.get(r.region).push(r);
-  });
-
   let markerCount = 0;
 
-  byRegion.forEach((items, region) => {
-    const coord = REGION_COORDS[region];
-    if (!coord) return;
-
-    const position = new window.kakao.maps.LatLng(coord[0], coord[1]);
+  function addMarker(key, position, content, idx) {
     const marker = new window.kakao.maps.Marker({ position, map });
     bounds.extend(position);
     markerCount += 1;
 
-    const cheapest = items.reduce((min, r) => (r.real_housing_cost < min.real_housing_cost ? r : min), items[0]);
     const infowindow = new window.kakao.maps.InfoWindow({
-      content: `<div style="padding:6px 10px;font-size:12px;white-space:nowrap;">
-        <b>${region}</b> · 매물 ${items.length}건<br/>최저 ${cheapest.real_housing_cost}만원/월 · ${cheapest.building_name}
-      </div>`,
+      content: `<div style="padding:6px 10px;font-size:12px;white-space:nowrap;">${content}</div>`,
     });
     window.kakao.maps.event.addListener(marker, "mouseover", () => infowindow.open(map, marker));
     window.kakao.maps.event.addListener(marker, "mouseout", () => infowindow.close());
-    // 핀 클릭 -> 우측 매물 목록에서 이 지역의 첫 카드로 스크롤 이동(호출부에서 처리).
-    window.kakao.maps.event.addListener(marker, "click", () => onMarkerClick && onMarkerClick(region));
+    window.kakao.maps.event.addListener(marker, "click", () => onMarkerClick && onMarkerClick(idx));
 
-    markersByRegion.set(region, marker);
-    infoWindowsByRegion.set(region, infowindow);
+    markersByKey.set(key, marker);
+    infoWindowsByKey.set(key, infowindow);
+  }
+
+  // 0) 직장/학교 위치 - 정확한 좌표가 있으면 그 좌표, 없으면(드롭다운으로만 고른 경우) 지역
+  // 대표좌표로 대체한다. 매물 마커보다 훨씬 크고 빨간 핀 이미지를 써서 한눈에 기준점임을 알 수
+  // 있게 하고, 정보창도 호버 없이 처음부터 열어둔다.
+  if (workLocation) {
+    const coord =
+      workLocation.lat != null && workLocation.lon != null
+        ? [workLocation.lat, workLocation.lon]
+        : REGION_COORDS[workLocation.region];
+    if (coord) {
+      const position = new window.kakao.maps.LatLng(coord[0], coord[1]);
+      const markerImage = new window.kakao.maps.MarkerImage(
+        WORK_MARKER_IMAGE_SRC,
+        new window.kakao.maps.Size(40, 44),
+        { offset: new window.kakao.maps.Point(20, 44) }
+      );
+      const workMarker = new window.kakao.maps.Marker({ position, map, image: markerImage, zIndex: 999 });
+      bounds.extend(position);
+      markerCount += 1;
+
+      const workInfowindow = new window.kakao.maps.InfoWindow({
+        zIndex: 999,
+        content: `<div style="padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;color:#E11D48;">🏢 직장/학교 위치<br/>${workLocation.label || workLocation.region}</div>`,
+      });
+      workInfowindow.open(map, workMarker); // 기준점이라 호버 없이 항상 라벨을 띄워둔다.
+
+      markersByKey.set("work-location", workMarker);
+      infoWindowsByKey.set("work-location", workInfowindow);
+    }
+  }
+
+  // 1) 좌표가 있는 매물 - 매물마다 정확한 위치에 마커 1개.
+  recommendations.forEach((r, idx) => {
+    if (r.lat == null || r.lon == null) return;
+    const position = new window.kakao.maps.LatLng(r.lat, r.lon);
+    addMarker(
+      idx,
+      position,
+      `<b>${r.building_name}</b> · ${r.real_housing_cost}만원/월<br/>${r.address || r.region}`,
+      idx
+    );
+    markerKeyByIdx.set(idx, idx);
+  });
+
+  // 2) 좌표가 없는 매물(단독다가구 등) - 지역별로 묶어서 대표 마커 1개 + "매물 N건" 요약.
+  const noCoordByRegion = new Map();
+  recommendations.forEach((r, idx) => {
+    if (r.lat != null && r.lon != null) return;
+    if (!noCoordByRegion.has(r.region)) noCoordByRegion.set(r.region, []);
+    noCoordByRegion.get(r.region).push(idx);
+  });
+
+  noCoordByRegion.forEach((idxList, region) => {
+    const coord = REGION_COORDS[region];
+    if (!coord) return;
+    const items = idxList.map((i) => recommendations[i]);
+    const cheapest = items.reduce((min, r) => (r.real_housing_cost < min.real_housing_cost ? r : min), items[0]);
+    const key = `region:${region}`;
+    addMarker(
+      key,
+      new window.kakao.maps.LatLng(coord[0], coord[1]),
+      `<b>${region}</b> · 매물 ${items.length}건 (정확한 주소 미확인)<br/>최저 ${cheapest.real_housing_cost}만원/월 · ${cheapest.building_name}`,
+      idxList[0]
+    );
+    idxList.forEach((i) => markerKeyByIdx.set(i, key));
   });
 
   if (markerCount > 0) {
@@ -109,10 +177,11 @@ function renderKakaoMap(mapEl, recommendations, onMarkerClick) {
 
 /**
  * @param {string} containerId
- * @param {Array<{region:string, real_housing_cost:number}>} recommendations
- * @param {(region: string) => void} [onMarkerClick] 지도 핀을 클릭했을 때 호출 (우측 목록 이동용)
+ * @param {Array<{region:string, real_housing_cost:number, lat?:number|null, lon?:number|null}>} recommendations
+ * @param {(idx: number) => void} [onMarkerClick] 지도 핀을 클릭했을 때 호출 (우측 목록의 해당 인덱스 카드로 이동용)
+ * @param {{lat?:number|null, lon?:number|null, region:string, label?:string}} [workLocation] 직장/학교 위치 기준점 핀
  */
-function renderRecommendedRegionsMap(containerId, recommendations, onMarkerClick) {
+function renderRecommendedRegionsMap(containerId, recommendations, onMarkerClick, workLocation) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
@@ -132,7 +201,7 @@ function renderRecommendedRegionsMap(containerId, recommendations, onMarkerClick
   // window.kakao가 아직 없을 수 있어 준비될 때까지 짧게 폴링한다.
   (function waitForKakaoSdk(retriesLeft) {
     if (window.kakao && window.kakao.maps) {
-      window.kakao.maps.load(() => renderKakaoMap(mapEl, recommendations, onMarkerClick));
+      window.kakao.maps.load(() => renderKakaoMap(mapEl, recommendations, onMarkerClick, workLocation));
     } else if (retriesLeft > 0) {
       setTimeout(() => waitForKakaoSdk(retriesLeft - 1), 100);
     } else {
@@ -141,16 +210,20 @@ function renderRecommendedRegionsMap(containerId, recommendations, onMarkerClick
   })(50); // 최대 5초 대기
 }
 
-/** 우측 매물 목록에서 건물명을 클릭했을 때, 그 매물이 속한 지역 핀으로 지도를 이동시키고 정보창을 띄운다. */
-function focusRegion(region) {
+/** 우측 매물 목록에서 건물명을 클릭했을 때, 그 매물의 마커(좌표가 없으면 지역 대표 마커)로
+ * 지도를 이동시키고 정보창을 띄운다. */
+function focusBuilding(idx) {
   const map = currentMap;
-  const marker = markersByRegion.get(region);
-  const infowindow = infoWindowsByRegion.get(region);
+  const key = markerKeyByIdx.get(idx);
+  if (key === undefined) return;
+
+  const marker = markersByKey.get(key);
+  const infowindow = infoWindowsByKey.get(key);
   if (!map || !marker) return;
 
   map.panTo(marker.getPosition());
-  infoWindowsByRegion.forEach((iw) => iw.close());
+  infoWindowsByKey.forEach((iw) => iw.close());
   if (infowindow) infowindow.open(map, marker);
 }
 
-window.CustomHouseMapUtil = { renderRecommendedRegionsMap, focusRegion };
+window.CustomHouseMapUtil = { renderRecommendedRegionsMap, focusBuilding };

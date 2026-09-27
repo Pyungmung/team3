@@ -471,7 +471,7 @@
 
             <div id="work-address-ui" class="hidden">
               <div class="flex gap-2">
-                <input type="text" id="work-address-display" readonly placeholder="직장 위치를 검색해주세요"
+                <input type="text" id="work-address-display" name="workAddress" readonly placeholder="직장 위치를 검색해주세요"
                        class="input flex-1 min-w-0 truncate" />
                 <button type="button" id="search-address-btn" class="secondary">주소 검색</button>
               </div>
@@ -973,6 +973,7 @@
         desiredDeposit: fd.get("desiredDeposit") ? Number(fd.get("desiredDeposit")) : null,
         desiredRent: fd.get("desiredRent") ? Number(fd.get("desiredRent")) : null,
         workLocation: fd.get("workLocation"),
+        workAddress: fd.get("workAddress") || null,
         workLat: fd.get("workLat") ? Number(fd.get("workLat")) : null,
         workLon: fd.get("workLon") ? Number(fd.get("workLon")) : null,
         maxCommuteMinutes: Number(fd.get("maxCommuteMinutes")),

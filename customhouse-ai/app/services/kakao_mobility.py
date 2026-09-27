@@ -65,14 +65,23 @@ def fetch_car_commute_minutes(origin_lat: float, origin_lon: float, dest_lat: fl
         "origin": f"{origin_lon},{origin_lat}",
         "destination": f"{dest_lon},{dest_lat}",
     }
-    try:
-        res = requests.get(KAKAO_DIRECTIONS_URL, headers=headers, params=params, timeout=REQUEST_TIMEOUT_SEC)
-        res.raise_for_status()
-        body = res.json()
-    except requests.RequestException as e:
-        raise KakaoMobilityError(f"카카오모빌리티 길찾기 API 호출 실패: {e}") from e
-    except ValueError as e:
-        raise KakaoMobilityError(f"카카오모빌리티 응답 파싱 실패: {e}") from e
+    # 2026-09-28 실측: 정상 좌표인데도 순간적으로 400이 났다가 그대로 재요청하면 바로 성공하는
+    # 산발적 실패가 있었다(카카오 서버 쪽 일시적 문제로 추정) - 재시도 없이 그냥 실패 처리하면
+    # 멀쩡한 매물이 억울하게 후보에서 빠지므로, 1회만 짧게 재시도한다.
+    last_error: Exception | None = None
+    for attempt in range(2):
+        try:
+            res = requests.get(KAKAO_DIRECTIONS_URL, headers=headers, params=params, timeout=REQUEST_TIMEOUT_SEC)
+            res.raise_for_status()
+            body = res.json()
+            last_error = None
+            break
+        except requests.RequestException as e:
+            last_error = KakaoMobilityError(f"카카오모빌리티 길찾기 API 호출 실패: {e}")
+        except ValueError as e:
+            last_error = KakaoMobilityError(f"카카오모빌리티 응답 파싱 실패: {e}")
+    if last_error is not None:
+        raise last_error
 
     routes = body.get("routes") or []
     if not routes or routes[0].get("result_code") != 0:

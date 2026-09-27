@@ -42,14 +42,19 @@ class Settings(BaseSettings):
 
     # --- 공공/외부 API 키 (.env.example 참고) ---
     # data.go.kr(공공데이터포털)은 계정 1개당 인증키 1개를 발급하고, 그 키로 여러 API를
-    # 공용으로 쓸 수 있다. 아래 3개(국토교통부 전월세 실거래가 / 한국주택금융공사 / 행정안전부
-    # 법정동코드)는 전부 data.go.kr에 올라와 있는 API라 같은 키 하나로 통일했다.
-    data_go_kr_api_key: str | None = None  # 국토교통부 실거래가(구현됨) + 주택금융공사·법정동코드(TODO)에서 공용으로 사용
+    # 공용으로 쓸 수 있다. 아래 2개(국토교통부 전월세 실거래가 / 한국주택금융공사)는 전부
+    # data.go.kr에 올라와 있는 API라 같은 키 하나로 통일했다.
+    # 주의: "행정안전부_법정동코드" API도 data.go.kr에 있지만 이건 법정동코드<->지역명 코드표
+    # 조회용이라 주소를 만들어주지 않는다 (지금은 app/data/lawd_codes.json에 고정값으로 박아뒀다).
+    # 도로명주소가 필요하면 완전히 별도 기관 API인 JUSO_API_KEY(아래)를 써야 한다.
+    data_go_kr_api_key: str | None = None  # 국토교통부 실거래가(구현됨) + 주택금융공사(TODO)에서 공용으로 사용
 
     reb_api_key: str | None = None         # 한국부동산원 (data.go.kr 소속이 아니라 별도 발급)
     sgis_api_key: str | None = None        # SGIS 통계지리정보서비스 (Open API 인증키 1개만 발급됨, 별도 시크릿 없음)
     kakao_map_app_key: str | None = None   # 카카오맵
     kakao_rest_app_key: str | None = None  # 카카오모빌리티 길찾기(자동차) REST API - services/kakao_mobility.py
+    juso_api_key: str | None = None        # 행정안전부 도로명주소 검색 API(business.juso.go.kr) - services/juso_api.py
+    juso_api_key_av: str | None = None     # 행정안전부 상세주소 API - 위와 별도 발급/승인키 (건물명 보완용)
     pinecone_api_key: str | None = None    # Pinecone (RAG, 심화 단계). 서버리스 API라 environment 값은 불필요.
 
 

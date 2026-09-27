@@ -16,14 +16,59 @@ except ImportError:  # pragma: no cover - 환경에 따라 numpy/pandas 네이�
     _PANDAS_AVAILABLE = False
 
 
-def rank_by_real_cost(results: list[dict], top_n: int | None = 5, per_region_limit: int | None = None) -> list[dict]:
-    """실질 주거비(real_housing_cost)가 기존 예상 주거비(baseline_cost)보다 낮은 지역만 골라
-    실질 주거비 오름차순으로 정렬해 상위 N개를 반환한다. top_n이 None이면 자르지 않고
-    조건(monthly_savings > 0)을 만족하는 매물을 전부(최대치) 반환한다.
+def _proportional_allocate(region_sizes: dict[str, int], budget: int) -> dict[str, int]:
+    """지역별 원본 개수(region_sizes)에 비례해서 budget을 배분한다 (각 지역이 가진 개수를 넘지
+    않는다). 최대잔여법(largest remainder method)으로 배분한다 - 몫만큼 내림으로 나눠주고,
+    남는 슬롯은 나머지(소수부)가 큰 지역부터 1개씩 채운다. 한 라운드에서 자기 몫을 다 채운
+    지역이 생기면(더 줄 게 없는 지역), 그 지역이 못 받은 잔여분을 남은 지역들에 다시 비례
+    배분하는 걸 반복해서, budget이 남는데도 특정 지역만 상한에 막혀 손해보는 일이 없게 한다."""
+    allocation = {region: 0 for region in region_sizes}
+    remaining_sizes = dict(region_sizes)
+    remaining_budget = budget
 
-    맞집은 "더 저렴한 곳을 추천"하는 앱이라, 보증금 전환/정책 지원 혜택이 전혀 없어
-    절감액(monthly_savings)이 0 이하인 지역은 애초에 추천 목록에 넣지 않는다
-    (그래프의 "맞집 추천 실질 주거비" 막대가 "기존 예상 주거비" 막대보다 항상 낮아야 한다).
+    while remaining_budget > 0 and remaining_sizes:
+        total_remaining = sum(remaining_sizes.values())
+        if total_remaining <= remaining_budget:
+            for region, size in remaining_sizes.items():
+                allocation[region] += size
+            remaining_budget -= total_remaining
+            break
+
+        shares = {region: remaining_budget * size / total_remaining for region, size in remaining_sizes.items()}
+        floor_shares = {region: min(remaining_sizes[region], int(share)) for region, share in shares.items()}
+        leftover = remaining_budget - sum(floor_shares.values())
+
+        # 나머지(소수부)가 큰 지역부터 1개씩 우선 배분해서 leftover를 다 쓴다.
+        by_remainder_desc = sorted(remaining_sizes, key=lambda r: shares[r] - floor_shares[r], reverse=True)
+        for region in by_remainder_desc:
+            if leftover <= 0:
+                break
+            if floor_shares[region] < remaining_sizes[region]:
+                floor_shares[region] += 1
+                leftover -= 1
+
+        round_total = sum(floor_shares.values())
+        for region, given in floor_shares.items():
+            allocation[region] += given
+        remaining_budget -= round_total
+        remaining_sizes = {r: n - floor_shares[r] for r, n in remaining_sizes.items() if n - floor_shares[r] > 0}
+
+        if round_total == 0:
+            break  # 안전장치 - 더 배분할 게 없으면 중단 (이론상 도달 안 함)
+
+    return allocation
+
+
+def rank_by_real_cost(results: list[dict], top_n: int | None = 5, require_savings: bool = True) -> list[dict]:
+    """실질 주거비(real_housing_cost) 오름차순으로 정렬해 상위 N개를 반환한다. top_n이 None이면
+    자르지 않고 전부(최대치) 반환한다.
+
+    require_savings=True면 "기존 예상 주거비(baseline_cost)보다 실제로 더 싼" 매물만 남긴다
+    (절감액 monthly_savings > 0). 2026-09-28: 월세는 보증금 조정(전월세전환율/대출금리 가정)
+    계산 자체를 없애서 baseline_cost가 항상 real_housing_cost와 같아지고 monthly_savings가
+    항상 0이 되므로, 월세 호출 시엔 require_savings=False로 이 필터를 건너뛰고 그냥 실거래
+    기준 저렴한 순으로만 보여준다(calculator.py 참고). 전세는 보증금 차액을 대출이자로 환산해
+    비교하는 기존 방식을 유지하므로 require_savings=True로 그대로 쓴다.
 
     실질 주거비가 0(정책 지원금이 비용을 다 상쇄)인 매물이 여러 개면 동점이 되는데, 동점자
     사이에 2차 기준이 없으면 국토부 API가 응답한 순서(사실상 임의 순서)에 따라 반전세형
@@ -31,36 +76,36 @@ def rank_by_real_cost(results: list[dict], top_n: int | None = 5, per_region_lim
     때는 절감액(monthly_savings)이 큰 매물을 우선한다 - "최적화 전에는 더 비쌌던 곳을 우리가
     더 크게 절약해준" 매물을 보여주는 게 사용자에게 더 설득력 있다.
 
-    per_region_limit: 지역별로 상위 몇 건까지만 순위 경쟁에 남길지 (None이면 제한 없음).
-    실거래 매물이 유난히 많고 시세가 낮은 지역(외곽) 하나가 전체 순위를 독식해서, 통근권
-    안에 있는 다른 지역(특히 직장에서 더 가까운 지역)이 "더 비싸다"는 이유만으로 추천 목록에
-    아예 하나도 못 들어가는 문제(2026-09-27 발견)를 막기 위한 것 - 지역별로 미리 상한을 둔
-    다음에 전체를 다시 정렬해서, 통근권 안 지역이 골고루 대표로 하나씩은 뽑히게 한다.
+    지역별 배분(2026-09-28 재설계): 후보가 top_n을 넘으면, 그냥 전체를 "실질 주거비 오름차순"
+    으로 한 번에 잘랐었는데, 그러면 시세가 낮은 지역(예: 강북구·도봉구)의 매물이 절대금액이
+    작다는 이유만으로 상위권을 독식해서, 시세가 비교적 높은 지역(직장 근처인 경우가 많음, 예:
+    광진구·중구)은 후보가 수백 건 있어도 최종 목록엔 거의 안 남는 문제가 있었다 (예전엔 지역당
+    고정 상한(per_region_limit)으로 이걸 막았는데, 사용자가 "조건에 맞는 매물은 전부 보여달라"고
+    해서 상한을 계속 올렸더니 이 문제가 그대로 재발했다). 그래서 고정 상한 대신, 지역마다 "그
+    지역이 가진 후보 수에 비례해서" top_n을 나눠 배분한다(_proportional_allocate, 최대잔여법) -
+    매물이 많은 지역은 그만큼 더 많이, 적은 지역도 자기 몫만큼은 보장받는다. 배분된 몫 안에서는
+    각 지역 안에서 가장 저렴한 것부터 채운다.
     """
     if not results:
         return []
 
-    savings_results = [r for r in results if r["monthly_savings"] > 0]
+    savings_results = [r for r in results if r["monthly_savings"] > 0] if require_savings else list(results)
     if not savings_results:
         return []
 
-    if per_region_limit is not None:
+    if top_n is not None and len(savings_results) > top_n:
         by_region: dict[str, list[dict]] = {}
         for r in savings_results:
             by_region.setdefault(r["region"], []).append(r)
-
-        savings_results = []
         for region_results in by_region.values():
-            region_sorted = sorted(region_results, key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))
-            savings_results.extend(region_sorted[:per_region_limit])
+            region_results.sort(key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))
+
+        allocation = _proportional_allocate({region: len(items) for region, items in by_region.items()}, top_n)
+        savings_results = [item for region, items in by_region.items() for item in items[: allocation[region]]]
 
     if _PANDAS_AVAILABLE:
         df = pd.DataFrame(savings_results)
         df = df.sort_values(by=["real_housing_cost", "monthly_savings"], ascending=[True, False])
-        if top_n is not None:
-            df = df.head(top_n)
         return df.to_dict(orient="records")
 
-    # pandas 사용 불가 환경을 위한 순수 Python 폴백 (결과는 동일)
-    sorted_results = sorted(savings_results, key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))
-    return sorted_results if top_n is None else sorted_results[:top_n]
+    return sorted(savings_results, key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))

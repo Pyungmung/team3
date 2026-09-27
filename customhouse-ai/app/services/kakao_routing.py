@@ -75,14 +75,20 @@ def _request(url: str, origin_lat: float, origin_lon: float, dest_lat: float, de
         "end_x": dest_lon,
         "end_y": dest_lat,
     }
-    try:
-        res = requests.get(url, headers=headers, params=params, timeout=REQUEST_TIMEOUT_SEC)
-        res.raise_for_status()
-        return res.json()
-    except requests.RequestException as e:
-        raise KakaoRoutingError(f"카카오맵 경로 조회 API 호출 실패({url}): {e}") from e
-    except ValueError as e:
-        raise KakaoRoutingError(f"카카오맵 경로 조회 응답 파싱 실패({url}): {e}") from e
+    # 2026-09-28 실측: 정상 좌표인데도 순간적으로 400이 났다가 그대로 재요청하면 바로 성공하는
+    # 산발적 실패가 있었다(카카오 서버 쪽 일시적 문제로 추정, kakao_mobility.py와 동일 증상) -
+    # 재시도 없이 그냥 실패 처리하면 멀쩡한 매물이 억울하게 후보에서 빠지므로 1회만 짧게 재시도한다.
+    last_error: Exception | None = None
+    for attempt in range(2):
+        try:
+            res = requests.get(url, headers=headers, params=params, timeout=REQUEST_TIMEOUT_SEC)
+            res.raise_for_status()
+            return res.json()
+        except requests.RequestException as e:
+            last_error = KakaoRoutingError(f"카카오맵 경로 조회 API 호출 실패({url}): {e}")
+        except ValueError as e:
+            last_error = KakaoRoutingError(f"카카오맵 경로 조회 응답 파싱 실패({url}): {e}")
+    raise last_error
 
 
 def fetch_public_transit_minutes(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float) -> int:
