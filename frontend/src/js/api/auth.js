@@ -30,6 +30,58 @@ async function checkEmail(email) {
   return body.data;
 }
 
+/** 회원가입용 이메일 인증번호 발송. */
+async function sendSignupCode(email) {
+  const res = await fetch(`${AUTH_API_BASE}/email/signup-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "인증번호 발송에 실패했습니다.");
+  }
+}
+
+/** 회원가입 이메일 인증번호 확인. */
+async function verifySignupCode(email, code) {
+  const res = await fetch(`${AUTH_API_BASE}/email/verify-signup-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "인증번호가 올바르지 않습니다.");
+  }
+}
+
+/** 비밀번호 재설정용 이메일 인증번호 발송. */
+async function sendPasswordResetCode(email) {
+  const res = await fetch(`${AUTH_API_BASE}/password/reset-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "인증번호 발송에 실패했습니다.");
+  }
+}
+
+/** 인증번호 확인 + 새 비밀번호 반영을 한 번에 처리. */
+async function resetPassword({ email, code, newPassword }) {
+  const res = await fetch(`${AUTH_API_BASE}/password/reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code, newPassword }),
+  });
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "비밀번호 재설정에 실패했습니다.");
+  }
+}
+
 async function login({ email, password }) {
   const res = await fetch(`${AUTH_API_BASE}/login`, {
     method: "POST",
@@ -101,6 +153,10 @@ function computeAuthHref(targetFromPagesRoot) {
 window.CustomHouseAuthApi = {
   signup,
   checkEmail,
+  sendSignupCode,
+  verifySignupCode,
+  sendPasswordResetCode,
+  resetPassword,
   login,
   refreshAccessToken,
   loginWithNaver,

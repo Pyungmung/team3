@@ -1,11 +1,16 @@
 package com.customhouse.domain.user.controller;
 
+import com.customhouse.domain.user.dto.EmailRequest;
 import com.customhouse.domain.user.dto.LoginRequest;
+import com.customhouse.domain.user.dto.PasswordResetRequest;
 import com.customhouse.domain.user.dto.RefreshRequest;
 import com.customhouse.domain.user.dto.SignupRequest;
 import com.customhouse.domain.user.dto.TokenResponse;
 import com.customhouse.domain.user.dto.UserResponse;
+import com.customhouse.domain.user.dto.VerifyEmailCodeRequest;
+import com.customhouse.domain.user.entity.EmailVerification;
 import com.customhouse.domain.user.service.AuthService;
+import com.customhouse.domain.user.service.EmailVerificationService;
 import com.customhouse.global.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final EmailVerificationService emailVerificationService;
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<UserResponse>> signup(@Valid @RequestBody SignupRequest request) {
@@ -50,5 +56,29 @@ public class AuthController {
     @GetMapping("/check-email")
     public ResponseEntity<ApiResponse<Boolean>> checkEmail(@RequestParam String email) {
         return ResponseEntity.ok(ApiResponse.ok(authService.isEmailDuplicate(email)));
+    }
+
+    @PostMapping("/email/signup-code")
+    public ResponseEntity<ApiResponse<Void>> sendSignupCode(@Valid @RequestBody EmailRequest request) {
+        emailVerificationService.sendSignupCode(request.email());
+        return ResponseEntity.ok(ApiResponse.ok("인증번호를 발송했습니다.", null));
+    }
+
+    @PostMapping("/email/verify-signup-code")
+    public ResponseEntity<ApiResponse<Void>> verifySignupCode(@Valid @RequestBody VerifyEmailCodeRequest request) {
+        emailVerificationService.verifyCode(request.email(), request.code(), EmailVerification.Purpose.SIGNUP);
+        return ResponseEntity.ok(ApiResponse.ok("이메일 인증이 완료되었습니다.", null));
+    }
+
+    @PostMapping("/password/reset-code")
+    public ResponseEntity<ApiResponse<Void>> sendPasswordResetCode(@Valid @RequestBody EmailRequest request) {
+        emailVerificationService.sendPasswordResetCode(request.email());
+        return ResponseEntity.ok(ApiResponse.ok("인증번호를 발송했습니다.", null));
+    }
+
+    @PostMapping("/password/reset")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.ok("비밀번호가 재설정되었습니다.", null));
     }
 }

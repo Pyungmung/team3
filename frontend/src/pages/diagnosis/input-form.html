@@ -993,7 +993,10 @@
 
       try {
         const result = await CustomHouseRecommendationApi.requestDiagnosis(condition);
-        sessionStorage.setItem("customhouse:lastDiagnosis", JSON.stringify(result));
+        // localStorage 사용 이유: report-result.html 참고 (탭이 바뀌거나 세션이 끊겨도 유지되어야 함).
+        localStorage.setItem("customhouse:lastDiagnosis", JSON.stringify(result));
+        // 리포트 화면에서 주택 유형만 바꿔 "다시 조회"할 때 나머지 조건을 그대로 재사용하기 위해 저장.
+        localStorage.setItem("customhouse:lastDiagnosisCondition", JSON.stringify(condition));
         window.location.href = "report-result.html";
       } catch (err) {
         showError(err.message || "진단 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");

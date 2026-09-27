@@ -938,7 +938,7 @@
           <p class="section-sub">맞집 서비스 이용에 필요한 정책을 확인할 수 있어요.</p>
 
           <div class="policy-list">
-            <details class="policy-row">
+            <details class="policy-row" id="policy-service">
               <summary><span>이용약관</span><span>＋</span></summary>
               <div class="policy-content">
                 <h4>제1조 목적</h4>
@@ -992,7 +992,7 @@
               </div>
             </details>
 
-            <details class="policy-row">
+            <details class="policy-row" id="policy-privacy">
               <summary><span>개인정보 처리방침</span><span>＋</span></summary>
               <div class="policy-content">
                 <p>맞집은 이용자의 개인정보를 중요하게 생각하며 개인정보 보호법 등 관련 법령을 준수합니다.</p>
@@ -1097,7 +1097,7 @@
               </div>
             </details>
 
-            <details class="policy-row">
+            <details class="policy-row" id="policy-location">
               <summary><span>위치기반 서비스 이용약관</span><span>＋</span></summary>
               <div class="policy-content">
                 <h4>제1조 목적</h4>
@@ -1171,7 +1171,7 @@
               </div>
             </details>
 
-            <details class="policy-row">
+            <details class="policy-row" id="policy-marketing">
               <summary><span>광고·마케팅 목적의 개인정보 수집 및 이용 동의 (선택)</span><span>＋</span></summary>
               <div class="policy-content">
                 <p>맞집은 더 나은 서비스를 제공하고자 광고·마케팅 목적의 개인정보 수집 및 이용에 대한 동의를 받고자 합니다.</p>
@@ -1210,7 +1210,7 @@
               </div>
             </details>
 
-            <details class="policy-row">
+            <details class="policy-row" id="policy-third-party">
               <summary><span>개인정보 제3자 제공 동의</span><span>＋</span></summary>
               <div class="policy-content">
                 <p><strong>[개인정보 제3자 제공 동의]</strong></p>
@@ -1607,7 +1607,10 @@
     }
   });
 
-  if (!CustomHouseAuthApi.isLoggedIn()) {
+  // 회원가입 화면의 약관 "보기" 링크(?term=xxx#terms)로 들어온 비로그인 사용자는 약관 내용만
+  // 읽을 수 있게 예외를 둔다. 그 외에는 기존처럼 로그인 페이지로 보낸다.
+  const isGuestViewingTerms = new URLSearchParams(location.search).has("term");
+  if (!CustomHouseAuthApi.isLoggedIn() && !isGuestViewingTerms) {
     window.location.href = "../auth/login.html";
   }
 
@@ -1642,6 +1645,18 @@
 
   const initialTab = location.hash.replace("#", "");
   if (document.querySelector(`.tab-section[data-section="${initialTab}"]`)) openMypageTab(initialTab);
+
+  // 회원가입 화면의 약관 "보기" 링크(?term=xxx#terms)로 들어오면 해당 약관 항목을 펼치고 스크롤한다.
+  const termParam = new URLSearchParams(location.search).get("term");
+  if (termParam) {
+    const detailsEl = document.getElementById(`policy-${termParam}`);
+    if (detailsEl) {
+      detailsEl.open = true;
+      // open 직후 바로 스크롤하면 아직 펼쳐지기 전 레이아웃 기준으로 계산돼 위치가 어긋날 수 있어
+      // 한 틱 미룬다.
+      setTimeout(() => detailsEl.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    }
+  }
 
   function isPreparingError(err) {
     return err && (err.status === 404 || err.status === 405);

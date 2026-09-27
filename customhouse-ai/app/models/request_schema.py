@@ -67,9 +67,10 @@ class DiagnosisRequest(BaseModel):
     )
     transport_type: str | None = Field(
         None,
-        description="주요 통근 수단 (PUBLIC/WALK/CAR). 각 수단에 맞는 카카오 API로 실제 소요시간을 "
-        "계산한다 (CAR=카카오모빌리티 자동차 길찾기, PUBLIC/WALK=카카오맵 대중교통/도보 경로 조회. "
-        "calculator.py의 _commute_minutes 참고). API 호출 실패/결과 없음 시 직선거리 추정치로 폴백한다.",
+        description="주요 통근 수단 (PUBLIC/WALK/CAR, 미지정 시 PUBLIC). 각 수단에 맞는 카카오 API로 "
+        "실제 소요시간을 계산한다 (CAR=카카오모빌리티 자동차 길찾기, PUBLIC/WALK=카카오맵 대중교통/도보 "
+        "경로 조회. calculator.py의 _commute_minutes 참고). API 호출 실패/결과 없음이면 직선거리로 "
+        "추정하지 않고 그 지역을 후보에서 제외한다.",
         alias="transportType",
     )
     use_loan_policy: bool = Field(

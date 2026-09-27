@@ -4,15 +4,24 @@ CORS 허용 origin, 데이터 파일 경로, 공공 API 키 등 앱 전역 설�
 
 CLAUDE.md 수칙: 키는 .env에만 보관(Git/채팅 절대 금지), .env.example로 견본 제공.
 .env 파일이 있으면 자동으로 읽어온다 (없어도 정상 동작 - 지금은 샘플 데이터만 쓰므로 선택 입력).
+
+주의: env_file은 반드시 절대경로로 지정한다. 상대경로("​.env")를 쓰면 uvicorn을 실행한 프로세스의
+현재 작업 디렉터리(cwd) 기준으로 찾는데, --app-dir customhouse-ai로 실행해도 uvicorn은
+sys.path에만 추가할 뿐 실제로 chdir하지 않는다. 그래서 프로젝트 루트에서 실행하면 .env를
+못 찾아 키가 전부 비어있는 것처럼 동작하고(국토부 실거래가 등이 조용히 샘플 데이터로 폴백),
+customhouse-ai 폴더 안에서 실행하면 정상 동작하는 등 실행 위치에 따라 결과가 달라지는
+문제가 있었다 (2026-09-27 발견).
 """
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",  # .env에 아직 안 쓰는 키가 있어도 에러 없이 무시
     )

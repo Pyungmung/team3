@@ -5,7 +5,11 @@
 
 처리 흐름 (2026-09-15: 지역 평균 추천 -> 개별 매물(건물) 추천으로 변경):
 1. 소득 기준 적정 월세 상한(RIR 30% 가이드라인) 계산
-2. 직장 위치 기준 통근시간 <= max_commute_minutes 인 지역만 후보로 필터링
+2. 직장 위치 기준 통근시간 <= max_commute_minutes 인 지역만 후보로 필터링.
+   통근시간은 반드시 카카오 API(자동차/대중교통/도보, _commute_minutes 참고)의 실제 결과만
+   쓰고 직선거리 추정은 쓰지 않는다 - API 호출이 실패하면 그 지역은 그냥 후보에서 빠진다
+   (2026-09-27: 직선거리 추정을 쓰면 통근권이 실제 도로망과 무관하게 항상 완벽한 원으로
+   나오는 문제가 있어 완전히 제거했다).
 3. 후보 지역마다 국토부 실거래 개별 건물을 후보 매물로 가져옴
    (DATA_GO_KR_API_KEY 미설정이거나 해당 지역에 실거래 내역이 없으면
     지역 평균 샘플값으로 만든 가상 매물 1건으로 폴백)
@@ -21,7 +25,6 @@
 """
 import json
 import logging
-import math
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -39,13 +42,6 @@ MARKET_LOAN_RATE_ANNUAL_PERCENT = 4.5  # 일반 전세자금대출 금리 (참�
 # 1억/월세 160만원, 비율 62.5)까지 반전세로 오분류하게 되어, 실제 데이터로 비율 분포를 확인해본
 # 결과 일반 매물은 대략 비율 4~200대, 반전세형은 1500대 이상으로 뚜렷하게 갈렸다.
 SEMI_JEONSE_RATIO_THRESHOLD = 300
-
-# 통근시간 추정 공식(직선거리 기반) 계수. "기본 소요시간(도보+대기+환승) + 거리당 이동시간"
-# 형태로, 기존에 손으로 채워뒀던 18개 지역 x 6개 직장군 샘플 통근시간표와 오차가 크지 않도록
-# 역산해서 맞춘 값이다 (서울 지하철/버스 평균 실효 속도 감안, 2.2분/km ≈ 시속 27km대).
-COMMUTE_BASE_MINUTES = 10
-COMMUTE_MINUTES_PER_KM = 2.2
-
 
 @dataclass
 class RegionMeta:
@@ -75,54 +71,50 @@ def _load_work_locations() -> dict[str, dict[str, float]]:
     return {w["name"]: {"lat": w["lat"], "lon": w["lon"]} for w in raw}
 
 
-def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    r = 6371.0  # 지구 반지름(km)
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    d_lat = math.radians(lat2 - lat1)
-    d_lon = math.radians(lon2 - lon1)
-    a = math.sin(d_lat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(d_lon / 2) ** 2
-    return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
-def _estimate_commute_minutes(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
-    """직선거리 기반 통근시간 추정치 (샘플 추정치). 카카오모빌리티 길찾기 API가 지원하지 않는
-    대중교통/도보 수단이거나, KAKAO_REST_APP_KEY 미설정/호출 실패 시 폴백으로 쓴다."""
-    distance_km = _haversine_km(lat1, lon1, lat2, lon2)
-    return round(COMMUTE_BASE_MINUTES + distance_km * COMMUTE_MINUTES_PER_KM)
-
-
 def _commute_minutes(
     work_lat: float, work_lon: float, dest_lat: float, dest_lon: float, transport_type: str | None
-) -> tuple[int, str]:
-    """통근시간(분)과 산출 방식을 함께 돌려준다.
-
-    "주요 통근 수단"(transport_type)에 맞는 카카오 API로 실제 경로 소요시간을 구한다.
+) -> tuple[int | None, str]:
+    """통근시간(분)과 산출 방식을 함께 돌려준다. 직선거리 기반 추정은 쓰지 않는다 - 통근시간은
+    반드시 "주요 통근 수단"(transport_type)에 맞는 카카오 API의 실제 경로 결과여야 한다
+    (2026-09-27: 직선거리 추정을 쓰면 통근권이 실제 도로/노선과 무관하게 항상 완벽한 원 모양으로
+    나온다는 문제가 있어 완전히 제거했다).
     - CAR: 카카오모빌리티 길찾기(자동차 전용, kakao_mobility.py)
     - PUBLIC: 카카오맵 대중교통 경로 조회 (여러 경로 중 가장 빠른 것)
     - WALK: 카카오맵 도보 경로 조회 (목적지가 너무 멀면 결과 없음)
-    API 키 미설정/호출 실패/결과 없음(예: 도보로 가기엔 너무 먼 거리)이면 기존 직선거리
-    추정치로 폴백한다.
+
+    API 키 미설정/호출 실패/결과 없음(예: 도보로 가기엔 너무 먼 거리, 출발지=도착지 등)이면
+    그 지역의 통근시간을 "알 수 없음"(None)으로 돌려주고, 호출부(run_diagnosis)가 이 지역을
+    후보에서 제외한다 - 절대 추정치를 대신 채워 넣지 않는다.
     """
-    if transport_type == "CAR" and kakao_mobility.is_enabled():
+    if transport_type == "CAR":
+        if not kakao_mobility.is_enabled():
+            return None, "카카오 길찾기 API 미설정"
         try:
             minutes = kakao_mobility.fetch_car_commute_minutes(dest_lat, dest_lon, work_lat, work_lon)
             return minutes, "카카오 길찾기 API(자동차)"
         except kakao_mobility.KakaoMobilityError as e:
             logger.warning(str(e))
-    elif transport_type == "PUBLIC" and kakao_routing.is_enabled():
-        try:
-            minutes = kakao_routing.fetch_public_transit_minutes(dest_lat, dest_lon, work_lat, work_lon)
-            return minutes, "카카오맵 API(대중교통)"
-        except kakao_routing.KakaoRoutingError as e:
-            logger.warning(str(e))
-    elif transport_type == "WALK" and kakao_routing.is_enabled():
+            return None, "카카오 길찾기 API 호출 실패"
+
+    if transport_type == "WALK":
+        if not kakao_routing.is_enabled():
+            return None, "카카오맵 API 미설정"
         try:
             minutes = kakao_routing.fetch_walk_minutes(dest_lat, dest_lon, work_lat, work_lon)
             return minutes, "카카오맵 API(도보)"
         except kakao_routing.KakaoRoutingError as e:
             logger.warning(str(e))
+            return None, "카카오맵 API 호출 실패"
 
-    return _estimate_commute_minutes(dest_lat, dest_lon, work_lat, work_lon), "직선거리 추정"
+    # PUBLIC(기본값) 및 그 외 인식하지 못하는 값은 모두 대중교통 기준으로 계산한다.
+    if not kakao_routing.is_enabled():
+        return None, "카카오맵 API 미설정"
+    try:
+        minutes = kakao_routing.fetch_public_transit_minutes(dest_lat, dest_lon, work_lat, work_lon)
+        return minutes, "카카오맵 API(대중교통)"
+    except kakao_routing.KakaoRoutingError as e:
+        logger.warning(str(e))
+        return None, "카카오맵 API 호출 실패"
 
 
 def _load_regions() -> tuple[list[RegionMeta], float]:
@@ -258,19 +250,24 @@ def run_diagnosis(request) -> dict:
     selected_types = set(request.preferred_building_types) & all_types
     type_filter = selected_types if selected_types and selected_types != all_types else None
 
-    # 통근권 안에 드는 지역만 먼저 추린다. 자차(CAR) 모드는 지역마다 카카오모빌리티 API를
-    # 호출해야 해서(네트워크 호출) 순차로 하면 느려지므로, 실거래 조회와 마찬가지로 스레드풀로
-    # 동시에 계산한다.
-    def _region_commute(region: RegionMeta) -> tuple[int, str]:
+    # 통근권 안에 드는 지역만 먼저 추린다. 지역마다 카카오 API를 호출해야 해서(네트워크 호출)
+    # 순차로 하면 느려지므로, 실거래 조회와 마찬가지로 스레드풀로 동시에 계산한다.
+    def _region_commute(region: RegionMeta) -> tuple[int | None, str]:
         return _commute_minutes(work_lat, work_lon, region.lat, region.lon, request.transport_type)
 
     with ThreadPoolExecutor(max_workers=16) as pool:
         commute_results = list(pool.map(_region_commute, regions))
 
+    # minutes가 None이면(카카오 API 실패/미설정) 직선거리로 대신 계산하지 않고 그 지역을
+    # 통째로 후보에서 제외한다 - 통근시간은 항상 실제 API 결과여야 한다.
+    for region, (minutes, source) in zip(regions, commute_results):
+        if minutes is None:
+            logger.warning(f"통근시간 산출 실패로 후보에서 제외: {region.name} ({source})")
+
     eligible = [
         (region, minutes, source)
         for region, (minutes, source) in zip(regions, commute_results)
-        if minutes <= request.max_commute_minutes
+        if minutes is not None and minutes <= request.max_commute_minutes
     ]
 
     with ThreadPoolExecutor(max_workers=16) as pool:
@@ -351,7 +348,7 @@ def run_diagnosis(request) -> dict:
                     "lease_type": building["lease_type"],  # "전세" | "월세"
                     "is_semi_jeonse": is_semi_jeonse,  # 월세인데 보증금이 커서 반전세 성격인 매물
                     "commute_minutes": commute,
-                    "commute_source": commute_source,  # "카카오 길찾기 API(자동차)" 또는 "직선거리 추정"
+                    "commute_source": commute_source,  # 항상 실제 카카오 API 결과 (자동차/대중교통/도보)
                     "listing_deposit": building["deposit"],       # 그 매물의 실제 보증금 (실거래가 원본)
                     "listing_monthly_rent": building["monthly_rent"],  # 그 매물의 실제 월세 (실거래가 원본, 보증금 전환 적용 전)
                     "rent": rent,
@@ -378,6 +375,12 @@ def run_diagnosis(request) -> dict:
     return {
         "affordable_rent": affordable_rent,
         "rent_to_income_ratio": rir,
-        "wolse_recommendations": data_analysis.rank_by_real_cost(wolse_results, top_n=25),
-        "jeonse_recommendations": data_analysis.rank_by_real_cost(jeonse_results, top_n=25),
+        # 완전 무제한(top_n=None)으로 두면 조건에 맞는 매물이 지역·유형에 따라 수만 건까지 나올 수
+        # 있어(2026-09-27 실측: 월세 1만+/전세 8천+, 응답 52MB) 지도 마커/리스트 렌더링이 멈춘다.
+        # 그래서 넉넉한 상한선(500)을 둬서 "최대치에 가깝게" 보여주되 브라우저가 버틸 수 있게 한다.
+        # per_region_limit: 시세가 낮은 지역 하나가 실거래 매물 수가 많다는 이유로 전체 순위를
+        # 독식해서, 통근권 안의 다른(특히 더 가까운) 지역이 아예 추천에 안 뜨는 문제가 있었다
+        # (2026-09-27 발견) - 지역마다 상한을 먼저 둬서 통근권 내 지역이 골고루 나오게 한다.
+        "wolse_recommendations": data_analysis.rank_by_real_cost(wolse_results, top_n=500, per_region_limit=25),
+        "jeonse_recommendations": data_analysis.rank_by_real_cost(jeonse_results, top_n=500, per_region_limit=25),
     }

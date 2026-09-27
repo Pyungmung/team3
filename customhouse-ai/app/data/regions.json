@@ -28,9 +28,6 @@
     { "name": "중구", "base_rent": 62, "maintenance_fee": 7 },
     { "name": "구로구", "base_rent": 48, "maintenance_fee": 6 },
     { "name": "중랑구", "base_rent": 42, "maintenance_fee": 5 },
-    { "name": "도봉구", "base_rent": 40, "maintenance_fee": 5 },
-    { "name": "경기 부천시", "base_rent": 38, "maintenance_fee": 5 },
-    { "name": "경기 광명시", "base_rent": 42, "maintenance_fee": 5 },
-    { "name": "경기 안양시", "base_rent": 40, "maintenance_fee": 5 }
+    { "name": "도봉구", "base_rent": 40, "maintenance_fee": 5 }
   ]
 }

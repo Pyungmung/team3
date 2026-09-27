@@ -16,9 +16,10 @@ except ImportError:  # pragma: no cover - 환경에 따라 numpy/pandas 네이�
     _PANDAS_AVAILABLE = False
 
 
-def rank_by_real_cost(results: list[dict], top_n: int = 5) -> list[dict]:
+def rank_by_real_cost(results: list[dict], top_n: int | None = 5, per_region_limit: int | None = None) -> list[dict]:
     """실질 주거비(real_housing_cost)가 기존 예상 주거비(baseline_cost)보다 낮은 지역만 골라
-    실질 주거비 오름차순으로 정렬해 상위 N개를 반환한다.
+    실질 주거비 오름차순으로 정렬해 상위 N개를 반환한다. top_n이 None이면 자르지 않고
+    조건(monthly_savings > 0)을 만족하는 매물을 전부(최대치) 반환한다.
 
     맞집은 "더 저렴한 곳을 추천"하는 앱이라, 보증금 전환/정책 지원 혜택이 전혀 없어
     절감액(monthly_savings)이 0 이하인 지역은 애초에 추천 목록에 넣지 않는다
@@ -29,6 +30,12 @@ def rank_by_real_cost(results: list[dict], top_n: int = 5) -> list[dict]:
     매물(월세가 몇만원뿐인 특이 케이스)이 우연히 상위에 몰리는 문제가 있었다. 그래서 동점일
     때는 절감액(monthly_savings)이 큰 매물을 우선한다 - "최적화 전에는 더 비쌌던 곳을 우리가
     더 크게 절약해준" 매물을 보여주는 게 사용자에게 더 설득력 있다.
+
+    per_region_limit: 지역별로 상위 몇 건까지만 순위 경쟁에 남길지 (None이면 제한 없음).
+    실거래 매물이 유난히 많고 시세가 낮은 지역(외곽) 하나가 전체 순위를 독식해서, 통근권
+    안에 있는 다른 지역(특히 직장에서 더 가까운 지역)이 "더 비싸다"는 이유만으로 추천 목록에
+    아예 하나도 못 들어가는 문제(2026-09-27 발견)를 막기 위한 것 - 지역별로 미리 상한을 둔
+    다음에 전체를 다시 정렬해서, 통근권 안 지역이 골고루 대표로 하나씩은 뽑히게 한다.
     """
     if not results:
         return []
@@ -37,10 +44,23 @@ def rank_by_real_cost(results: list[dict], top_n: int = 5) -> list[dict]:
     if not savings_results:
         return []
 
+    if per_region_limit is not None:
+        by_region: dict[str, list[dict]] = {}
+        for r in savings_results:
+            by_region.setdefault(r["region"], []).append(r)
+
+        savings_results = []
+        for region_results in by_region.values():
+            region_sorted = sorted(region_results, key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))
+            savings_results.extend(region_sorted[:per_region_limit])
+
     if _PANDAS_AVAILABLE:
         df = pd.DataFrame(savings_results)
-        df = df.sort_values(by=["real_housing_cost", "monthly_savings"], ascending=[True, False]).head(top_n)
+        df = df.sort_values(by=["real_housing_cost", "monthly_savings"], ascending=[True, False])
+        if top_n is not None:
+            df = df.head(top_n)
         return df.to_dict(orient="records")
 
     # pandas 사용 불가 환경을 위한 순수 Python 폴백 (결과는 동일)
-    return sorted(savings_results, key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))[:top_n]
+    sorted_results = sorted(savings_results, key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))
+    return sorted_results if top_n is None else sorted_results[:top_n]
