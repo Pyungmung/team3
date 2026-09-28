@@ -302,7 +302,7 @@ def get_work_hubs() -> list[str]:
 
 def run_diagnosis(request) -> dict:
     """진단 실행: 후보 지역 필터링 -> 매물별 비용 계산 -> 정책 매칭 -> 정렬."""
-    regions, conversion_rate_annual = _load_regions()
+    regions, _ = _load_regions()
 
     # work_lat/work_lon(카카오 주소 검색으로 얻은 정확한 좌표)이 오면 그 좌표를 그대로 쓴다 -
     # 구 단위 드롭다운(26개 고정 지점)으로 스냅하지 않고, 실제 회사 주소 지점부터 통근시간을
@@ -328,12 +328,6 @@ def run_diagnosis(request) -> dict:
     # 보증금(deposit) 그대로 쓴다.
     effective_deposit = request.desired_deposit if request.desired_deposit is not None else request.deposit
 
-    # 희망 보증금/전세액(desired_deposit)이 있으면 그걸 "실제 계약에 쓸 금액"으로 보고 보증금
-    # 전환/대출 계산에 쓴다 (대출 등을 더해 현재 보유 보증금보다 클 수 있음). 없으면 현재 보유
-    # 보증금(deposit) 그대로 쓴다.
-    effective_deposit = request.desired_deposit if request.desired_deposit is not None else request.deposit
-
-    conversion_rate_monthly = conversion_rate_annual / 12 / 100
     market_loan_rate_monthly = MARKET_LOAN_RATE_ANNUAL_PERCENT / 12 / 100
 
     results = []
@@ -417,26 +411,19 @@ def run_diagnosis(request) -> dict:
             # 1) 매물 실제 보증금 반영 - 2026-09-28: 월세는 "보증금을 조정해서 월세를 조정"하는
             # 계산(전월세전환율/대출금리 가정)을 더 이상 쓰지 않는다. 정확한 금리를 알 수 없는
             # 불확실한 가정으로 실거래 원본을 왜곡하는 것보다, 실거래 월세/보증금을 있는 그대로
-            # 보여주는 게 가장 중요하다는 요청에 따른 것이다 - rent는 항상 실거래 원본과 같고,
-            # baseline_cost도 real_housing_cost와 같게 둬서(비교 기준 자체가 없음) 절감액이
-            # 0으로 나온다. 전세는 보증금이 곧 비용의 핵심이라 비교할 다른 실측 기준이 없으므로,
-            # 보증금 차액을 대출이자로 환산해 비교하던 기존 방식을 그대로 유지한다(사용자 확인).
+            # 보여주는 게 가장 중요하다는 요청에 따른 것이다 - rent는 항상 실거래 원본과 같다.
+            # 전세는 보증금이 곧 비용의 핵심이라, 희망 보증금(전세액)보다 비싼 부분만 대출이자로
+            # 환산해 실질 주거비에 더한다(보증금이 충분하면 0).
+            # baseline_cost는 전세/월세 모두 real_housing_cost와 같다(비교할 별도 기준이 없다).
+            # 예전엔 전세에만 "희망 월세 + 대출이자" 기준을 따로 뒀는데, 전세는 월세가 0이라 기준과
+            # 실비용이 항상 같거나(희망 월세를 넣으면 그 값만큼 가짜 절감) 절감액이 0이 돼서, 절감액 > 0
+            # 필터가 전세 추천을 전부 걸러내는 버그였다(2026-09-28 수정).
+            rent = building["monthly_rent"]
+            loan_interest = 0
             if building["lease_type"] == "전세":
                 deposit_gap = building["deposit"] - effective_deposit
-                if deposit_gap <= 0:
-                    surplus = -deposit_gap
-                    rent = max(0, building["monthly_rent"] - round(surplus * conversion_rate_monthly))
-                    loan_interest = 0
-                else:
-                    rent = building["monthly_rent"]
+                if deposit_gap > 0:
                     loan_interest = round(deposit_gap * market_loan_rate_monthly)
-                baseline_rent = request.desired_rent if request.desired_rent is not None else building["monthly_rent"]
-                baseline_loan_interest = round(deposit_gap * market_loan_rate_monthly) if deposit_gap > 0 else 0
-                baseline_cost_override = baseline_rent + maintenance_fee + baseline_loan_interest + transportation_cost
-            else:
-                rent = building["monthly_rent"]
-                loan_interest = 0
-                baseline_cost_override = None
 
             # 2) 정책 매칭 - "주거정책 추천" 표에 보여줄 정보성 매칭 (매물 지역 기준).
             # CSV 실데이터는 지원혜택이 자유 텍스트라 정형 수치가 없어 government_support는
@@ -444,8 +431,8 @@ def run_diagnosis(request) -> dict:
             government_support = 0
 
             real_housing_cost = rent + maintenance_fee + loan_interest + transportation_cost - government_support
-            baseline_cost = baseline_cost_override if baseline_cost_override is not None else real_housing_cost
-            monthly_savings = baseline_cost - real_housing_cost
+            baseline_cost = real_housing_cost
+            monthly_savings = 0
 
             is_real_listing = bool(building["deal_date"])
             data_source = f"국토부 실거래가 ({building['deal_date']} 거래)" if is_real_listing else "샘플 데이터"
@@ -516,11 +503,11 @@ def run_diagnosis(request) -> dict:
     # 절감 매물 수에 "비례"해서 top_n을 나눠 배분한다 - 매물 많은 지역은 그만큼 더 많이, 광진구·
     # 중구처럼 적은 지역도 자기 몫만큼은 보장된다 (data_analysis.py의 _proportional_allocate 참고).
     TOP_N = 1000
-    # require_savings=False: 월세는 보증금 조정 계산이 없어져 monthly_savings가 항상 0이라
-    # 절감액 필터를 적용하면 전부 걸러진다 - 그냥 실거래 기준 저렴한 순으로 보여준다.
-    # 전세는 보증금 차액을 대출이자로 환산해 비교하는 기존 방식을 유지하므로 필터도 그대로 둔다.
+    # require_savings=False: 월세/전세 모두 비교 기준(baseline)이 없어 monthly_savings가 항상 0이라
+    # 절감액 필터를 적용하면 전부 걸러진다 - 그냥 실질 주거비가 낮은 순으로 보여준다
+    # (전세는 예전에 이 필터 때문에 추천이 항상 0건이었다).
     wolse_recommendations = data_analysis.rank_by_real_cost(wolse_results, top_n=TOP_N, require_savings=False)
-    jeonse_recommendations = data_analysis.rank_by_real_cost(jeonse_results, top_n=TOP_N, require_savings=True)
+    jeonse_recommendations = data_analysis.rank_by_real_cost(jeonse_results, top_n=TOP_N, require_savings=False)
 
     # 주소(juso_api.py) 변환은 여기, 즉 예산 필터링·정렬·top_n까지 끝난 "최종 추천 목록"에만
     # 한다 - 원본 후보 전체(지역당 최대 수천 건)에 대해 하면 통근범위가 넓은 진단 1건이 juso.go.kr에

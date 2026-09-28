@@ -67,8 +67,9 @@ def rank_by_real_cost(results: list[dict], top_n: int | None = 5, require_saving
     (절감액 monthly_savings > 0). 2026-09-28: 월세는 보증금 조정(전월세전환율/대출금리 가정)
     계산 자체를 없애서 baseline_cost가 항상 real_housing_cost와 같아지고 monthly_savings가
     항상 0이 되므로, 월세 호출 시엔 require_savings=False로 이 필터를 건너뛰고 그냥 실거래
-    기준 저렴한 순으로만 보여준다(calculator.py 참고). 전세는 보증금 차액을 대출이자로 환산해
-    비교하는 기존 방식을 유지하므로 require_savings=True로 그대로 쓴다.
+    기준 저렴한 순으로만 보여준다(calculator.py 참고). 전세도 비교할 별도 기준이 없어 절감액이
+    항상 0이라, 이 필터를 걸면 추천이 전부 사라지는 버그가 있었다(2026-09-28) - 전세 호출도
+    require_savings=False로 쓴다.
 
     실질 주거비가 0(정책 지원금이 비용을 다 상쇄)인 매물이 여러 개면 동점이 되는데, 동점자
     사이에 2차 기준이 없으면 국토부 API가 응답한 순서(사실상 임의 순서)에 따라 반전세형

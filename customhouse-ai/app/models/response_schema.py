@@ -48,8 +48,8 @@ class BuildingRecommendation(BaseModel):
     transportation_cost: int  # 만원
     government_support: int   # 만원, 항상 0 (정책이 자유 텍스트라 실질 주거비 계산엔 미반영 - matched_policies 참고)
     real_housing_cost: int    # 만원 = rent + maintenance_fee + loan_interest + transportation_cost - government_support
-    baseline_cost: int        # 만원, 비교 기준. 월세는 항상 real_housing_cost와 같음(비교 기준 없음), 전세만 유의미
-    monthly_savings: int      # 만원, baseline_cost - real_housing_cost. 월세는 항상 0
+    baseline_cost: int        # 만원, 비교 기준. 월세/전세 모두 real_housing_cost와 같음(비교할 별도 기준 없음)
+    monthly_savings: int      # 만원, baseline_cost - real_housing_cost. 월세/전세 모두 항상 0
     matched_policies: list[MatchedPolicy]
     data_source: str = "샘플 데이터"  # "국토부 실거래가 (2024.8 거래)" 또는 "샘플 데이터"
 
