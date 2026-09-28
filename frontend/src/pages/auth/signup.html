@@ -24,10 +24,13 @@
       background-position: center;
       background-attachment: fixed;
       display: flex;
+      flex-direction: column; /* 카드 아래에 푸터를 두고 둘을 함께 가운데 정렬 */
       align-items: center;
       justify-content: center;
+      gap: 12px;
       padding: 30px;
     }
+    #app-footer { width: 100%; max-width: 980px; }
 
     .container {
       width: 100%;
@@ -404,6 +407,10 @@
 
   </div>
 
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/footer.js?v=20260928c"></script>
+  <script>renderFooter({ dark: true });</script>
   <script src="../../js/api/auth.js?v=20260921b"></script>
   <script>
     const $ = (id) => document.getElementById(id);
