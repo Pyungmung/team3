@@ -134,9 +134,18 @@ class ListingRecommendation(BuildingRecommendation):
     reference_transaction: ReferenceTransaction | None = None
 
 
+class RirIncomeLevel(BaseModel):
+    """소득수준별 RIR(소득 대비 주택임대료 비율)과, 그 비율을 내 월소득에 적용했을 때의 적정 월세."""
+
+    key: str                 # "low" | "mid" | "high"
+    label: str               # "하위(1-4분위)" / "중위(5-8분위)" / "상위(9-10분위)"
+    rir_percent: float       # 통계 값 (%)
+    affordable_rent: float   # 만원/월 = 내 월소득 x rir_percent / 100
+
+
 class ListingDiagnosisResponse(BaseModel):
-    affordable_rent: int
-    rent_to_income_ratio: float
+    affordable_rent: float        # 만원/월, 적정 월세 상한 = 내 월소득 x 수도권 RIR (docs/RIR.csv). 통계 파일이 없으면 소득의 20%(기본값)
+    rent_to_income_ratio: float   # 수도권 RIR(%) - docs/RIR.csv(국토교통부 주거실태조사). 파일이 없으면 20.0(기본값)
     wolse_recommendations: list[ListingRecommendation]
     jeonse_recommendations: list[ListingRecommendation]
     used_distance_estimate: bool = False
@@ -147,4 +156,11 @@ class ListingDiagnosisResponse(BaseModel):
     deposit_conversion_rate_base: str = ""      # 통계 기준 월 "2026-07"
     deposit_conversion_rate_label: str = ""     # 출처 문구
     deposit_conversion_rate_is_fallback: bool = False  # True면 조회 실패로 대체값(이전 조회값/저장값/기본값)을 쓴 것
+    # 소득 대비 주택임대료 비율(RIR) 통계 (docs/RIR.csv, rir_stats.py). 파일이 없으면 비어 있다.
+    rir_year: int | None = None                        # 통계 연도 (예: 2024)
+    rir_source: str = ""                               # 출처
+    rir_monthly_income: float = 0                      # 만원, 적정 월세 계산에 쓴 내 월소득 (입력한 연소득 / 12)
+    rir_metro_affordable_rent: float | None = None     # 만원/월, 수도권 RIR을 내 월소득에 적용한 적정 월세 (= affordable_rent)
+    rir_overall_percent: float | None = None           # 전국 RIR(%) - 참고
+    rir_by_income: list[RirIncomeLevel] = []           # 소득수준별(하위/중위/상위) RIR과 적정 월세
     disclaimer: str = "더미 매물 데이터 기반 추정치이며, 실제 매물·시세·정책 자격과 다를 수 있습니다. 실거래가는 참고용입니다."

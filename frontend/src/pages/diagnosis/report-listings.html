@@ -70,6 +70,16 @@
     .cost-box .val { font-size: 16px; font-weight: 800; color: #0f172a; line-height: 1.3; }
     .cost-box.conv .val { color: #1d4ed8; }
     .cost-box .sub { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+    /* 주거진단 리포트: 소득수준별 RIR / 적정 월세 표 */
+    .rir-box { margin-bottom: 14px; }
+    .rir-title { font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 6px; }
+    .rir-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .rir-table th { text-align: left; font-size: 11px; font-weight: 700; color: #94a3b8; padding: 4px 8px; border-bottom: 1px solid #e2e8f0; }
+    .rir-table th.num, .rir-table td.num { text-align: right; }
+    .rir-table td { padding: 7px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .rir-table tr.metro td { background: #eff6ff; font-weight: 800; color: #1d4ed8; }
+    .rir-table td .grp { display: block; font-size: 11px; font-weight: 500; color: #94a3b8; }
+    .rir-foot { margin-top: 8px; font-size: 11px; line-height: 1.55; color: #94a3b8; }
     .listing-no { margin-top: 10px; font-size: 10.5px; color: #94a3b8; letter-spacing: 0.01em; }
 
     @media (max-width: 1100px) {
@@ -181,13 +191,21 @@
             <h2 class="font-bold mb-3">주거진단 리포트</h2>
             <div class="grid grid-cols-2 gap-3 mb-4">
               <div>
-                <div class="text-xs text-gray-400 mb-1">적정 월세 상한</div>
+                <div class="text-xs text-gray-400 mb-1" id="afford-label" title="RIR 통계를 불러오지 못해 소득의 20%를 기본값으로 썼어요">적정 월세 상한 <span class="text-gray-300">(기본값: 소득의 20%)</span></div>
                 <div class="text-lg font-bold" id="affordable-rent">-</div>
               </div>
               <div>
-                <div class="text-xs text-gray-400 mb-1">주거비 비율(RIR)</div>
+                <div class="text-xs text-gray-400 mb-1" id="rir-label" title="RIR 통계를 불러오지 못해 기본값(소득의 20%)을 썼어요. 소득 대비 주택임대료 비율 = 월임대료 ÷ 월가구소득">주거비 비율(RIR, 기본값)</div>
                 <div class="text-lg font-bold" id="rir">-</div>
               </div>
+            </div>
+            <div class="rir-box hidden" id="rir-box">
+              <div class="rir-title">소득수준별 RIR과 내 월소득 기준 적정 월세</div>
+              <table class="rir-table">
+                <thead><tr><th>구분</th><th class="num">RIR</th><th class="num">적정 월세</th></tr></thead>
+                <tbody id="rir-table-body"></tbody>
+              </table>
+              <p class="rir-foot" id="rir-foot"></p>
             </div>
             <div style="height: 220px; flex: none">
               <canvas id="savings-chart"></canvas>
@@ -362,8 +380,36 @@
         document.getElementById("wolse-empty").textContent = `보증금 ${depositLimitText} 이하 월세 매물을 찾지 못했어요. 희망 보증금을 올려보세요.`;
         document.getElementById("jeonse-empty").textContent = `보증금 ${depositLimitText} 이하 전세 매물을 찾지 못했어요. 희망 보증금(전세액)을 올려보세요.`;
       }
-      document.getElementById("affordable-rent").textContent = `${data.affordable_rent}만원`;
-      document.getElementById("rir").textContent = `${data.rent_to_income_ratio}%`;
+      document.getElementById("affordable-rent").textContent = `${fmtNum(data.affordable_rent)}만원`;
+      document.getElementById("rir").textContent = `${fmtRate(data.rent_to_income_ratio)}%`;
+
+      // 소득 대비 주택임대료 비율(RIR): 수도권 값을 주거비 비율로 보여주고, 소득수준별(하위/중위/상위) 비율마다 내 월소득 x 비율로
+      // 따로 계산한 적정 월세를 표로 보여준다 (docs/RIR.csv - 국토교통부 주거실태조사). 통계 파일이 없으면 표는 숨긴다.
+      if (data.rir_year) {
+        document.getElementById("rir-label").textContent = `수도권 주거비 비율(RIR, ${data.rir_year})`;
+        // 적정 월세 상한은 수도권 RIR을 내 월소득에 적용한 값이다 (통계 파일이 없을 때만 소득의 20% 기본값 - 위 HTML 기본 문구)
+        const affordLabel = document.getElementById("afford-label");
+        affordLabel.innerHTML = `적정 월세 상한 <span class="text-gray-300">(수도권 RIR ${fmtRate(data.rent_to_income_ratio)}% 기준)</span>`;
+        affordLabel.title = `내 월소득 x 수도권 RIR(${fmtRate(data.rent_to_income_ratio)}%, ${data.rir_year}년 ${esc(data.rir_source || "")})`;
+        const rows = [
+          { label: "수도권 평균", grp: "전체 가구", pct: data.rent_to_income_ratio, rent: data.rir_metro_affordable_rent, metro: true },
+          ...(data.rir_by_income || []).map((lv) => ({ label: lv.label, grp: "소득수준별", pct: lv.rir_percent, rent: lv.affordable_rent, metro: false })),
+        ];
+        document.getElementById("rir-table-body").innerHTML = rows
+          .map(
+            (r) => `<tr class="${r.metro ? "metro" : ""}">
+              <td>${esc(r.label)}</td>
+              <td class="num">${fmtRate(r.pct)}%</td>
+              <td class="num">${Number(r.rent).toFixed(1)}만원</td>
+            </tr>`
+          )
+          .join("");
+        document.getElementById("rir-foot").innerHTML =
+          `내 월소득 <b>${fmtNum(data.rir_monthly_income)}만원</b>(입력한 연소득 ÷ 12) × RIR로 계산했어요. ` +
+          `출처: ${esc(data.rir_source)} ${data.rir_year}년 · RIR = 월임대료 ÷ 월가구소득(중위값, 보증금은 월세로 환산). ` +
+          `통계의 월소득은 세금 제외 실수령액 기준이라, 입력하신 연소득이 세전이면 실제 적정 월세는 이보다 낮을 수 있어요.`;
+        document.getElementById("rir-box").classList.remove("hidden");
+      }
       document.getElementById("disclaimer").textContent = data.disclaimer;
 
       // 보증금을 월 비용으로 환산하는 이율 = 한국부동산원 수도권 전월세 전환율(종합주택) 최신 월 값. 조회에 실패해 대체값을 썼으면 그렇다고 밝힌다.
