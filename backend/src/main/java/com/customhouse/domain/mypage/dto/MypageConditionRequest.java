@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.Set;
 
@@ -30,6 +31,13 @@ public record MypageConditionRequest(
 
         @NotBlank(message = "직장 위치(workLocation)는 필수입니다.")
         String workLocation,
+
+        @Size(max = 255, message = "직장 주소는 255자 이하여야 합니다.")
+        String workAddress, // 선택. 카카오 주소검색으로 찾은 정확한 주소 (있으면 workLat/workLon과 함께 옴)
+
+        Double workLat, // 선택. workAddress의 정확한 위도
+
+        Double workLon, // 선택. workAddress의 정확한 경도
 
         @NotNull(message = "희망 보증금(desiredDeposit)은 필수입니다.")
         @Min(value = 0, message = "희망 보증금은 0 이상이어야 합니다.")

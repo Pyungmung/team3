@@ -25,7 +25,9 @@ public class RestClientConfig {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(5_000);
         // AI 엔진이 국토부 실거래가 4종을 지역별로 조회하므로 콜드 스타트 때 시간이 걸린다 (병렬 호출로 줄였지만 여유를 둔다).
-        requestFactory.setReadTimeout(30_000);
+        // 2026-09-28: 국토부 응답을 페이지네이션으로 전량 수집하고, 최종 추천 매물마다 도로명주소·좌표·통근시간을
+        // 외부 API로 처음 조회하는 콜드 진단이 실측 약 45초(캐시가 채워지면 2~3초)라 30초로는 502가 나서 늘렸다.
+        requestFactory.setReadTimeout(120_000);
 
         return RestClient.builder()
                 .baseUrl(aiEngineBaseUrl)

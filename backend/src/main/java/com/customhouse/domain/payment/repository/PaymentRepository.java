@@ -11,4 +11,7 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByOrderId(String orderId);
+
+    /** 회원 탈퇴 시 결제 이력을 함께 정리한다 (domain.user.service.UserService 참고). */
+    void deleteByUserId(Long userId);
 }

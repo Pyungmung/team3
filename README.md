@@ -90,7 +90,7 @@ python serve.py        # http://localhost:3000
 
 - 브라우저에서 http://localhost:3000/pages/index.html 접속
 - "내 주거비 절약 진단받기" → 조건 입력 → 결과 리포트까지 실제로 동작합니다.
-- 회원가입(`pages/auth/signup.html`) → 로그인(`pages/auth/login.html`)도 실제로 동작하며,
+- 회원가입/로그인은 `pages/auth/signup.html` 한 화면에서 탭으로 전환되며(`login.html`은 그 화면의 로그인 탭으로 연결) 실제로 동작하고,
   로그인하면 우측 상단이 "로그인" 버튼에서 이메일 + "로그아웃" 버튼으로 바뀝니다.
 
 ## 4. 핵심 기능 동작 확인 (curl)
@@ -100,6 +100,15 @@ curl -X POST http://localhost:8080/api/recommendation/diagnosis \
   -H "Content-Type: application/json" \
   -d '{"annualIncome":3400,"deposit":800,"desiredRent":55,"workLocation":"강남구","maxCommuteMinutes":40,"age":28,"noHouseholder":true,"jobType":"SME","preferentialStatuses":[]}'
 ```
+
+위 `/diagnosis`는 국토부 실거래가 기준 리포트(`report-result.html`)용이고, **더미 매물 기반 추천 리포트**(`report-listings.html`, 진단의 기본 화면)는
+같은 요청 본문으로 `POST /api/recommendation/diagnosis/listings`(AI 엔진 `POST /api/v1/diagnosis/listings`)를 호출합니다.
+
+- 더미 매물 데이터: `docs/samples/dummyhouses/dummyhouse_(자치구영문).csv` 25개(서초구 4,000건 + 나머지 구 각 3,000건, 54컬럼).
+  AI 엔진 경로는 `.env`의 `DUMMY_HOUSES_DIR`로 바꿀 수 있습니다 (`app/core/config.py`의 `dummy_houses_dir`).
+- 스키마/저장소: `customhouse-ai/app/services/listing_schema.py`(컬럼 단일 출처), `listing_repository.py`(읽기 + 신규 매물 `append_listing`),
+  `listing_builder.py`(행안부 도로명주소·카카오 좌표·국토부 실거래 조회, 신규 매물 생성 탭에서 재사용).
+- CSV 재생성: `cd customhouse-ai && python scripts/gen_dummyhouses.py` (작업 파일은 `scripts/_work/`, Git 제외).
 
 ## 5. 회원가입 / 로그인 (curl)
 
@@ -208,7 +217,7 @@ curl -X PATCH http://localhost:8080/api/notifications/{id}/read -H "Authorizatio
 `customhouse-ai/app/services/api_collector.py`가 국토교통부 실거래가 API 4종
 (아파트 `RTMSDataSvcAptRent` / 오피스텔 `RTMSDataSvcOffiRent` / 연립다세대 `RTMSDataSvcRHRent` /
 단독다가구 `RTMSDataSvcSHRent`)를 실제로 호출합니다. **`DATA_GO_KR_API_KEY`를 안 채우면
-샘플 데이터(`regions.json`)로 자동 폴백**하고, 채우면 최근 3개월 실거래 개별 건이 후보 매물로
+샘플 데이터(`regions.json`)로 자동 폴백**하고, 채우면 최근 2개월 실거래 개별 건이 후보 매물로
 반영됩니다. 진단 결과의 각 매물에 `data_source`("국토부 실거래가 (YYYY.M 거래)" 또는 "샘플 데이터")와
 `property_type`(주거 유형)이 표시됩니다. 4종 모두 같은 키 하나로 호출됩니다.
 

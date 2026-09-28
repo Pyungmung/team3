@@ -44,7 +44,7 @@ class DiagnosisRequest(BaseModel):
         alias="workLat",
     )
     work_lon: float | None = Field(None, description="직장 정확한 경도 (선택, work_lat 참고)", alias="workLon")
-    max_commute_minutes: int = Field(40, ge=10, description="희망 최대 통근시간(분)", alias="maxCommuteMinutes")
+    max_commute_minutes: int = Field(30, ge=10, description="희망 최대 통근시간(분)", alias="maxCommuteMinutes")
     age: int | None = Field(None, ge=0, le=120, description="나이 (정책 자격 판별용)", alias="age")
     no_householder: bool | None = Field(None, description="무주택 세대주 여부 (버팀목 대출 자격 판별용)", alias="noHouseholder")
     assets: int | None = Field(None, ge=0, description="총자산 (만원, 정책 자격의 자산 기준 판별용)", alias="assets")
@@ -59,18 +59,49 @@ class DiagnosisRequest(BaseModel):
         alias="preferentialStatuses",
     )
 
+    move_schedule: str | None = Field(
+        None,
+        description="희망 이사 일정 (IMMEDIATE/WITHIN_3M/WITHIN_6M/EXPLORING). 아직 추천 로직에는 쓰지 않고 "
+        "나중에 데이터로 활용하기 위해 받아만 둔다.",
+        alias="moveSchedule",
+    )
+    transport_type: str | None = Field(
+        None,
+        description="주요 통근 수단 (PUBLIC/WALK/CAR, 미지정 시 PUBLIC). 각 수단에 맞는 카카오 API로 "
+        "실제 소요시간을 계산한다 (CAR=카카오모빌리티 자동차 길찾기, PUBLIC/WALK=카카오맵 대중교통/도보 "
+        "경로 조회. calculator.py의 _commute_minutes 참고). API 호출 실패/결과 없음이면 직선거리로 "
+        "추정하지 않고 그 지역을 후보에서 제외한다.",
+        alias="transportType",
+    )
+    use_loan_policy: bool = Field(
+        True,
+        description="정책 대출 활용 의향. false면 정부지원정책 목록에서 대출 상품(policies.json의 is_loan)을 추천하지 않는다.",
+        alias="useLoanPolicy",
+    )
+    preferred_building_types: list[str] = Field(
+        default_factory=list,
+        description="선호 주택 유형(국토부 실거래가 API 유형명 그대로: 아파트/오피스텔/연립다세대/단독다가구). "
+        "비어 있거나 4종 모두면 필터 없이 전체를, 일부만 있으면 그 유형의 매물만 추천한다.",
+        alias="preferredBuildingTypes",
+    )
+
     class Config:
         populate_by_name = True
 
     @field_validator("max_commute_minutes", mode="before")
     @classmethod
     def _default_max_commute(cls, v):
-        return 40 if v is None else v
+        return 30 if v is None else v
 
-    @field_validator("preferential_statuses", mode="before")
+    @field_validator("preferential_statuses", "preferred_building_types", mode="before")
     @classmethod
-    def _default_preferential_statuses(cls, v):
+    def _default_empty_list(cls, v):
         return [] if v is None else v
+
+    @field_validator("use_loan_policy", mode="before")
+    @classmethod
+    def _default_use_loan_policy(cls, v):
+        return True if v is None else v
 
     @property
     def effective_monthly_income(self) -> float:

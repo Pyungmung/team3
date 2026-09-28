@@ -7,17 +7,79 @@ const AUTH_API_BASE = "http://localhost:8080/api/auth";
 const ACCESS_TOKEN_KEY = "customhouse:accessToken";
 const REFRESH_TOKEN_KEY = "customhouse:refreshToken";
 
-async function signup({ email, password, nickname }) {
+async function signup({ email, password, nickname, phone, marketingConsent }) {
   const res = await fetch(`${AUTH_API_BASE}/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, nickname }),
+    body: JSON.stringify({ email, password, nickname, phone: phone || null, marketingConsent: !!marketingConsent }),
   });
   const body = await res.json();
   if (!res.ok || body.success === false) {
     throw new Error(body.message || "회원가입에 실패했습니다.");
   }
   return body.data;
+}
+
+/** 이메일 중복 확인. 이미 사용 중이면 true, 사용 가능하면 false를 돌려준다. */
+async function checkEmail(email) {
+  const res = await fetch(`${AUTH_API_BASE}/check-email?email=${encodeURIComponent(email)}`);
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "이메일 중복 확인에 실패했습니다.");
+  }
+  return body.data;
+}
+
+/** 회원가입용 이메일 인증번호 발송. */
+async function sendSignupCode(email) {
+  const res = await fetch(`${AUTH_API_BASE}/email/signup-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "인증번호 발송에 실패했습니다.");
+  }
+}
+
+/** 회원가입 이메일 인증번호 확인. */
+async function verifySignupCode(email, code) {
+  const res = await fetch(`${AUTH_API_BASE}/email/verify-signup-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "인증번호가 올바르지 않습니다.");
+  }
+}
+
+/** 비밀번호 재설정용 이메일 인증번호 발송. */
+async function sendPasswordResetCode(email) {
+  const res = await fetch(`${AUTH_API_BASE}/password/reset-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "인증번호 발송에 실패했습니다.");
+  }
+}
+
+/** 인증번호 확인 + 새 비밀번호 반영을 한 번에 처리. */
+async function resetPassword({ email, code, newPassword }) {
+  const res = await fetch(`${AUTH_API_BASE}/password/reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code, newPassword }),
+  });
+  const body = await res.json();
+  if (!res.ok || body.success === false) {
+    throw new Error(body.message || "비밀번호 재설정에 실패했습니다.");
+  }
 }
 
 async function login({ email, password }) {
@@ -90,6 +152,11 @@ function computeAuthHref(targetFromPagesRoot) {
 
 window.CustomHouseAuthApi = {
   signup,
+  checkEmail,
+  sendSignupCode,
+  verifySignupCode,
+  sendPasswordResetCode,
+  resetPassword,
   login,
   refreshAccessToken,
   loginWithNaver,

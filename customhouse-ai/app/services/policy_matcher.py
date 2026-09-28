@@ -11,16 +11,30 @@ CSV 실데이터는 지원혜택이 자유 텍스트(대출 조건/현물 지원
 계산에는 더 이상 반영하지 않는다 (government_support는 항상 0 - calculator.py 참고).
 """
 import json
-from functools import lru_cache
+import threading
+from pathlib import Path
 
 from app.core.config import settings
 
+_lock = threading.Lock()
+_cache: tuple[tuple[float, int], dict] | None = None  # ((mtime, size), 정책 데이터)
 
-@lru_cache(maxsize=1)
+
 def _load_policy_data() -> dict:
-    """(변하지 않는) 정책 JSON을 매번 디스크에서 다시 읽지 않도록 캐싱한다."""
-    with open(settings.policies_file, encoding="utf-8") as f:
-        return json.load(f)
+    """정책 JSON을 매번 디스크에서 다시 읽지 않도록 캐싱하되, 파일이 바뀌면(mtime/크기) 자동으로 다시 읽는다.
+    (2026-09-28: 예전엔 lru_cache라 CSV를 다시 변환해도 서버를 재시작해야 반영됐다 - scripts/convert_policies.py 참고)"""
+    global _cache
+    path = Path(settings.policies_file)
+    stat = path.stat()
+    signature = (stat.st_mtime, stat.st_size)
+    with _lock:
+        if _cache and _cache[0] == signature:
+            return _cache[1]
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    with _lock:
+        _cache = (signature, data)
+    return data
 
 
 def load_policies() -> list[dict]:
@@ -105,6 +119,9 @@ def match_display_policies(request, building_region: str) -> list[dict]:
     (실질 주거비 계산에는 반영하지 않는 정보성 매칭 - 모듈 docstring 참고)"""
     matched = []
     for policy in load_policies():
+        # "정책 대출 활용"을 해제한 사용자에게는 대출 상품을 추천하지 않는다.
+        if policy.get("is_loan") and not request.use_loan_policy:
+            continue
         if not _region_ok(policy, building_region):
             continue
         if not _age_ok(policy, request.age):
@@ -123,6 +140,7 @@ def match_display_policies(request, building_region: str) -> list[dict]:
         matched.append(
             {
                 "id": policy["id"],
+                "region": policy.get("region") or "서울",  # "서울"이면 서울 전역 공통 정책, 자치구 이름이면 그 자치구 정책
                 "agency": policy["agency"],
                 "name": policy["name"],
                 "description": policy["description"],

@@ -1,9 +1,11 @@
 package com.customhouse.domain.user.service;
 
 import com.customhouse.domain.user.dto.LoginRequest;
+import com.customhouse.domain.user.dto.PasswordResetRequest;
 import com.customhouse.domain.user.dto.SignupRequest;
 import com.customhouse.domain.user.dto.TokenResponse;
 import com.customhouse.domain.user.dto.UserResponse;
+import com.customhouse.domain.user.entity.EmailVerification;
 import com.customhouse.domain.user.entity.User;
 import com.customhouse.domain.user.repository.UserRepository;
 import com.customhouse.global.error.CustomException;
@@ -24,17 +26,23 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
     public UserResponse signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
+        if (!emailVerificationService.isSignupEmailVerified(request.email())) {
+            throw new CustomException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
 
         User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .nickname(request.nickname())
+                .phone(request.phone() == null || request.phone().isBlank() ? null : request.phone().trim())
+                .marketingConsent(request.isMarketingConsent())
                 .provider("LOCAL")
                 .build();
 
@@ -74,6 +82,18 @@ public class AuthService {
 
     public boolean isEmailDuplicate(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    /** 비밀번호 재설정: 인증번호를 확인하고 통과하면 바로 비밀번호를 반영한다 (별도 재설정 토큰 없음). */
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .filter(u -> "LOCAL".equals(u.getProvider()))
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "가입된 이메일 계정을 찾을 수 없습니다."));
+
+        emailVerificationService.verifyCode(request.email(), request.code(), EmailVerification.Purpose.PASSWORD_RESET);
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
     }
 
     /** 로그인/OAuth2 성공 공통: Access/Refresh 토큰 발급 후 Refresh Token을 사용자 레코드에 저장(대조용). */
