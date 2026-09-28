@@ -13,6 +13,7 @@ MIN_DEPOSIT = 100               # 만원. 월세/전세 모두 보증금이 이�
 MIN_JEONSE_DEPOSIT = 3000       # 만원. 전세 보증금이 이보다 작으면 비현실적
 CHEAP_WOLSE_MAX_DEPOSIT = 2000  # 만원. 월세 보증금이 이 이하이면서
 CHEAP_WOLSE_MAX_RENT = 20       # 만원. 월세도 이 이하이면 비현실적 (보증금도 월세도 너무 싼 조합)
+MIN_SEMI_JEONSE_RENT = 8        # 만원. 반전세(보증금 ÷ 월세 >= 100)인데 월세가 이보다 작으면 보증금과 상관없이 비현실적
 
 PHOTO_PLACEHOLDER = "PHOTO_PLACEHOLDER"  # 사진 연결 전 임시값. 나중에 이미지 URL/경로로 바뀐다.
 SEMI_JEONSE_RATIO = 100
@@ -98,13 +99,15 @@ def is_semi_jeonse(deposit: int, monthly_rent: int) -> bool:
 
 def is_realistic_price(lease_type: str, deposit: int, monthly_rent: int) -> bool:
     """현실적으로 가능한 가격인지. 보증금 100만원 미만은 모두 불가, 전세는 3000만원 미만 불가,
-    월세는 (보증금 2000만원 이하 and 월세 20만원 이하) 불가."""
+    월세는 (보증금 2000만원 이하 and 월세 20만원 이하) 불가, 반전세(보증금/월세 >= 100)는 월세 8만원 미만 불가."""
     deposit, monthly_rent = deposit or 0, monthly_rent or 0
     if deposit < MIN_DEPOSIT:
         return False
     if lease_type == "전세":
         return deposit >= MIN_JEONSE_DEPOSIT
-    return not (deposit <= CHEAP_WOLSE_MAX_DEPOSIT and monthly_rent <= CHEAP_WOLSE_MAX_RENT)
+    if deposit <= CHEAP_WOLSE_MAX_DEPOSIT and monthly_rent <= CHEAP_WOLSE_MAX_RENT:
+        return False
+    return not (is_semi_jeonse(deposit, monthly_rent) and monthly_rent < MIN_SEMI_JEONSE_RENT)
 
 
 def _parse(value: str, kind: str):

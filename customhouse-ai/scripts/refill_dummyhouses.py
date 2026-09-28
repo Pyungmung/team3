@@ -150,7 +150,7 @@ def fill_new_rows(gu, eng, lawd, kept, pool, need, target_n, rng, offices, max_s
     return new_rows
 
 
-def refill_district(gu, src_dir: Path, out_dir: Path):
+def refill_district(gu, src_dir: Path, out_dir: Path, delete_only: bool = False):
     eng = g.ENG[gu]
     src = src_dir / f"dummyhouse_{eng}.csv"
     with src.open(encoding="utf-8-sig", newline="") as f:
@@ -163,6 +163,10 @@ def refill_district(gu, src_dir: Path, out_dir: Path):
     if removed == 0:
         log(f"[{gu}] 삭제 대상 없음 - 그대로 유지 ({target_n}건)")
         return target_n, 0, 0
+
+    if delete_only:  # 기준에 안 맞는 매물만 지우고 새로 채우지는 않는다
+        log(f"[{gu}] 삭제 {removed}건 (채우지 않음) -> {len(kept)}건")
+        return write_rows(gu, eng, kept, out_dir, removed, 0)
 
     rng = random.Random(f"dummyhouse-refill-{gu}")
     lawd = json.loads((g.ROOT / "app/data/lawd_codes.json").read_text(encoding="utf-8"))["regions"][gu][0]
@@ -182,7 +186,12 @@ def refill_district(gu, src_dir: Path, out_dir: Path):
     if len(new_rows) < removed:
         log(f"[{gu}] 경고: {removed}건 중 {len(new_rows)}건만 채움 (후보 소진)")
 
-    out_rows = kept + new_rows
+    return write_rows(gu, eng, kept + new_rows, out_dir, removed, len(new_rows))
+
+
+def write_rows(gu, eng, out_rows, out_dir: Path, removed: int, added: int):
+    """CSV를 임시 파일에 쓴 뒤 정식 이름으로 옮긴다 (엑셀 등에서 열려 있어 잠겨 있으면 실패로 알린다)."""
+    log = g.log
     out_dir.mkdir(parents=True, exist_ok=True)
     tmp = g.SCRATCH / f"_refill_{eng}.csv"
     with tmp.open("w", encoding="utf-8-sig", newline="") as f:
@@ -194,16 +203,17 @@ def refill_district(gu, src_dir: Path, out_dir: Path):
         shutil.move(str(tmp), str(target))
     except PermissionError:
         log(f"[{gu}] 실패: {target.name} 잠김(엑셀 등에서 열려 있음) - 파일을 닫고 다시 실행하세요 (결과 보관: {tmp})")
-        return target_n, removed, -1
+        return len(out_rows), removed, -1
     kinds = Counter(r["거래유형"] for r in out_rows)
-    log(f"[{gu}] 저장 완료 {target.name}: {len(out_rows)}건 (삭제 {removed} / 신규 {len(new_rows)}) | 거래유형 {dict(kinds)}")
-    return len(out_rows), removed, len(new_rows)
+    log(f"[{gu}] 저장 완료 {target.name}: {len(out_rows)}건 (삭제 {removed} / 신규 {added}) | 거래유형 {dict(kinds)}")
+    return len(out_rows), removed, added
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--districts", default="")
     ap.add_argument("--outdir", default="")
+    ap.add_argument("--delete-only", action="store_true", help="기준에 안 맞는 매물만 삭제하고 새로 채우지 않는다")
     args = ap.parse_args()
     src_dir = Path(settings.dummy_houses_dir)
     out_dir = Path(args.outdir) if args.outdir else src_dir
@@ -216,7 +226,7 @@ def main():
             continue
         t0 = time.time()
         try:
-            n, removed, added = refill_district(gu, src_dir, out_dir)
+            n, removed, added = refill_district(gu, src_dir, out_dir, delete_only=args.delete_only)
         except Exception as e:  # noqa: BLE001 - 한 구가 실패해도 다음 구를 계속 진행
             g.log(f"[{gu}] 실패: {type(e).__name__}: {e}")
             continue
