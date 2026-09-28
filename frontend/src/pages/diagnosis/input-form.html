@@ -519,7 +519,6 @@
           <div class="full">
             <label class="flabel">희망 최대 통근시간</label>
             <select name="maxCommuteMinutes" class="select">
-              <option value="10">10분 이내</option>
               <option value="20">20분 이내</option>
               <option value="30" selected>30분 이내</option>
               <option value="40">40분 이내</option>
@@ -993,12 +992,18 @@
       (wasQuick ? quickBtn : submitBtn).textContent = wasQuick ? "3초 진단 중..." : "분석 중...";
 
       try {
-        const result = await CustomHouseRecommendationApi.requestDiagnosis(condition);
+        // 2026-09-28: 추천 매물은 더미 매물(CSV) 기반 리포트(report-listings.html)가 기본이다. 국토부
+        // 실거래가 기준 기존 리포트(report-result.html)는 그 페이지 하단 탭에서 같은 조건으로 불러온다.
+        const result = await CustomHouseRecommendationApi.requestListingDiagnosis(condition);
         // localStorage 사용 이유: report-result.html 참고 (탭이 바뀌거나 세션이 끊겨도 유지되어야 함).
-        localStorage.setItem("customhouse:lastDiagnosis", JSON.stringify(result));
+        localStorage.setItem("customhouse:lastListingDiagnosis", JSON.stringify(result));
+        // 이 결과를 받을 때 쓴 조건 - report-listings.html이 기존 리포트에서 조건이 바뀌었는지 알아채는 데 쓴다.
+        localStorage.setItem("customhouse:lastListingDiagnosisCondition", JSON.stringify(condition));
+        // 이전 조건으로 받아둔 실거래가 리포트 결과가 남아 새 조건과 어긋나 보이지 않게 지운다.
+        localStorage.removeItem("customhouse:lastDiagnosis");
         // 리포트 화면에서 주택 유형만 바꿔 "다시 조회"할 때 나머지 조건을 그대로 재사용하기 위해 저장.
         localStorage.setItem("customhouse:lastDiagnosisCondition", JSON.stringify(condition));
-        window.location.href = "report-result.html";
+        window.location.href = "report-listings.html";
       } catch (err) {
         showError(err.message || "진단 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = false));

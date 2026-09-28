@@ -10,6 +10,13 @@
  * 실제 위치와 무관한 도넛 모양 착시가 생겼던 문제(2026-09-27)가 재발한다.
  */
 
+// 정보창/폴백 목록 HTML에 넣는 매물명·주소·직장 주소는 이스케이프한다. 직장 주소는 사용자가 직접 입력하고,
+// 앞으로 "신규 매물 생성" 탭에서 매물명/주소도 사용자가 입력하게 되므로 그대로 HTML에 넣으면 스크립트가 실행될 수 있다
+// (2026-09-28 검증 중 발견).
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
 // 자치구 대표 좌표 (구청 기준 근사값) - 좌표를 못 구한 매물(단독다가구 등)의 지역 대표 마커용.
 const REGION_COORDS = {
   관악구: [37.4784, 126.9516],
@@ -65,7 +72,7 @@ function renderFallbackList(el, recommendations) {
       ${recommendations
         .map(
           (r) => `<li class="card px-3 py-2 text-sm">
-            <div class="font-semibold">${r.building_name || r.region}</div>
+            <div class="font-semibold">${escapeHtml(r.building_name || r.region)}</div>
             <div class="text-gray-500">${r.real_housing_cost}만원/월</div>
           </li>`
         )
@@ -125,7 +132,7 @@ function renderKakaoMap(mapEl, recommendations, onMarkerClick, workLocation) {
 
       const workInfowindow = new window.kakao.maps.InfoWindow({
         zIndex: 999,
-        content: `<div style="padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;color:#E11D48;">🏢 직장/학교 위치<br/>${workLocation.label || workLocation.region}</div>`,
+        content: `<div style="padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap;color:#E11D48;">🏢 직장/학교 위치<br/>${escapeHtml(workLocation.label || workLocation.region)}</div>`,
       });
       workInfowindow.open(map, workMarker); // 기준점이라 호버 없이 항상 라벨을 띄워둔다.
 
@@ -141,7 +148,7 @@ function renderKakaoMap(mapEl, recommendations, onMarkerClick, workLocation) {
     addMarker(
       idx,
       position,
-      `<b>${r.building_name}</b> · ${r.real_housing_cost}만원/월<br/>${r.address || r.region}`,
+      `<b>${escapeHtml(r.building_name)}</b> · ${r.real_housing_cost}만원/월<br/>${escapeHtml(r.address || r.region)}`,
       idx
     );
     markerKeyByIdx.set(idx, idx);
@@ -164,7 +171,7 @@ function renderKakaoMap(mapEl, recommendations, onMarkerClick, workLocation) {
     addMarker(
       key,
       new window.kakao.maps.LatLng(coord[0], coord[1]),
-      `<b>${region}</b> · 매물 ${items.length}건 (정확한 주소 미확인)<br/>최저 ${cheapest.real_housing_cost}만원/월 · ${cheapest.building_name}`,
+      `<b>${region}</b> · 매물 ${items.length}건 (정확한 주소 미확인)<br/>최저 ${cheapest.real_housing_cost}만원/월 · ${escapeHtml(cheapest.building_name)}`,
       idxList[0]
     );
     idxList.forEach((i) => markerKeyByIdx.set(i, key));
@@ -226,4 +233,5 @@ function focusBuilding(idx) {
   if (infowindow) infowindow.open(map, marker);
 }
 
-window.CustomHouseMapUtil = { renderRecommendedRegionsMap, focusBuilding };
+// REGION_COORDS는 새 리포트의 클러스터 지도(map-cluster-util.js)가 직장 위치 대표좌표로 같이 쓴다.
+window.CustomHouseMapUtil = { renderRecommendedRegionsMap, focusBuilding, REGION_COORDS };
