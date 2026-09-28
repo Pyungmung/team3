@@ -29,3 +29,6 @@ Thumbs.db
 
 # 프론트엔드는 빌드 단계가 없는 순수 JS라 .env를 못 씀 -> config.js에 카카오맵 키 등을 둔다.
 frontend/src/js/config.js
+
+# --- 더미 매물 생성 작업 폴더(캐시/로그/임시 CSV) ---
+customhouse-ai/scripts/_work/

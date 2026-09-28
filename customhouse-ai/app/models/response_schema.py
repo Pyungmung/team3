@@ -63,3 +63,75 @@ class DiagnosisResponse(BaseModel):
     # (카카오 API가 완전히 막혔을 때만 - calculator.py의 ESTIMATE_SOURCE_LABEL 참고). 프론트가
     # 화면 한구석에 "API 실측 기반"/"일부 직선거리 추정 사용됨" 표시하는 데 쓴다.
     disclaimer: str = "본 결과는 샘플 데이터 기반 추정치이며, 실제 시세·정책 자격과 다를 수 있습니다."
+
+
+# ---------------------------------------------------------------------------------------------
+# 더미 매물 추천 (POST /api/v1/diagnosis/listings) - 2026-09-28
+# 추천 매물은 docs/samples/dummyhouses/*.csv(더미 매물)이고, 국토부 실거래가는 매물마다 붙는 "참고"
+# 정보(reference_transaction)다. 기존 실거래가 기준 리포트(DiagnosisResponse)는 그대로 둔다.
+# ---------------------------------------------------------------------------------------------
+class BrokerInfo(BaseModel):
+    """공인중개사 정보 (CSV의 공인중개사_* 컬럼)."""
+
+    name: str = ""
+    representative: str = ""
+    reg_no: str = ""
+    phone: str = ""
+    address: str = ""
+    comment: str = ""  # 공인중개사설명
+
+
+class ReferenceTransaction(BaseModel):
+    """이 매물 건물(지번)에서 실제로 있었던 국토부 전월세 실거래 1건 - 화면에는 "이전 실거래 내역"처럼
+    보조로만 보여준다 (CSV의 참고_국토부_* 컬럼)."""
+
+    contract_date: str = ""        # 계약일 YYYY-MM-DD
+    contract_type: str = ""        # 신규/갱신
+    contract_term: str = ""
+    use_rr_right: str = ""         # 갱신요구권 사용 여부 Y/N
+    pre_deposit: int | None = None  # 만원, 갱신 계약의 종전 보증금
+    pre_monthly_rent: int | None = None
+    deposit: int | None = None     # 만원
+    monthly_rent: int | None = None  # 만원, 0이면 전세
+    lease_kind: str = ""           # 전월세 판별 설명
+    area: float | None = None
+    floor: str = ""
+    jibun: str = ""
+
+
+class ListingRecommendation(BuildingRecommendation):
+    """더미 매물 1건 단위 추천. 기존 BuildingRecommendation 필드(지도/차트/카드가 그대로 쓴다)에
+    매물 상세 정보를 더한다. 기존 필드 의미: listing_deposit/listing_monthly_rent = 매물 보증금/월세,
+    maintenance_fee = 이 매물의 관리비(구 평균이 아님), address = 도로명주소, deal_date = 빈 문자열,
+    loan_interest = 항상 0 (보증금 한도를 넘는 매물은 대출로 메운다고 보지 않고 추천에서 제외한다)."""
+
+    listing_id: str = ""             # 매물등록번호 (예: SEOCHO-202609-0001)
+    listing_status: str = ""         # 계약가능/계약중 (추천에는 계약가능만 나온다)
+    registered_date: str = ""
+    photo: str = ""                  # 내부사진. 지금은 PHOTO_PLACEHOLDER, 나중에 이미지 경로/URL
+    unit_label: str = ""             # 동/호수 또는 단독·층수
+    maintenance_fee_items: str = ""  # 관리비 포함 항목
+    parking: str = ""
+    elevator: bool | None = None
+    rooms: int | None = None
+    bathrooms: int | None = None
+    built_year: int | None = None
+    move_in_date: str = ""           # 이사가능일
+    description: str = ""            # 상세설명
+    broker: BrokerInfo = BrokerInfo()
+    road_address: str = ""
+    jibun_address: str = ""
+    postal_code: str = ""
+    address_source: str = ""         # 주소출처 (단독다가구는 같은 동의 실제 도로명주소를 빌려 옴)
+    reference_transaction: ReferenceTransaction | None = None
+
+
+class ListingDiagnosisResponse(BaseModel):
+    affordable_rent: int
+    rent_to_income_ratio: float
+    wolse_recommendations: list[ListingRecommendation]
+    jeonse_recommendations: list[ListingRecommendation]
+    used_distance_estimate: bool = False
+    total_candidates: int = 0  # 조건(통근권/상태/희망가/유형)을 통과한 매물 수 - 화면에 "N건 중 상위 표시" 용
+    deposit_limit: int = 0     # 만원, 이 금액을 넘는 보증금의 매물은 추천에서 제외됨 (희망 보증금, 없으면 현재 보유 보증금)
+    disclaimer: str = "더미 매물 데이터 기반 추정치이며, 실제 매물·시세·정책 자격과 다를 수 있습니다. 실거래가는 참고용입니다."

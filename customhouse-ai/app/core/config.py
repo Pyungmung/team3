@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     region_coords_file: Path = data_dir / "region_coords.json"
     work_locations_file: Path = data_dir / "work_locations.json"
 
+    # 더미 매물 CSV 폴더 (dummyhouse_(자치구영문).csv 25개). 추천 매물(listing_recommender.py)과 신규 매물
+    # 등록(listing_repository.append_listing)이 같은 파일을 읽고 쓴다. 배포처럼 저장소 구조와 다르면
+    # DUMMY_HOUSES_DIR 환경변수(.env)로 경로를 덮어쓴다.
+    dummy_houses_dir: Path = Path(__file__).resolve().parents[3] / "docs" / "samples" / "dummyhouses"
+
     # --- 공공/외부 API 키 (.env.example 참고) ---
     # data.go.kr(공공데이터포털)은 계정 1개당 인증키 1개를 발급하고, 그 키로 여러 API를
     # 공용으로 쓸 수 있다. 아래 2개(국토교통부 전월세 실거래가 / 한국주택금융공사)는 전부
