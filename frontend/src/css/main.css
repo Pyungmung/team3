@@ -1044,6 +1044,8 @@ Bottom CTA
   transform: translateY(-3px);
 }
 
+
+
 /* ========================================
 Responsive
 ======================================== */
@@ -1247,7 +1249,7 @@ Responsive
     margin-bottom: 20px;
     padding: 9px 15px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(252, 253, 254, 0.95);
     color: #1B2A4A;
     font-size: 13px;
     font-weight: 700;
@@ -1368,11 +1370,18 @@ Responsive
 
 .home-cta {
   padding: 54px 20px;
+  background: linear-gradient(
+    135deg,
+    #1B2A4A 0%,
+    #16233f 52%,
+    #020617 100%
+  );
 }
 
 .home-cta h2 {
   font-size: 28px;
   line-height: 1.3;
+  word-break: keep-all;
 }
 
 .home-cta > .home-cta-content > p:not(.home-section-eyebrow) {
