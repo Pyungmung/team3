@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] AI 주거비 절약 진단 - 조건 입력 폼 (핵심 기능 화면)
+     1단계(3초 간편 진단) / 2단계(정밀 맞춤 진단)로 나뉜 단계형 화면. 한 개의 <form> 안에서 두 단계를 전환한다.
+     서버로 보내는 name 속성/스크립트가 쓰는 id는 백엔드(RecommendRequest)·AI 엔진 계약이라 바꾸면 안 된다. -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 주거비 절약 진단</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <script src="../../js/config.js?v=20260915d"></script>
+  <script>
+    // 직장 위치 주소검색(카카오 Geocoder)용 SDK. 키 없으면 그냥 안 불러오고, 아래 스크립트가
+    // 기존 드롭다운 UI로 폴백한다 (report-result.html의 지도 연동과 같은 패턴).
+    if (window.CUSTOMHOUSE_CONFIG && window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY) {
+      const kakaoSdkScript = document.createElement("script");
+      kakaoSdkScript.src =
+        "https://dapi.kakao.com/v2/maps/sdk.js?appkey=" +
+        window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY +
+        "&libraries=services&autoload=false";
+      document.head.appendChild(kakaoSdkScript);
+    }
+  </script>
+  <!-- 주소 검색(우편번호) 팝업 - 다음(카카오) 공개 서비스, 별도 키 불필요 -->
+  <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
+  <style>
+    /* 진단 페이지 전용 스타일. 색상은 전역 브랜드 토큰(--brand-*, main.css)을 따른다. */
+    :root {
+      --navy: var(--brand-600);
+      --blue: var(--brand-500);
+      --ink: #10213a;
+      --muted: #64748b;
+      --line: #e7edf4;
+      --bg: #f6f8fb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg) !important;
+    }
+
+    /* ===== HERO: 메인 홈 배너(.home-intro-bg, main.css)와 같은 배경/톤 ===== */
+    .hero {
+      position: relative;
+      color: var(--ink, #0f172a);
+    }
+
+    .hero-inner {
+      max-width: 1040px;
+      margin: auto;
+      padding: 72px 24px 72px;
+    }
+
+    .hero-label {
+      display: inline-block;
+      padding: 5px 14px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      background: var(--brand-100);
+      color: var(--brand-700);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: clamp(32px, 4.4vw, 48px);
+      line-height: 1.3;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      color: #0f172a;
+    }
+
+    .hero-title .accent { color: var(--brand-600); }
+
+    .hero-desc {
+      max-width: 38rem;
+      margin-top: 18px;
+      font-size: 17px;
+      line-height: 1.75;
+      color: #4b5563;
+    }
+
+    /* ===== MAIN CARD ===== */
+    .shell {
+      max-width: 1040px;
+      margin: 8px auto 70px;
+      padding: 0 24px;
+      position: relative;
+    }
+
+    .main-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, .07);
+      overflow: hidden;
+    }
+
+    /* ===== STEP 표시 ===== */
+    .step-head {
+      padding: 28px 34px 22px;
+      border-bottom: 1px solid #edf1f5;
+    }
+
+    .steps {
+      display: flex;
+      align-items: center;
+      max-width: 560px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      color: #a0a9b6;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .step-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #edf1f5;
+      color: #8491a4;
+      font-size: 15px;
+    }
+
+    .step-item.active { color: var(--navy); }
+
+    .step-item.active .step-circle {
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .step-line {
+      height: 1px;
+      flex: 1;
+      background: #e1e6ed;
+      margin: 0 13px;
+    }
+
+    /* ===== INTRO ===== */
+    .intro { padding: 32px 34px 4px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: var(--brand-50);
+      color: var(--brand-600);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .intro h2 {
+      margin: 14px 0 0;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: -.035em;
+    }
+
+    .intro p {
+      margin: 8px 0 0;
+      font-size: 16px;
+      color: var(--muted);
+    }
+
+    .prefill {
+      margin: 20px 34px 0;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: var(--brand-50);
+      color: var(--brand-600);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    /* ===== STAGE ===== */
+    .stage {
+      display: none;
+      padding: 30px 34px 34px;
+    }
+
+    .stage.active { display: block; }
+
+    .section-title {
+      font-size: 19px;
+      font-weight: 900;
+      margin-bottom: 18px;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    .stack { display: grid; gap: 18px; }
+
+    /* ===== FIELD ===== */
+    .flabel {
+      display: block;
+      margin-bottom: 9px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #1e293b;
+    }
+
+    .req { color: #ef4444; }
+
+    .input,
+    .select {
+      width: 100%;
+      height: 54px;
+      padding: 0 15px;
+      border: 1px solid #dfe6ee;
+      border-radius: 12px;
+      background: #fff;
+      font-size: 16px;
+    }
+
+    .input:focus,
+    .select:focus {
+      outline: 0;
+      border-color: var(--brand-500);
+      box-shadow: 0 0 0 3px rgba(51, 65, 85, .12);
+    }
+
+    .input[readonly] {
+      background: #f6f8fa;
+      color: #758195;
+    }
+
+    .hint {
+      margin-top: 7px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #64748b;
+    }
+
+    .divider {
+      height: 1px;
+      background: #edf1f5;
+      margin: 30px 0;
+    }
+
+    /* ===== 버튼 ===== */
+    .secondary {
+      height: 54px;
+      border: 1px solid #dce3eb;
+      border-radius: 10px;
+      padding: 0 20px;
+      background: #fff;
+      color: #34435a;
+      font-size: 15px;
+      font-weight: 800;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .secondary:hover { background: #f8fafc; }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 24px 34px;
+      background: #fbfcfe;
+      border-top: 1px solid #edf1f5;
+    }
+
+    .action-note {
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 9px;
+    }
+
+    .back-btn,
+    .next-btn,
+    .submit-btn {
+      border-radius: 12px;
+      padding: 15px 28px;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: .18s;
+    }
+
+    .back-btn {
+      border: 1px solid #dce3eb;
+      background: #fff;
+      color: #526075;
+    }
+
+    .back-btn:hover { background: #f8fafc; }
+
+    .next-btn,
+    .submit-btn {
+      border: 0;
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .next-btn:hover,
+    .submit-btn:hover { background: var(--brand-700); }
+
+    .submit-btn:disabled,
+    .back-btn:disabled,
+    .next-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* 3초 진단 결과 바로 보기 */
+    .quick-result-btn {
+      border-color: var(--brand-100);
+      color: var(--brand-600);
+      background: var(--brand-50);
+    }
+
+    .quick-result-btn:hover { background: var(--brand-100); }
+
+    /* ===== 체크박스 ===== */
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .check-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .check-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 15px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font-size: 15px;
+      color: #334155;
+      cursor: pointer;
+      transition: .15s;
+    }
+
+    .check-card:hover { background: #f8fafc; }
+
+    .check-card input { accent-color: var(--brand-600); width: 18px; height: 18px; flex: none; }
+
+    .check-card.tall { min-height: 54px; }
+
+    .check-card .sub {
+      display: block;
+      margin-top: 4px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .group-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--brand-600);
+      margin-bottom: 18px;
+    }
+
+    /* ===== 모바일 ===== */
+    @media (max-width: 700px) {
+      .hero-inner { padding: 48px 20px 50px; }
+      .hero-title { font-size: 28px; }
+      .shell { margin: 8px auto 50px; padding: 0 14px; }
+      .step-head, .intro, .stage { padding-left: 20px; padding-right: 20px; }
+      .hero-title { font-size: 32px; }
+      .intro h2 { font-size: 24px; }
+      .prefill { margin-left: 20px; margin-right: 20px; }
+      .actions { padding: 18px 20px; }
+      .grid2, .grid3 { grid-template-columns: 1fr; }
+      .full { grid-column: auto; }
+      .check-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .actions { padding: 18px 20px; align-items: stretch; flex-direction: column; }
+      .button-row { width: 100%; }
+      .button-row button { flex: 1; }
+    }
+
+    @media (max-width: 460px) {
+      .check-grid { grid-template-columns: 1fr; }
+      .button-row { flex-direction: column; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 공통 헤더 -->
+  <div id="app-header"></div>
+
+  <!-- HERO -->
+  <section class="hero home-intro-bg">
+    <div class="hero-inner">
+      <div class="hero-label">AI HOUSING DIAGNOSIS</div>
+      <h1 class="hero-title">AI 주거비<br /><span class="accent">절약 진단</span></h1>
+      <p class="hero-desc">
+        간단한 조건부터 입력하고, 필요하면 상세 조건까지 추가해 더 정확하게 진단해보세요.
+      </p>
+    </div>
+  </section>
+
+  <main class="shell">
+    <!-- novalidate: 숨겨진 단계의 입력칸 때문에 브라우저가 제출을 조용히 막지 않도록 검증은 아래 스크립트가 직접 한다 -->
+    <form id="diagnosis-form" class="main-card" novalidate>
+
+      <!-- STEP 표시 -->
+      <div class="step-head">
+        <div class="steps">
+          <div class="step-item active" id="step-indicator-1">
+            <span class="step-circle">1</span>
+            <span>3초 진단</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step-item" id="step-indicator-2">
+            <span class="step-circle">2</span>
+            <span>상세 조건</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 단계 설명 -->
+      <div class="intro">
+        <span class="badge" id="stage-badge">STEP 01 · 3초 간편 진단</span>
+        <h2 id="stage-title">핵심 조건만 빠르게 입력하세요.</h2>
+        <p id="stage-description">출퇴근 위치와 기본적인 소득·예산으로 빠르게 진단합니다.</p>
+      </div>
+
+      <!-- 마이페이지 자동 프리필 안내 -->
+      <p id="prefill-msg" class="prefill hidden">
+        ✨ 마이페이지에 저장된 프로필 정보로 진단 폼을 자동으로 채웠어요. 필요한 부분만 수정 후 진단하세요.
+      </p>
+
+      <!-- =========================================================
+           [STEP 1] 3초 간편 진단 (기본 핵심 조건)
+      ========================================================= -->
+      <div class="stage active" id="page-step-1">
+        <div class="section-title">기본 조건</div>
+
+        <div class="grid2">
+
+          <!-- 직장 위치 -->
+          <div class="full">
+            <label class="flabel">직장/학교 위치 <span class="req">*</span></label>
+
+            <div id="work-address-ui" class="hidden">
+              <div class="flex gap-2">
+                <input type="text" id="work-address-display" name="workAddress" readonly placeholder="직장 위치를 검색해주세요"
+                       class="input flex-1 min-w-0 truncate" />
+                <button type="button" id="search-address-btn" class="secondary">주소 검색</button>
+              </div>
+            </div>
+            <div id="work-hub-match" class="hidden hint" style="color:var(--brand-600);font-weight:700"></div>
+
+            <!-- 주소 검색으로 얻은 정확한 좌표. 있으면 AI 엔진이 구 단위 대표좌표 대신 이 좌표로 통근시간을 계산한다. -->
+            <input type="hidden" id="work-lat-input" name="workLat" />
+            <input type="hidden" id="work-lon-input" name="workLon" />
+
+            <!-- customhouse-ai/app/data/work_locations.json과 동일하게 유지해야 함 (서울 25개 자치구 + 분당구).
+                 카카오맵 키가 있으면 위 주소 검색 UI로 대체되고 검색 결과가 이 select 값을 채운다. 키가 없으면 이 드롭다운을 그대로 쓴다(폴백). -->
+            <select id="work-location-select" name="workLocation" class="select">
+              <option value="">직장 위치를 선택하세요</option>
+              <option value="강남구">강남구</option>
+              <option value="강동구">강동구</option>
+              <option value="강북구">강북구</option>
+              <option value="강서구">강서구</option>
+              <option value="관악구">관악구</option>
+              <option value="광진구">광진구</option>
+              <option value="구로구">구로구(가산디지털단지)</option>
+              <option value="금천구">금천구</option>
+              <option value="노원구">노원구</option>
+              <option value="도봉구">도봉구</option>
+              <option value="동대문구">동대문구</option>
+              <option value="동작구">동작구</option>
+              <option value="마포구">마포구</option>
+              <option value="서대문구">서대문구</option>
+              <option value="서초구">서초구</option>
+              <option value="성동구">성동구(성수)</option>
+              <option value="성북구">성북구</option>
+              <option value="송파구">송파구</option>
+              <option value="양천구">양천구</option>
+              <option value="영등포구">영등포구(여의도)</option>
+              <option value="용산구">용산구</option>
+              <option value="은평구">은평구</option>
+              <option value="종로구">종로구</option>
+              <option value="중구">중구</option>
+              <option value="중랑구">중랑구</option>
+              <option value="분당구">분당구(판교)</option>
+            </select>
+          </div>
+
+          <!-- 최대 통근 시간 -->
+          <div class="full">
+            <label class="flabel">희망 최대 통근시간</label>
+            <select name="maxCommuteMinutes" class="select">
+              <option value="20">20분 이내</option>
+              <option value="30" selected>30분 이내</option>
+              <option value="40">40분 이내</option>
+              <option value="50">50분 이내</option>
+            </select>
+          </div>
+
+          <!-- 소득 -->
+          <div>
+            <label class="flabel">본인 연소득 (만원) <span class="req">*</span></label>
+            <input type="number" name="annualIncome" placeholder="예: 3500" min="0" class="input" />
+          </div>
+          <div>
+            <label class="flabel">부부합산 연소득 (만원)</label>
+            <input type="number" name="coupleAnnualIncome" placeholder="배우자와 합산한 연소득 (선택)" min="0" class="input" />
+            <div class="hint">입력하면 소득 기준 계산 시 연소득과 비교해 더 큰 값을 사용해요.</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-title">보증금 · 희망 월세</div>
+
+        <div class="grid3">
+          <div>
+            <label class="flabel">현재 보증금 (만원) <span class="req">*</span></label>
+            <input type="number" name="deposit" placeholder="예: 1000" min="0" class="input" />
+            <div class="hint">지금 수중에 있는 현금 기준</div>
+          </div>
+          <div>
+            <label class="flabel">희망 보증금 (만원)</label>
+            <input type="number" name="desiredDeposit" placeholder="선택 (미입력 시 현재 보증금)" min="0" class="input" />
+            <div class="hint">입력한 금액 이하 매물만 검색</div>
+          </div>
+          <div>
+            <label class="flabel">희망 월세 (만원)</label>
+            <input type="number" name="desiredRent" placeholder="선택 (미입력 시 소득 기준)" min="0" class="input" />
+            <div class="hint">입력한 금액 이하 매물만 검색</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =========================================================
+           [STEP 2] 정밀 맞춤 진단 (추가 질문 포함, 모두 선택)
+      ========================================================= -->
+      <div class="stage" id="page-step-2">
+
+        <!-- 그룹 1: 기본 인적 & 자산 정보 -->
+        <div class="group-title"><span>👤</span> 기본 인적 &amp; 자산 정보</div>
+        <div class="grid2">
+          <div>
+            <label class="flabel">만 나이</label>
+            <input type="number" id="input-age" name="age" placeholder="예: 28" min="0" max="120" class="input" />
+          </div>
+          <div>
+            <label class="flabel">보유 총자산 (만원)</label>
+            <input type="number" id="input-assets" name="assets" placeholder="예: 5000" min="0" class="input" />
+            <div class="hint">청년월세지원·버팀목대출 등 일부 정책은 자산 기준도 봐요.</div>
+          </div>
+          <div>
+            <label class="flabel">직업 유형</label>
+            <select name="jobType" class="select">
+              <option value="">선택 안 함</option>
+              <option value="GOVERNMENT">공무원/공공기관</option>
+              <option value="SME">중소기업 재직자</option>
+              <option value="MID_SIZED">중견기업 재직자</option>
+              <option value="LARGE_CORP">대기업 재직자</option>
+            </select>
+          </div>
+          <div>
+            <span class="flabel">주택 보유 여부</span>
+            <label class="check-card tall">
+              <input type="checkbox" name="noHouseholder" checked />
+              <span>무주택 세대주 여부</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 그룹 2: 주거 이동 & 금융 플랜 (한 줄씩 나눠서 표시) -->
+        <div class="group-title"><span>🏡</span> 주거 이동 &amp; 금융 플랜</div>
+        <div class="stack">
+          <div>
+            <label class="flabel">희망 이사 일정</label>
+            <select name="moveSchedule" class="select">
+              <option value="IMMEDIATE">1개월 이내 (즉시)</option>
+              <option value="WITHIN_3M" selected>3개월 이내</option>
+              <option value="WITHIN_6M">6개월 이내</option>
+              <option value="EXPLORING">차근차근 탐색 중</option>
+            </select>
+          </div>
+          <label class="check-card tall" style="align-items:flex-start">
+            <input type="checkbox" name="useLoanPolicy" checked style="margin-top:3px" />
+            <span>
+              <span style="font-weight:700;color:#1e293b">정책 대출 상품 활용</span>
+              <span class="sub">해제하면 정부 지원 정책 목록에서 대출 상품이 빠져요.</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 그룹 3: 이동 수단 & 주거 우선순위 -->
+        <div class="group-title"><span>🚗</span> 이동 수단 &amp; 주거 우선순위</div>
+        <div class="stack">
+          <div>
+            <label class="flabel">주요 통근 수단</label>
+            <select name="transportType" class="select">
+              <option value="PUBLIC" selected>대중교통 (지하철/버스)</option>
+              <option value="WALK">도보 / 따릉이·자전거</option>
+              <option value="CAR">자차 보유 (주차 필요)</option>
+            </select>
+          </div>
+
+          <!-- 값은 국토부 실거래가 API의 주택 유형명 그대로 (진단 결과의 property_type과 동일) -->
+          <div>
+            <span class="flabel">선호 주택 유형
+              <span style="font-weight:400;color:#64748b">(체크한 유형의 매물만 추천해요)</span>
+            </span>
+            <div class="check-grid two">
+              <label class="check-card">
+                <input type="checkbox" name="preferredBuildingTypes" value="아파트" checked />
+                <span>아파트</span>
+              </label>
+              <label class="check-card">
+                <input type="checkbox" name="preferredBuildingTypes" value="오피스텔" checked />
+                <span>오피스텔</span>
+              </label>
+              <label class="check-card">
+                <input type="checkbox" name="preferredBuildingTypes" value="연립다세대" checked />
+                <span>연립·다세대 (빌라)</span>
+              </label>
+              <label class="check-card">
+                <input type="checkbox" name="preferredBuildingTypes" value="단독다가구" checked />
+                <span>단독·다가구</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 그룹 4: 정부 지원 우대사항 -->
+        <div class="group-title"><span>🎁</span> 정부 주거지원 정책 우대사항
+          <span style="font-weight:400;color:#64748b">(중복 선택 가능)</span>
+        </div>
+        <div class="check-grid">
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="BASIC_LIVELIHOOD" />
+            기초생활수급자
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="NEAR_POVERTY" />
+            차상위계층
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="SINGLE_PARENT" />
+            한부모가족
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="INDEPENDENT_YOUTH" />
+            자립준비청년
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" />
+            신혼부부
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" />
+            다자녀가구
+          </label>
+        </div>
+      </div>
+
+      <!-- 오류 메시지 (두 단계 공용) -->
+      <p id="form-error" class="hidden text-red-500" style="margin:0 34px 16px;font-size:16px;font-weight:700"></p>
+
+      <!-- 버튼 영역 -->
+      <div class="actions">
+        <div class="action-note" id="action-note">핵심 조건 입력 후 상세 조건으로 이동하거나, 바로 3초 진단 결과를 볼 수 있어요.</div>
+
+        <div class="button-row">
+          <!-- 2단계: 이전 -->
+          <button type="button" id="btn-prev-to-step1" class="back-btn hidden">← 이전</button>
+
+          <!-- 1단계: 2단계 입력 없이 바로 결과 확인 -->
+          <button type="button" id="btn-skip-to-result" class="back-btn quick-result-btn">⚡ 3초 진단결과 먼저 보기</button>
+
+          <!-- 1단계: 다음 -->
+          <button type="button" id="btn-next-to-step2" class="next-btn">상세 조건 입력하기 →</button>
+
+          <!-- 2단계: 최종 진단 -->
+          <button type="submit" id="submit-btn" class="submit-btn hidden">🚀 정밀 진단 결과 보기</button>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <!-- 공통 푸터 -->
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260921d"></script>
+  <script src="../../js/components/footer.js?v=20260928c"></script>
+  <script src="../../js/api/auth.js?v=20260921d"></script>
+  <script src="../../js/api/mypage.js?v=20260921d"></script>
+  <script src="../../js/api/recommendation.js?v=20260921d"></script>
+  <script src="../../js/utils/address-match-util.js?v=20260921d"></script>
+  <script>
+    renderHeader("diagnosis");
+    renderFooter();
+
+    const form = document.getElementById("diagnosis-form");
+    const errorEl = document.getElementById("form-error");
+    const submitBtn = document.getElementById("submit-btn");
+    const quickBtn = document.getElementById("btn-skip-to-result");
+    const nextBtn = document.getElementById("btn-next-to-step2");
+    const prevBtn = document.getElementById("btn-prev-to-step1");
+    const SUBMIT_LABEL = submitBtn.textContent;
+    const QUICK_LABEL = quickBtn.textContent;
+    const pageStep1 = document.getElementById("page-step-1");
+    const pageStep2 = document.getElementById("page-step-2");
+    const indicator1 = document.getElementById("step-indicator-1");
+    const indicator2 = document.getElementById("step-indicator-2");
+    const stageBadge = document.getElementById("stage-badge");
+    const stageTitle = document.getElementById("stage-title");
+    const stageDesc = document.getElementById("stage-description");
+    const actionNote = document.getElementById("action-note");
+
+    // 어떤 버튼으로 진단을 시작했는지 (로딩 문구를 그 버튼에 표시하기 위해)
+    let quickMode = false;
+
+    // ---------- 단계 전환 ----------
+    function goToStep(step) {
+      const second = step === 2;
+
+      pageStep1.classList.toggle("active", !second);
+      pageStep2.classList.toggle("active", second);
+      indicator1.classList.toggle("active", !second);
+      indicator2.classList.toggle("active", second);
+
+      nextBtn.classList.toggle("hidden", second);
+      quickBtn.classList.toggle("hidden", second);
+      prevBtn.classList.toggle("hidden", !second);
+      submitBtn.classList.toggle("hidden", !second);
+
+      stageBadge.textContent = second ? "STEP 02 · 정밀 맞춤 진단" : "STEP 01 · 3초 간편 진단";
+      stageTitle.textContent = second ? "조금 더 자세한 조건을 알려주세요." : "핵심 조건만 빠르게 입력하세요.";
+      stageDesc.textContent = second
+        ? "선택 정보를 추가하면 지원 정책과 주거 추천의 정확도를 높일 수 있어요. 모두 선택 사항이에요."
+        : "출퇴근 위치와 기본적인 소득·예산으로 빠르게 진단합니다.";
+      actionNote.textContent = second
+        ? "선택 항목은 비워둔 상태로도 진단할 수 있습니다."
+        : "핵심 조건 입력 후 상세 조건으로 이동하거나, 바로 3초 진단 결과를 볼 수 있어요.";
+
+      errorEl.classList.add("hidden");
+
+      // 고정 헤더에 카드 윗부분이 가려지지 않도록 헤더 높이만큼 띄워서 스크롤한다
+      const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--header-h"), 10) || 96;
+      const cardTop = form.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: Math.max(cardTop - headerH - 16, 0), behavior: "smooth" });
+    }
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.classList.remove("hidden");
+      errorEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    // 1단계 필수값 검증. 문제가 있으면 안내 문구를, 없으면 null을 돌려준다.
+    function validateStep1() {
+      if (!form.workLocation.value) return "직장 위치를 입력해주세요.";
+      if (form.annualIncome.value === "" || Number(form.annualIncome.value) < 0) return "연소득을 입력해주세요.";
+      if (form.deposit.value === "" || Number(form.deposit.value) < 0) return "현재 보증금을 입력해주세요.";
+      return null;
+    }
+
+    nextBtn.addEventListener("click", () => {
+      const problem = validateStep1();
+      if (problem) return showError(problem);
+      goToStep(2);
+    });
+
+    prevBtn.addEventListener("click", () => goToStep(1));
+
+    // 2단계를 건너뛰고 바로 진단. 입력하지 않은 나이/자산/직업/우대사항은 빈 값으로 보낸다(임의 기본값을 채우지 않음).
+    quickBtn.addEventListener("click", () => {
+      quickMode = true;
+      form.requestSubmit();
+    });
+
+    // ---------- 마이페이지에 저장된 프로필 자동 프리필 (로그인 사용자) ----------
+    (async () => {
+      if (!CustomHouseAuthApi.isLoggedIn()) return;
+      let condition;
+      try {
+        condition = await CustomHouseMypageApi.getMyCondition();
+      } catch {
+        return; // 조회 실패는 무시하고 빈 폼으로 진행
+      }
+      if (!condition) return;
+
+      if (condition.age != null) form.age.value = condition.age;
+      form.annualIncome.value = condition.annualIncome ?? "";
+      if (condition.coupleAnnualIncome != null) form.coupleAnnualIncome.value = condition.coupleAnnualIncome;
+      if (condition.workLocation) {
+        form.workLocation.value = condition.workLocation;
+
+        if (condition.workAddress && condition.workLat != null && condition.workLon != null) {
+          // 마이페이지에서 주소 검색으로 저장해둔 정확한 주소/좌표가 있으면 그대로 불러온다.
+          // 자치구 대표 좌표 대신 이 좌표로 통근시간을 계산해 더 정확한 진단이 나온다.
+          document.getElementById("work-address-display").value = condition.workAddress;
+          document.getElementById("work-lat-input").value = condition.workLat;
+          document.getElementById("work-lon-input").value = condition.workLon;
+          const hubMatchEl = document.getElementById("work-hub-match");
+          hubMatchEl.textContent = `→ 마이페이지에 저장된 주소로 정확하게 통근시간을 계산해요 (참고: "${condition.workLocation}" 권역).`;
+          hubMatchEl.classList.remove("hidden");
+        } else {
+          document.getElementById("work-address-display").value = `${condition.workLocation} (마이페이지 저장 위치)`;
+        }
+      }
+      if (condition.desiredDeposit != null) {
+        form.desiredDeposit.value = condition.desiredDeposit;
+        if (form.deposit.value === "") form.deposit.value = condition.desiredDeposit;
+      }
+      if (condition.desiredRent != null) form.desiredRent.value = condition.desiredRent;
+      if (condition.netAsset != null) form.assets.value = condition.netAsset;
+      if (condition.jobType) form.jobType.value = condition.jobType;
+      if (condition.noHouseholder != null) form.noHouseholder.checked = condition.noHouseholder;
+      (condition.preferentialStatuses || []).forEach((value) => {
+        const box = form.querySelector(`input[name="preferentialStatuses"][value="${value}"]`);
+        if (box) box.checked = true;
+      });
+
+      document.getElementById("prefill-msg").classList.remove("hidden");
+    })();
+
+    // ---------- 직장 위치: 카카오 주소검색 -> 가장 가까운 직장 권역으로 자동 매칭 (키 없으면 드롭다운 폴백) ----------
+    (function setupWorkLocationAddressSearch() {
+      const kakaoKey = window.CUSTOMHOUSE_CONFIG && window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY;
+      if (!kakaoKey) return; // 기본 드롭다운(#work-location-select)이 이미 보이는 상태라 그대로 둔다.
+
+      const addressUi = document.getElementById("work-address-ui");
+      const workSelect = document.getElementById("work-location-select");
+      const addressDisplay = document.getElementById("work-address-display");
+      const hubMatchEl = document.getElementById("work-hub-match");
+      const searchBtn = document.getElementById("search-address-btn");
+      const workLatInput = document.getElementById("work-lat-input");
+      const workLonInput = document.getElementById("work-lon-input");
+
+      function waitForKakaoServices(retriesLeft, cb) {
+        if (window.kakao && window.kakao.maps) {
+          window.kakao.maps.load(() => cb(true));
+        } else if (retriesLeft > 0) {
+          setTimeout(() => waitForKakaoServices(retriesLeft - 1, cb), 100);
+        } else {
+          cb(false);
+        }
+      }
+
+      waitForKakaoServices(50, (ready) => {
+        if (!ready || !window.daum || !window.daum.Postcode || !window.CustomHouseAddressMatchUtil) {
+          return; // SDK/우편번호 스크립트 로드 실패 -> 드롭다운 폴백 유지
+        }
+
+        addressUi.classList.remove("hidden");
+        workSelect.classList.add("hidden");
+
+        searchBtn.addEventListener("click", () => {
+          new daum.Postcode({
+            oncomplete: (data) => {
+              const address = data.roadAddress || data.jibunAddress;
+              addressDisplay.value = address;
+
+              const geocoder = new kakao.maps.services.Geocoder();
+              geocoder.addressSearch(address, (result, status) => {
+                if (status !== kakao.maps.services.Status.OK || !result.length) {
+                  workLatInput.value = "";
+                  workLonInput.value = "";
+                  hubMatchEl.textContent = "주소의 좌표를 찾지 못했어요. 아래 목록에서 직접 선택해주세요.";
+                  hubMatchEl.classList.remove("hidden");
+                  addressUi.classList.add("hidden");
+                  workSelect.classList.remove("hidden");
+                  return;
+                }
+
+                const lat = parseFloat(result[0].y);
+                const lon = parseFloat(result[0].x);
+
+                // 통근시간 계산 자체는 이 정확한 좌표(workLat/workLon)로 하고, workLocation(구 이름)은
+                // "지원 지역인지" 표시/정책 매칭용 라벨로만 가장 가까운 구를 채워둔다.
+                workLatInput.value = lat;
+                workLonInput.value = lon;
+                const nearest = CustomHouseAddressMatchUtil.findNearestWorkHub(lat, lon);
+                workSelect.value = nearest.hub;
+                hubMatchEl.textContent =
+                  `→ 이 주소로 정확하게 통근시간을 계산해요 (참고: "${nearest.label}"에서 직선거리 약 ` +
+                  `${nearest.distanceKm.toFixed(1)}km · 실제 통근시간은 경로에 따라 다를 수 있어요)`;
+                hubMatchEl.classList.remove("hidden");
+              });
+            },
+          }).open();
+        });
+      });
+    })();
+
+    // 자치구 드롭다운을 사용자가 "직접" 바꾸면(주소검색으로 프로그램이 채운 게 아니라), 이전에
+    // 채워져 있던 정확한 좌표(마이페이지 프리필 또는 이전 주소검색 결과)는 그 구와 더 이상 맞지
+    // 않으므로 함께 지운다. 카카오 키가 없어 주소검색 UI 자체가 없는 세션에서도 동작해야 하므로
+    // setupWorkLocationAddressSearch()와 별개로 항상 걸어둔다.
+    document.getElementById("work-location-select").addEventListener("change", () => {
+      document.getElementById("work-lat-input").value = "";
+      document.getElementById("work-lon-input").value = "";
+      const hubMatchEl = document.getElementById("work-hub-match");
+      if (hubMatchEl) hubMatchEl.classList.add("hidden");
+    });
+
+    // 희망 보증금을 입력하면, 아직 비어있는 현재 보증금에 그 값을 기본값으로 채워준다
+    // (사용자가 현재 보증금을 직접 입력/수정했으면 덮어쓰지 않는다).
+    form.desiredDeposit.addEventListener("input", () => {
+      if (form.deposit.value === "") {
+        form.deposit.value = form.desiredDeposit.value;
+      }
+    });
+
+    // ---------- 제출 ----------
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.classList.add("hidden");
+
+      const wasQuick = quickMode;
+      quickMode = false;
+
+      const problem = validateStep1();
+      if (problem) {
+        goToStep(1);
+        return showError(problem);
+      }
+
+      const fd = new FormData(form);
+      const buildingTypes = fd.getAll("preferredBuildingTypes");
+      if (buildingTypes.length === 0) {
+        goToStep(2);
+        return showError("선호 주택 유형을 1개 이상 선택해주세요.");
+      }
+
+      const condition = {
+        annualIncome: Number(fd.get("annualIncome")),
+        coupleAnnualIncome: fd.get("coupleAnnualIncome") ? Number(fd.get("coupleAnnualIncome")) : null,
+        deposit: Number(fd.get("deposit")),
+        desiredDeposit: fd.get("desiredDeposit") ? Number(fd.get("desiredDeposit")) : null,
+        desiredRent: fd.get("desiredRent") ? Number(fd.get("desiredRent")) : null,
+        workLocation: fd.get("workLocation"),
+        workAddress: fd.get("workAddress") || null,
+        workLat: fd.get("workLat") ? Number(fd.get("workLat")) : null,
+        workLon: fd.get("workLon") ? Number(fd.get("workLon")) : null,
+        maxCommuteMinutes: Number(fd.get("maxCommuteMinutes")),
+        age: fd.get("age") ? Number(fd.get("age")) : null,
+        assets: fd.get("assets") ? Number(fd.get("assets")) : null,
+        noHouseholder: form.noHouseholder.checked,
+        jobType: fd.get("jobType") || null,
+        preferentialStatuses: fd.getAll("preferentialStatuses"),
+        moveSchedule: fd.get("moveSchedule"),
+        transportType: fd.get("transportType"),
+        useLoanPolicy: form.useLoanPolicy.checked,
+        preferredBuildingTypes: buildingTypes,
+      };
+
+      // 진단 중에는 두 단계의 버튼 모두 잠그고, 누른 버튼에 진행 문구를 보여준다
+      [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = true));
+      (wasQuick ? quickBtn : submitBtn).textContent = wasQuick ? "3초 진단 중..." : "분석 중...";
+
+      try {
+        // 2026-09-28: 추천 매물은 더미 매물(CSV) 기반 리포트(report-listings.html)가 기본이다. 국토부
+        // 실거래가 기준 기존 리포트(report-result.html)는 그 페이지 하단 탭에서 같은 조건으로 불러온다.
+        const result = await CustomHouseRecommendationApi.requestListingDiagnosis(condition);
+        // localStorage 사용 이유: report-result.html 참고 (탭이 바뀌거나 세션이 끊겨도 유지되어야 함).
+        localStorage.setItem("customhouse:lastListingDiagnosis", JSON.stringify(result));
+        // 이 결과를 받을 때 쓴 조건 - report-listings.html이 기존 리포트에서 조건이 바뀌었는지 알아채는 데 쓴다.
+        localStorage.setItem("customhouse:lastListingDiagnosisCondition", JSON.stringify(condition));
+        // 이전 조건으로 받아둔 실거래가 리포트 결과가 남아 새 조건과 어긋나 보이지 않게 지운다.
+        localStorage.removeItem("customhouse:lastDiagnosis");
+        // 리포트 화면에서 주택 유형만 바꿔 "다시 조회"할 때 나머지 조건을 그대로 재사용하기 위해 저장.
+        localStorage.setItem("customhouse:lastDiagnosisCondition", JSON.stringify(condition));
+        window.location.href = "report-listings.html";
+      } catch (err) {
+        showError(err.message || "진단 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = false));
+        submitBtn.textContent = SUBMIT_LABEL;
+        quickBtn.textContent = QUICK_LABEL;
+      }
+    });
+  </script>
+</body>
+</html>

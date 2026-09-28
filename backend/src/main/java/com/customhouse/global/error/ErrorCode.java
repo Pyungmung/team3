@@ -1,0 +1,59 @@
+package com.customhouse.global.error;
+
+import org.springframework.http.HttpStatus;
+
+/**
+ * [담당: 허겸] 공통 인프라 - 에러 코드 체계
+ * CLAUDE.md TBD 항목("CustomException 에러 코드 체계 상세")의 1차 초안입니다.
+ * 각 도메인이 개발되면서 필요한 코드를 추가해 나가면 됩니다 (예: USER_NOT_FOUND, PAYMENT_FAILED 등).
+ */
+public enum ErrorCode {
+
+    VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
+    NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "권한이 없습니다."),
+    AI_ENGINE_ERROR(HttpStatus.BAD_GATEWAY, "AI 추천 엔진(customhouse-ai)과 통신 중 오류가 발생했습니다."),
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
+
+    // --- 회원/인증 (담당: 허겸) ---
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."),
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "토큰이 유효하지 않습니다."),
+    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "인증번호가 올바르지 않습니다."),
+    VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "인증번호가 만료되었습니다. 다시 요청해주세요."),
+    EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "이메일 인증을 먼저 완료해주세요."),
+
+    // --- 결제/구독 (담당: 황진구) ---
+    PAYMENT_FAILED(HttpStatus.BAD_GATEWAY, "결제 처리 중 오류가 발생했습니다."),
+    SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "구독 정보가 없습니다."),
+
+    // --- 커뮤니티 게시판 (담당: 미정) ---
+    POST_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+    ALREADY_VOTED(HttpStatus.CONFLICT, "이미 투표에 참여했습니다."),
+    ALREADY_SELECTED(HttpStatus.CONFLICT, "이미 채택된 답변이 있습니다."),
+
+    // --- 고객센터 (담당: 미정) ---
+    MAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "문의 메일 발송 중 오류가 발생했습니다."),
+
+    // --- 추천 매물 신고/관심 (담당: 송귀성) ---
+    ALREADY_REPORTED(HttpStatus.CONFLICT, "이미 신고한 매물입니다."),
+    REPORT_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘 신고 가능한 횟수를 초과했습니다. 내일 다시 시도해주세요.");
+
+    private final HttpStatus status;
+    private final String defaultMessage;
+
+    ErrorCode(HttpStatus status, String defaultMessage) {
+        this.status = status;
+        this.defaultMessage = defaultMessage;
+    }
+
+    public HttpStatus getStatus() {
+        return status;
+    }
+
+    public String getDefaultMessage() {
+        return defaultMessage;
+    }
+}

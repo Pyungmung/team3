@@ -1,0 +1,33 @@
+{
+  "_owner": "송귀성",
+  "_comment": "예시(샘플) 데이터입니다. 실제 서비스 배포 시 국토교통부 전월세 실거래가 API, 한국부동산원 API, SGIS 등 공공데이터로 교체해야 합니다 (services/api_collector.py 참고). base_rent는 보증금 1000만원 기준 원룸/오피스텔 평균 월세 시세(만원)를 임의로 추정한 값입니다. 통근시간은 더 이상 여기 하드코딩하지 않고 calculator.py가 region_coords.json/work_locations.json의 좌표로 직선거리 기반 추정치를 계산한다 (2026-09-15, 직장 위치를 서울 전역으로 확장하면서 25개 구 x 18개 지역 = 450개 조합을 손으로 관리할 수 없어 공식으로 전환).",
+  "conversion_rate_annual_percent": 5.0,
+  "base_deposit": 1000,
+  "regions": [
+    { "name": "관악구", "base_rent": 55, "maintenance_fee": 6 },
+    { "name": "동작구", "base_rent": 60, "maintenance_fee": 7 },
+    { "name": "마포구", "base_rent": 65, "maintenance_fee": 7 },
+    { "name": "은평구", "base_rent": 50, "maintenance_fee": 6 },
+    { "name": "서대문구", "base_rent": 55, "maintenance_fee": 6 },
+    { "name": "성북구", "base_rent": 50, "maintenance_fee": 6 },
+    { "name": "노원구", "base_rent": 45, "maintenance_fee": 6 },
+    { "name": "강북구", "base_rent": 42, "maintenance_fee": 5 },
+    { "name": "동대문구", "base_rent": 52, "maintenance_fee": 6 },
+    { "name": "광진구", "base_rent": 60, "maintenance_fee": 7 },
+    { "name": "강동구", "base_rent": 55, "maintenance_fee": 7 },
+    { "name": "송파구", "base_rent": 68, "maintenance_fee": 8 },
+    { "name": "금천구", "base_rent": 45, "maintenance_fee": 6 },
+    { "name": "강서구", "base_rent": 52, "maintenance_fee": 6 },
+    { "name": "양천구", "base_rent": 55, "maintenance_fee": 7 },
+    { "name": "강남구", "base_rent": 95, "maintenance_fee": 10 },
+    { "name": "서초구", "base_rent": 88, "maintenance_fee": 9 },
+    { "name": "용산구", "base_rent": 72, "maintenance_fee": 8 },
+    { "name": "성동구", "base_rent": 63, "maintenance_fee": 7 },
+    { "name": "영등포구", "base_rent": 65, "maintenance_fee": 7 },
+    { "name": "종로구", "base_rent": 62, "maintenance_fee": 7 },
+    { "name": "중구", "base_rent": 62, "maintenance_fee": 7 },
+    { "name": "구로구", "base_rent": 48, "maintenance_fee": 6 },
+    { "name": "중랑구", "base_rent": 42, "maintenance_fee": 5 },
+    { "name": "도봉구", "base_rent": 40, "maintenance_fee": 5 }
+  ]
+}

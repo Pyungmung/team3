@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<!-- [담당: 양혜승] 회원가입 + 로그인 통합 페이지 (연동 대상 백엔드: domain/user, 담당 허겸)
+     SafeHouse 프로토타입(indexsignup.html)처럼 한 화면에서 탭으로 회원가입/로그인을 전환한다.
+     login.html은 이 페이지의 로그인 탭(#login)으로 보내는 얇은 파일이다 (헤더/마이페이지 등이 login.html을 링크하기 때문).
+     프로토타입과 다른 점: 아이디 대신 이메일(로그인 ID)에 중복확인, 이름은 닉네임.
+     회원가입 이메일 인증번호(2026-09-23 추가) + 로그인 탭의 비밀번호 재설정(이메일 인증번호 연동)도 이 파일 하나에서 처리한다. -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 회원가입</title>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      min-height: 100vh;
+      background-color: #0f172a;
+      background:
+        linear-gradient(rgba(15, 23, 42, 0.68), rgba(15, 23, 42, 0.78)),
+        url("https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2000&q=80");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      display: flex;
+      flex-direction: column; /* 카드 아래에 푸터를 두고 둘을 함께 가운데 정렬 */
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 30px;
+    }
+    #app-footer { width: 100%; max-width: 980px; }
+
+    .container {
+      width: 100%;
+      max-width: 980px;
+      min-height: 620px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: rgba(255, 255, 255, 0.97);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.30);
+    }
+
+    .intro {
+      padding: 55px;
+      background: linear-gradient(145deg, #0f172a, #1B2A4A);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .logo {
+      font-size: 36px;
+      font-weight: 800;
+      margin-bottom: 18px;
+      color: white;
+      text-decoration: none;
+    }
+
+    .intro h2 { font-size: 31px; line-height: 1.35; margin-bottom: 18px; }
+    .intro p { color: #cbd5e1; line-height: 1.8; font-size: 15px; }
+
+    .badge {
+      margin-top: 35px;
+      display: inline-block;
+      width: fit-content;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      font-size: 13px;
+    }
+
+    .form-area { padding: 45px; overflow-y: auto; }
+
+    .tabs {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 5px;
+      margin-bottom: 30px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      border-radius: 9px;
+      background: transparent;
+      font-size: 15px;
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .tab.active {
+      background: white;
+      color: #1B2A4A;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .form-section { display: none; }
+    .form-section.active { display: block; }
+
+    h1 { font-size: 27px; color: #0f172a; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: #64748b; margin-bottom: 25px; }
+
+    .label {
+      display: block;
+      margin-top: 14px;
+      margin-bottom: 7px;
+      color: #334155;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      height: 48px;
+      border: 1px solid #cbd5e1;
+      border-radius: 11px;
+      padding: 0 14px;
+      font-size: 15px;
+      outline: none;
+      transition: 0.2s;
+    }
+
+    input:focus {
+      border-color: #334155;
+      box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.12);
+    }
+
+    /* 입력칸 + 오른쪽 작은 버튼 (이메일 중복확인 / 비밀번호 보기) */
+    .email-row    { display: grid; grid-template-columns: 1fr 120px; gap: 8px; }
+    .password-row { display: grid; grid-template-columns: 1fr 80px;  gap: 8px; }
+
+    button { border: none; cursor: pointer; font-family: inherit; }
+
+    .small-btn {
+      height: 48px;
+      border-radius: 11px;
+      background: #f1f5f9;
+      color: #1B2A4A;
+      font-weight: 700;
+    }
+    .small-btn:hover { background: #e2e8f0; }
+
+    .main-btn {
+      width: 100%;
+      height: 50px;
+      margin-top: 24px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #334155, #1B2A4A);
+      color: white;
+      font-size: 15px;
+      font-weight: 800;
+      transition: 0.2s;
+    }
+    .main-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(27, 42, 74, 0.3); }
+    .main-btn:disabled { opacity: 0.6; cursor: default; transform: none; box-shadow: none; }
+
+    .naver-btn {
+      width: 100%;
+      height: 50px;
+      margin-top: 12px;
+      border-radius: 12px;
+      background: #03c75a;
+      color: white;
+      font-size: 15px;
+      font-weight: 800;
+      transition: 0.2s;
+    }
+    .naver-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      color: #94a3b8;
+      font-size: 12px;
+    }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
+    .divider span { padding: 0 12px; }
+
+    .message { min-height: 20px; margin-top: 10px; font-size: 13px; color: #475569; }
+    .success { color: #15803d; }
+    .error { color: #dc2626; }
+
+    .switch-link { margin-top: 18px; text-align: center; font-size: 13px; color: #64748b; }
+    .switch-link button { background: none; color: #1B2A4A; font-size: 13px; font-weight: 700; text-decoration: underline; }
+
+    .field-error { min-height: 16px; margin-top: 6px; font-size: 12px; color: #dc2626; }
+
+    /* 약관 동의 체크박스 목록 */
+    .terms-box {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    .terms-all {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 14px;
+      font-weight: 800;
+      color: #1B2A4A;
+    }
+
+    .terms-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .terms-box input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      flex: none;
+      accent-color: #1B2A4A;
+      cursor: pointer;
+    }
+
+    .terms-required { color: #94a3b8; font-size: 12px; margin-left: 2px; }
+
+    .terms-view-link {
+      margin-left: auto;
+      flex: none;
+      font-size: 11px;
+      color: #64748b;
+      text-decoration: underline;
+      white-space: nowrap;
+    }
+
+    .hidden { display: none; }
+
+    .forgot-box {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+    .forgot-box .main-btn { height: 44px; margin-top: 10px; }
+    .forgot-toggle { background: none; color: #64748b; font-size: 12px; text-decoration: underline; }
+
+    @media (max-width: 800px) {
+      .container { grid-template-columns: 1fr; max-width: 520px; }
+      .intro { padding: 35px; }
+      .form-area { padding: 35px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="intro">
+      <a href="../index.html" class="logo">맞집</a>
+      <h2>내게 맞는 집,<br>더 가벼운 주거</h2>
+      <p>
+        맞집에서 회원가입하고<br>
+        나에게 맞는 주거비 절약 진단과<br>
+        청년 주거지원 정책을 받아보세요.
+      </p>
+    </div>
+
+    <div class="form-area">
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" id="tab-signup" role="tab" aria-selected="true">회원가입</button>
+        <button type="button" class="tab" id="tab-login" role="tab" aria-selected="false">로그인</button>
+      </div>
+
+      <!-- 회원가입 -->
+      <form id="signup-form" class="form-section active" novalidate>
+        <h1>회원가입</h1>
+        <p class="subtitle">맞집을 시작해보세요.</p>
+
+        <label class="label" for="signup-email">이메일 (로그인 아이디)</label>
+        <div class="email-row">
+          <input id="signup-email" name="email" type="email" placeholder="example@email.com" autocomplete="email" />
+          <button type="button" id="check-email-btn" class="small-btn">중복확인</button>
+        </div>
+        <div id="email-message" class="message"></div>
+
+        <button type="button" id="send-code-btn" class="small-btn" style="width: 100%; margin-top: 8px">이메일 인증번호 받기</button>
+        <div id="send-code-message" class="message"></div>
+
+        <div id="signup-code-row" class="email-row hidden" style="margin-top: 4px">
+          <input id="signup-code" type="text" inputmode="numeric" maxlength="6" placeholder="인증번호 6자리" />
+          <button type="button" id="verify-code-btn" class="small-btn">확인</button>
+        </div>
+        <div id="signup-code-timer" style="font-size: 11px; color: #94a3b8; margin-top: 4px"></div>
+        <div id="code-message" class="message"></div>
+
+        <label class="label" for="signup-password">비밀번호</label>
+        <div class="password-row">
+          <input id="signup-password" name="password" type="password" placeholder="8자 이상" autocomplete="new-password" />
+          <button type="button" id="toggle-signup-password-btn" class="small-btn">보기</button>
+        </div>
+
+        <label class="label" for="signup-password-confirm">비밀번호 확인</label>
+        <input id="signup-password-confirm" name="passwordConfirm" type="password" placeholder="비밀번호를 다시 입력해주세요" autocomplete="new-password" />
+        <div id="password-confirm-message" class="field-error"></div>
+
+        <label class="label" for="signup-nickname">이름 (닉네임)</label>
+        <input id="signup-nickname" name="nickname" type="text" maxlength="50" placeholder="화면에 표시될 이름" autocomplete="nickname" />
+
+        <label class="label" for="signup-phone">휴대폰 번호 <span class="terms-required">(선택)</span></label>
+        <input id="signup-phone" name="phone" type="tel" maxlength="13" placeholder="010-0000-0000" autocomplete="tel" />
+
+        <div class="terms-box">
+          <label class="terms-all">
+            <input type="checkbox" id="terms-all-checkbox" />
+            약관 전체 동의
+          </label>
+
+          <label class="terms-item">
+            <input type="checkbox" class="terms-required-checkbox" data-terms="service" />
+            이용약관 동의 <span class="terms-required">(필수)</span>
+            <a href="../mypage/edit-condition.html?term=service#terms" target="_blank" rel="noopener noreferrer" class="terms-view-link">보기</a>
+          </label>
+          <label class="terms-item">
+            <input type="checkbox" class="terms-required-checkbox" data-terms="privacy" />
+            개인정보 처리방침 동의 <span class="terms-required">(필수)</span>
+            <a href="../mypage/edit-condition.html?term=privacy#terms" target="_blank" rel="noopener noreferrer" class="terms-view-link">보기</a>
+          </label>
+          <label class="terms-item">
+            <input type="checkbox" class="terms-required-checkbox" data-terms="location" />
+            위치기반 서비스 이용약관 동의 <span class="terms-required">(필수)</span>
+            <a href="../mypage/edit-condition.html?term=location#terms" target="_blank" rel="noopener noreferrer" class="terms-view-link">보기</a>
+          </label>
+          <label class="terms-item">
+            <input type="checkbox" class="terms-required-checkbox" data-terms="third-party" />
+            개인정보 제3자 제공 동의 <span class="terms-required">(필수)</span>
+            <a href="../mypage/edit-condition.html?term=third-party#terms" target="_blank" rel="noopener noreferrer" class="terms-view-link">보기</a>
+          </label>
+          <label class="terms-item">
+            <input type="checkbox" id="terms-marketing-checkbox" />
+            광고·마케팅 목적의 개인정보 수집 및 이용에 대한 동의 <span class="terms-required">(선택)</span>
+            <a href="../mypage/edit-condition.html?term=marketing#terms" target="_blank" rel="noopener noreferrer" class="terms-view-link">보기</a>
+          </label>
+        </div>
+
+        <button type="submit" id="signup-btn" class="main-btn" disabled>회원가입</button>
+        <div id="signup-message" class="message"></div>
+
+        <p class="switch-link">이미 계정이 있나요? <button type="button" data-switch="login">로그인</button></p>
+      </form>
+
+      <!-- 로그인 -->
+      <form id="login-form" class="form-section" novalidate>
+        <h1>로그인</h1>
+        <p class="subtitle">맞집에 다시 오신 것을 환영합니다.</p>
+
+        <label class="label" for="login-email">이메일</label>
+        <input id="login-email" name="email" type="email" placeholder="example@email.com" autocomplete="email" />
+
+        <label class="label" for="login-password">비밀번호</label>
+        <div class="password-row">
+          <input id="login-password" name="password" type="password" placeholder="비밀번호" autocomplete="current-password" />
+          <button type="button" id="toggle-login-password-btn" class="small-btn">보기</button>
+        </div>
+
+        <button type="submit" id="login-btn" class="main-btn">로그인</button>
+        <p style="text-align: right; margin-top: 8px">
+          <button type="button" id="show-forgot-btn" class="forgot-toggle">비밀번호를 잊으셨나요?</button>
+        </p>
+
+        <div id="forgot-password-box" class="forgot-box hidden">
+          <p style="font-size: 13px; font-weight: 800; color: #1B2A4A; margin-bottom: 10px">비밀번호 재설정</p>
+
+          <div class="email-row">
+            <input id="forgot-email" type="email" placeholder="가입한 이메일" autocomplete="email" />
+            <button type="button" id="send-reset-code-btn" class="small-btn">인증번호 받기</button>
+          </div>
+          <div id="forgot-send-message" class="message"></div>
+
+          <div id="forgot-reset-fields" class="hidden" style="margin-top: 8px">
+            <input id="forgot-code" type="text" inputmode="numeric" maxlength="6" placeholder="인증번호 6자리" style="margin-bottom: 4px" />
+            <div id="forgot-code-timer" style="font-size: 11px; color: #94a3b8; margin-bottom: 8px"></div>
+            <input id="forgot-new-password" type="password" placeholder="새 비밀번호 (8자 이상)" autocomplete="new-password" />
+            <button type="button" id="submit-reset-btn" class="main-btn">비밀번호 재설정</button>
+          </div>
+          <div id="forgot-message" class="message"></div>
+        </div>
+
+        <div class="divider"><span>또는</span></div>
+
+        <button type="button" id="naver-login-btn" class="naver-btn">네이버로 로그인</button>
+        <div id="login-message" class="message"></div>
+
+        <p class="switch-link">계정이 없나요? <button type="button" data-switch="signup">회원가입</button></p>
+      </form>
+    </div>
+
+  </div>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/footer.js?v=20260928c"></script>
+  <script>renderFooter({ dark: true });</script>
+  <script src="../../js/api/auth.js?v=20260921b"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // ---------- 탭 전환 (같은 화면에서 폼만 바뀐다) ----------
+    function showTab(name) {
+      const isLogin = name === "login";
+      $("signup-form").classList.toggle("active", !isLogin);
+      $("login-form").classList.toggle("active", isLogin);
+      $("tab-signup").classList.toggle("active", !isLogin);
+      $("tab-login").classList.toggle("active", isLogin);
+      $("tab-signup").setAttribute("aria-selected", String(!isLogin));
+      $("tab-login").setAttribute("aria-selected", String(isLogin));
+      document.title = isLogin ? "맞집 | 로그인" : "맞집 | 회원가입";
+      history.replaceState(null, "", isLogin ? "#login" : "#signup");
+    }
+
+    $("tab-signup").addEventListener("click", () => showTab("signup"));
+    $("tab-login").addEventListener("click", () => showTab("login"));
+    document.querySelectorAll("[data-switch]").forEach((btn) => {
+      btn.addEventListener("click", () => showTab(btn.dataset.switch));
+    });
+
+    showTab(location.hash === "#login" ? "login" : "signup");
+    window.addEventListener("hashchange", () => showTab(location.hash === "#login" ? "login" : "signup"));
+
+    function setMessage(elementId, message, success) {
+      const el = $(elementId);
+      el.textContent = message;
+      el.classList.remove("success", "error");
+      el.classList.add(success ? "success" : "error");
+    }
+
+    function isValidEmail(value) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    }
+
+    // ---------- 인증번호 남은 시간 카운트다운 (백엔드 유효시간 5분과 맞춤) ----------
+    const CODE_TTL_SECONDS = 5 * 60;
+
+    function startCodeCountdown(timerElId, seconds = CODE_TTL_SECONDS) {
+      const el = $(timerElId);
+      clearInterval(el._countdownTimer);
+
+      let remaining = seconds;
+      const tick = () => {
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        el.textContent = `인증번호 남은 시간 ${m}:${String(s).padStart(2, "0")}`;
+        if (remaining <= 0) {
+          clearInterval(el._countdownTimer);
+          el.textContent = "인증번호가 만료됐어요. 다시 받아주세요.";
+          return;
+        }
+        remaining -= 1;
+      };
+      tick();
+      el._countdownTimer = setInterval(tick, 1000);
+    }
+
+    function stopCodeCountdown(timerElId, finalText = "") {
+      const el = $(timerElId);
+      clearInterval(el._countdownTimer);
+      el.textContent = finalText;
+    }
+
+    function bindPasswordToggle(buttonId, inputId) {
+      const btn = $(buttonId);
+      btn.addEventListener("click", () => {
+        const input = $(inputId);
+        const hidden = input.type === "password";
+        input.type = hidden ? "text" : "password";
+        btn.textContent = hidden ? "숨기기" : "보기";
+      });
+    }
+    bindPasswordToggle("toggle-signup-password-btn", "signup-password");
+    bindPasswordToggle("toggle-login-password-btn", "login-password");
+
+    // ---------- 휴대폰 번호 입력 중 자동 하이픈 (01012345678 → 010-1234-5678) ----------
+    $("signup-phone").addEventListener("input", () => {
+      const digits = $("signup-phone").value.replace(/\D/g, "").slice(0, 11);
+      let out = digits;
+      if (digits.length > 7) out = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+      else if (digits.length > 3) out = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+      $("signup-phone").value = out;
+    });
+
+    // ---------- 비밀번호 확인 일치 여부 실시간 체크 ----------
+    function checkPasswordMatch() {
+      const password = $("signup-password").value;
+      const confirm = $("signup-password-confirm").value;
+      const matches = !confirm || password === confirm;
+      $("password-confirm-message").textContent = matches ? "" : "비밀번호가 일치하지 않습니다.";
+      return !confirm ? null : matches; // null = 아직 입력 안 함 (제출 시 별도 체크)
+    }
+    $("signup-password").addEventListener("input", checkPasswordMatch);
+    $("signup-password-confirm").addEventListener("input", checkPasswordMatch);
+
+    // ---------- 약관 동의: 필수 4개를 모두 체크해야 회원가입 버튼이 활성화된다 ----------
+    const requiredTermsCheckboxes = Array.from(document.querySelectorAll(".terms-required-checkbox"));
+    const termsAllCheckbox = $("terms-all-checkbox");
+    const termsMarketingCheckbox = $("terms-marketing-checkbox");
+    const allTermsCheckboxes = [...requiredTermsCheckboxes, termsMarketingCheckbox];
+
+    function updateSignupButtonState() {
+      $("signup-btn").disabled = !requiredTermsCheckboxes.every((box) => box.checked);
+    }
+
+    termsAllCheckbox.addEventListener("change", () => {
+      allTermsCheckboxes.forEach((box) => (box.checked = termsAllCheckbox.checked));
+      updateSignupButtonState();
+    });
+
+    allTermsCheckboxes.forEach((box) => {
+      box.addEventListener("change", () => {
+        termsAllCheckbox.checked = allTermsCheckboxes.every((b) => b.checked);
+        updateSignupButtonState();
+      });
+    });
+
+    // ---------- 회원가입 ----------
+    // 이메일 중복확인을 통과한 이메일 / 인증번호 확인까지 끝난 이메일. 입력이 바뀌면 둘 다 다시 해야 한다.
+    let checkedEmail = null;
+    let verifiedSignupEmail = null;
+
+    $("signup-email").addEventListener("input", () => {
+      checkedEmail = null;
+      verifiedSignupEmail = null;
+      $("email-message").textContent = "";
+      $("send-code-message").textContent = "";
+      $("code-message").textContent = "";
+      $("signup-code-row").classList.add("hidden");
+      $("signup-code").value = "";
+      stopCodeCountdown("signup-code-timer");
+    });
+
+    $("send-code-btn").addEventListener("click", async () => {
+      const email = $("signup-email").value.trim();
+      if (!isValidEmail(email)) {
+        setMessage("send-code-message", "올바른 이메일 형식으로 입력해주세요.", false);
+        return;
+      }
+
+      $("send-code-btn").disabled = true;
+      setMessage("send-code-message", "인증번호 발송 중...", true);
+
+      try {
+        await CustomHouseAuthApi.sendSignupCode(email);
+        setMessage("send-code-message", "인증번호를 발송했어요. 메일함을 확인해주세요.", true);
+        $("signup-code-row").classList.remove("hidden");
+        startCodeCountdown("signup-code-timer");
+      } catch (err) {
+        setMessage("send-code-message", err.message || "인증번호 발송에 실패했습니다.", false);
+      } finally {
+        $("send-code-btn").disabled = false;
+      }
+    });
+
+    $("verify-code-btn").addEventListener("click", async () => {
+      const email = $("signup-email").value.trim();
+      const code = $("signup-code").value.trim();
+
+      if (!code) {
+        setMessage("code-message", "인증번호를 입력해주세요.", false);
+        return;
+      }
+
+      try {
+        await CustomHouseAuthApi.verifySignupCode(email, code);
+        verifiedSignupEmail = email;
+        setMessage("code-message", "이메일 인증이 완료됐어요.", true);
+        stopCodeCountdown("signup-code-timer");
+      } catch (err) {
+        verifiedSignupEmail = null;
+        setMessage("code-message", err.message || "인증번호가 올바르지 않습니다.", false);
+      }
+    });
+
+    $("check-email-btn").addEventListener("click", async () => {
+      const email = $("signup-email").value.trim();
+
+      if (!isValidEmail(email)) {
+        checkedEmail = null;
+        setMessage("email-message", "올바른 이메일 형식으로 입력해주세요.", false);
+        return;
+      }
+
+      try {
+        const duplicated = await CustomHouseAuthApi.checkEmail(email);
+        if (duplicated) {
+          checkedEmail = null;
+          setMessage("email-message", "이미 사용 중인 이메일입니다.", false);
+        } else {
+          checkedEmail = email;
+          setMessage("email-message", "사용 가능한 이메일입니다.", true);
+        }
+      } catch (err) {
+        checkedEmail = null;
+        setMessage("email-message", err.message || "이메일 중복확인 중 오류가 발생했습니다.", false);
+      }
+    });
+
+    $("signup-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = $("signup-email").value.trim();
+      const password = $("signup-password").value;
+      const passwordConfirm = $("signup-password-confirm").value;
+      const nickname = $("signup-nickname").value.trim();
+      const phone = $("signup-phone").value.trim();
+      const marketingConsent = termsMarketingCheckbox.checked;
+
+      if (checkedEmail !== email) {
+        setMessage("signup-message", "이메일 중복확인을 먼저 해주세요.", false);
+        return;
+      }
+      if (verifiedSignupEmail !== email) {
+        setMessage("signup-message", "이메일 인증을 먼저 완료해주세요.", false);
+        return;
+      }
+      if (password.length < 8 || password.length > 64) {
+        setMessage("signup-message", "비밀번호는 8~64자로 입력해주세요.", false);
+        return;
+      }
+      if (password !== passwordConfirm) {
+        setMessage("signup-message", "비밀번호가 일치하지 않습니다.", false);
+        $("password-confirm-message").textContent = "비밀번호가 일치하지 않습니다.";
+        return;
+      }
+      if (!nickname) {
+        setMessage("signup-message", "이름(닉네임)을 입력해주세요.", false);
+        return;
+      }
+      if (phone && !/^010-\d{4}-\d{4}$/.test(phone)) {
+        setMessage("signup-message", "휴대폰 번호는 010-0000-0000 형식으로 입력해주세요.", false);
+        return;
+      }
+      if (!requiredTermsCheckboxes.every((box) => box.checked)) {
+        setMessage("signup-message", "필수 약관에 모두 동의해주세요.", false);
+        return;
+      }
+
+      $("signup-btn").disabled = true;
+      setMessage("signup-message", "가입 처리 중...", true);
+
+      try {
+        await CustomHouseAuthApi.signup({ email, password, nickname, phone, marketingConsent });
+
+        // 가입 직후 방금 입력한 정보로 바로 로그인하고, 주거조건 입력 화면으로 이동한다.
+        setMessage("signup-message", "가입 완료! 자동으로 로그인하고 있어요...", true);
+        await CustomHouseAuthApi.login({ email, password });
+        window.location.href = "../mypage/edit-condition.html#housing";
+      } catch (err) {
+        setMessage("signup-message", err.message || "회원가입 중 오류가 발생했습니다.", false);
+        $("signup-btn").disabled = false;
+      }
+    });
+
+    // ---------- 비밀번호 재설정 (이메일 인증번호 연동) ----------
+    $("show-forgot-btn").addEventListener("click", () => {
+      $("forgot-password-box").classList.toggle("hidden");
+    });
+
+    $("send-reset-code-btn").addEventListener("click", async () => {
+      const email = $("forgot-email").value.trim();
+      if (!isValidEmail(email)) {
+        setMessage("forgot-send-message", "올바른 이메일 형식으로 입력해주세요.", false);
+        return;
+      }
+
+      $("send-reset-code-btn").disabled = true;
+      setMessage("forgot-send-message", "인증번호 발송 중...", true);
+
+      try {
+        await CustomHouseAuthApi.sendPasswordResetCode(email);
+        setMessage("forgot-send-message", "인증번호를 발송했어요. 메일함을 확인해주세요.", true);
+        $("forgot-reset-fields").classList.remove("hidden");
+        startCodeCountdown("forgot-code-timer");
+      } catch (err) {
+        setMessage("forgot-send-message", err.message || "인증번호 발송에 실패했습니다.", false);
+      } finally {
+        $("send-reset-code-btn").disabled = false;
+      }
+    });
+
+    $("submit-reset-btn").addEventListener("click", async () => {
+      const email = $("forgot-email").value.trim();
+      const code = $("forgot-code").value.trim();
+      const newPassword = $("forgot-new-password").value;
+
+      if (!code) {
+        setMessage("forgot-message", "인증번호를 입력해주세요.", false);
+        return;
+      }
+      if (newPassword.length < 8 || newPassword.length > 64) {
+        setMessage("forgot-message", "비밀번호는 8~64자로 입력해주세요.", false);
+        return;
+      }
+
+      $("submit-reset-btn").disabled = true;
+      setMessage("forgot-message", "재설정 중...", true);
+
+      try {
+        await CustomHouseAuthApi.resetPassword({ email, code, newPassword });
+        setMessage("forgot-message", "비밀번호가 재설정됐어요! 새 비밀번호로 로그인해주세요.", true);
+        stopCodeCountdown("forgot-code-timer");
+        $("login-email").value = email;
+        $("forgot-code").value = "";
+        $("forgot-new-password").value = "";
+      } catch (err) {
+        setMessage("forgot-message", err.message || "비밀번호 재설정에 실패했습니다.", false);
+      } finally {
+        $("submit-reset-btn").disabled = false;
+      }
+    });
+
+    // ---------- 로그인 ----------
+    $("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = $("login-email").value.trim();
+      const password = $("login-password").value;
+
+      if (!isValidEmail(email)) {
+        setMessage("login-message", "올바른 이메일 형식으로 입력해주세요.", false);
+        return;
+      }
+      if (!password) {
+        setMessage("login-message", "비밀번호를 입력해주세요.", false);
+        return;
+      }
+
+      $("login-btn").disabled = true;
+      setMessage("login-message", "로그인 중...", true);
+
+      try {
+        await CustomHouseAuthApi.login({ email, password });
+        window.location.href = "../index.html";
+      } catch (err) {
+        setMessage("login-message", err.message || "로그인 중 오류가 발생했습니다.", false);
+        $("login-btn").disabled = false;
+      }
+    });
+
+    $("naver-login-btn").addEventListener("click", () => CustomHouseAuthApi.loginWithNaver());
+  </script>
+</body>
+</html>
