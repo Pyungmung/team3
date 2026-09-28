@@ -41,5 +41,31 @@ async function postDiagnosis(path, condition) {
   return body.data;
 }
 
+/**
+ * 리포트의 "정책정보 정정신고" 팝업에서 정책 정보 오류/누락을 관리자 이메일로 보낸다 (백엔드 POST /api/support/policy-corrections).
+ * 받는 사람(관리자 주소)은 서버 설정이라 여기서 정하지 않는다.
+ * @param {{name:string, email:string, correctionType:"INFO_ERROR"|"EXPIRED"|"MISSING"|"OTHER", policyId?:string, policyName?:string, policyAgency?:string, policyRegion?:string, currentDescription?:string, message:string}} payload
+ */
+async function submitPolicyCorrection(payload) {
+  const res = await fetch(`${RECOMMENDATION_API_BASE}/support/policy-corrections`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  let body = null;
+  try {
+    body = await res.json();
+  } catch (e) {
+    /* 본문이 JSON이 아니면 아래 기본 문구를 쓴다 */
+  }
+
+  if (!res.ok || (body && body.success === false)) {
+    // 입력값 오류(400)는 data에 {필드: 메시지}가 오니 첫 메시지를 보여준다
+    const fieldMessages = body && body.data && typeof body.data === "object" ? Object.values(body.data) : [];
+    throw new Error(fieldMessages[0] || (body && body.message) || "정정신고를 보내지 못했어요. 잠시 후 다시 시도해주세요.");
+  }
+}
+
 // eslint-disable-next-line no-unused-vars
-window.CustomHouseRecommendationApi = { requestDiagnosis, requestListingDiagnosis };
+window.CustomHouseRecommendationApi = { requestDiagnosis, requestListingDiagnosis, submitPolicyCorrection };

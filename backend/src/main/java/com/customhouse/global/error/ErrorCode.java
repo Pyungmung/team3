@@ -35,7 +35,11 @@ public enum ErrorCode {
     ALREADY_SELECTED(HttpStatus.CONFLICT, "이미 채택된 답변이 있습니다."),
 
     // --- 고객센터 (담당: 미정) ---
-    MAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "문의 메일 발송 중 오류가 발생했습니다.");
+    MAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "문의 메일 발송 중 오류가 발생했습니다."),
+
+    // --- 추천 매물 신고/관심 (담당: 송귀성) ---
+    ALREADY_REPORTED(HttpStatus.CONFLICT, "이미 신고한 매물입니다."),
+    REPORT_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘 신고 가능한 횟수를 초과했습니다. 내일 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String defaultMessage;

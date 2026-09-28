@@ -1,6 +1,7 @@
 package com.customhouse.domain.support.controller;
 
 import com.customhouse.domain.support.dto.InquiryRequest;
+import com.customhouse.domain.support.dto.PolicyCorrectionRequest;
 import com.customhouse.domain.support.service.SupportMailService;
 import com.customhouse.global.error.CustomException;
 import com.customhouse.global.error.ErrorCode;
@@ -79,6 +80,66 @@ class SupportControllerTest {
         mockMvc.perform(post("/api/support/inquiries")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("MAIL_SEND_FAILED"));
+    }
+
+    // ---------- 정책정보 정정신고 (POST /api/support/policy-corrections) ----------
+
+    private PolicyCorrectionRequest correction(String type, String message) {
+        return new PolicyCorrectionRequest("김테스트", "tester@example.com", type, "POLICY_123", "청년 월세 지원",
+                "강남구청", "강남구", "월 20만원 지원", message);
+    }
+
+    @Test
+    void 유효한_정정신고는_200과_함께_메일_발송을_요청한다() throws Exception {
+        PolicyCorrectionRequest request = correction("EXPIRED", "이 정책은 올해 종료되었습니다.");
+        doNothing().when(supportMailService).sendPolicyCorrection(any());
+
+        mockMvc.perform(post("/api/support/policy-corrections")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(supportMailService).sendPolicyCorrection(request);
+    }
+
+    @Test
+    void 정책을_고르지_않은_누락_제보도_받는다() throws Exception {
+        PolicyCorrectionRequest request = new PolicyCorrectionRequest("김테스트", "tester@example.com", "MISSING",
+                null, null, null, null, null, "마포구에 이런 정책이 있어요.");
+        doNothing().when(supportMailService).sendPolicyCorrection(any());
+
+        mockMvc.perform(post("/api/support/policy-corrections")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void 정정신고의_필수값과_유형코드가_틀리면_400을_반환한다() throws Exception {
+        PolicyCorrectionRequest request = new PolicyCorrectionRequest("", "not-an-email", "HACK\nBcc: x@y.z",
+                null, null, null, null, null, "");
+
+        mockMvc.perform(post("/api/support/policy-corrections")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.data.name").exists())
+                .andExpect(jsonPath("$.data.email").exists())
+                .andExpect(jsonPath("$.data.correctionType").exists())
+                .andExpect(jsonPath("$.data.message").exists());
+    }
+
+    @Test
+    void 정정신고_메일_발송_실패시_502를_반환한다() throws Exception {
+        doThrow(new CustomException(ErrorCode.MAIL_SEND_FAILED)).when(supportMailService).sendPolicyCorrection(any());
+
+        mockMvc.perform(post("/api/support/policy-corrections")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(correction("INFO_ERROR", "금액이 다릅니다."))))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.code").value("MAIL_SEND_FAILED"));
     }

@@ -10,6 +10,7 @@
   <title>맞집 | 추천 매물 리포트</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <link rel="stylesheet" href="../../css/listing-card.css?v=20260928a" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="../../js/config.js?v=20260915c"></script>
   <script>
@@ -63,13 +64,6 @@
     /* 카드끼리 실선으로 구분한다 (사진이 없는 매물도 경계가 분명하게). 목록 박스 안쪽 여백 없이 양 끝까지 선을 긋는다 */
     .report-list-box > ul > li { border-bottom: 1px solid #cbd5e1; }
     .report-list-box > ul > li:hover { background: #f8fafc; }
-    .cost-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-    .cost-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; background: #f8fafc; }
-    .cost-box.conv { background: #eff6ff; border-color: #bfdbfe; }
-    .cost-box .lbl { font-size: 11px; font-weight: 700; color: #64748b; }
-    .cost-box .val { font-size: 16px; font-weight: 800; color: #0f172a; line-height: 1.3; }
-    .cost-box.conv .val { color: #1d4ed8; }
-    .cost-box .sub { font-size: 11px; color: #94a3b8; line-height: 1.4; }
     /* 주거진단 리포트: 소득수준별 RIR / 적정 월세 표 */
     .rir-box { margin-bottom: 14px; }
     .rir-title { font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 6px; }
@@ -80,7 +74,63 @@
     .rir-table tr.metro td { background: #eff6ff; font-weight: 800; color: #1d4ed8; }
     .rir-table td .grp { display: block; font-size: 11px; font-weight: 500; color: #94a3b8; }
     .rir-foot { margin-top: 8px; font-size: 11px; line-height: 1.55; color: #94a3b8; }
-    .listing-no { margin-top: 10px; font-size: 10.5px; color: #94a3b8; letter-spacing: 0.01em; }
+    /* 주거정책 추천: 기준 자치구 안내 + 서울 공통/자치구 태그 */
+    .pol-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; font-size: 12px; color: #334155; }
+    .pol-reset { font-size: 11px; font-weight: 700; color: #1d4ed8; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+    .pol-reset:hover { background: #dbeafe; }
+    .pol-tag { display: inline-block; margin-top: 3px; font-size: 10px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
+    .pol-tag.seoul { background: #f1f5f9; color: #64748b; }
+    .pol-tag.gu { background: #dbeafe; color: #1d4ed8; }
+    /* 선택한 매물 카드 (클릭하면 그 매물 자치구의 정책이 왼쪽에 표시된다) */
+    .report-list-box > ul > li.selected { background: #eff6ff; box-shadow: inset 3px 0 0 #3b82f6; }
+    /* 정책정보 정정신고 버튼 + 팝업 */
+    .pol-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+    .pol-correction-btn { flex: none; font-size: 11.5px; font-weight: 700; color: #475569; border: 1px solid #cbd5e1; background: #fff; border-radius: 999px; padding: 4px 11px; cursor: pointer; white-space: nowrap; }
+    .pol-correction-btn:hover { background: #f8fafc; border-color: #94a3b8; color: #1e293b; }
+    .pc-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .pc-modal.hidden { display: none; }
+    .pc-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.5); }
+    .pc-card { position: relative; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; background: #fff; border-radius: 16px; padding: 22px 22px 18px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3); }
+    .pc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .pc-head h3 { font-size: 17px; font-weight: 800; color: #0f172a; }
+    .pc-x { border: none; background: none; font-size: 18px; color: #94a3b8; cursor: pointer; padding: 4px 6px; }
+    .pc-x:hover { color: #334155; }
+    .pc-desc { font-size: 12.5px; line-height: 1.55; color: #64748b; margin-bottom: 14px; }
+    .pc-field { display: block; margin-bottom: 12px; }
+    .pc-field > span { display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 5px; }
+    .pc-field input, .pc-field select, .pc-field textarea { width: 100%; font-size: 14px; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 11px; background: #fff; }
+    .pc-field textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
+    .pc-field input:focus, .pc-field select:focus, .pc-field textarea:focus { outline: 2px solid #93c5fd; outline-offset: 0; border-color: #3b82f6; }
+    .pc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pc-current { font-size: 12px; line-height: 1.5; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; margin: -4px 0 12px; }
+    .pc-count { text-align: right; font-size: 11px; color: #94a3b8; margin-top: 3px; }
+    .pc-error { font-size: 12.5px; font-weight: 700; color: #dc2626; margin-bottom: 10px; }
+    .pc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+    .pc-actions button { font-size: 14px; font-weight: 700; border-radius: 10px; padding: 9px 18px; cursor: pointer; }
+    .pc-cancel { border: 1px solid #cbd5e1; background: #fff; color: #475569; }
+    .pc-submit { border: 1px solid #1d4ed8; background: #1d4ed8; color: #fff; }
+    .pc-submit:disabled { opacity: .6; cursor: progress; }
+    .pc-done { text-align: center; padding: 18px 6px 6px; }
+    .pc-done .ico { font-size: 34px; }
+    .pc-done p { margin-top: 8px; font-size: 14px; line-height: 1.6; color: #334155; }
+    @media (max-width: 480px) { .pc-row { grid-template-columns: 1fr; } }
+    /* 매물 카드 하단: 매물번호(왼쪽) + 허위매물 신고 버튼(오른쪽) */
+    .listing-foot { margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .report-btn { border: none; background: none; font-size: 11.5px; color: #94a3b8; cursor: pointer; padding: 3px 4px; border-radius: 6px; white-space: nowrap; }
+    .report-btn:hover { color: #dc2626; background: #fef2f2; }
+    .report-btn:disabled { color: #94a3b8; background: none; cursor: default; }
+    /* 관심매물 하트: 사진 영역 오른쪽 위 */
+    .report-list-box > ul > li { position: relative; }
+    .fav-btn { position: absolute; top: 10px; right: 10px; z-index: 2; width: 34px; height: 34px; border-radius: 999px; border: 1px solid #e2e8f0; background: rgba(255, 255, 255, 0.95); color: #64748b; font-size: 18px; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.15); }
+    .fav-btn:hover { color: #e11d48; border-color: #fda4af; }
+    .fav-btn.on { color: #e11d48; border-color: #fda4af; background: #fff1f2; }
+    /* 신고가 2건 이상 쌓인 매물에 붙는 주의 표시 (건수 기준은 서버가 정한다) */
+    .fake-warn { margin: 0 46px 10px 0; padding: 7px 10px; border-radius: 8px; background: #fff7ed; border: 1px solid #fdba74; color: #c2410c; font-size: 12.5px; font-weight: 700; line-height: 1.45; }
+    .fake-warn b { white-space: nowrap; }
+    .fake-warn small { display: block; font-size: 11.5px; font-weight: 500; color: #9a3412; }
+    .fake-warn.hidden { display: none; }
+    .rl-toast { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 120; background: #0f172a; color: #fff; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.3); max-width: 92vw; }
+    .rl-toast.hidden { display: none; }
 
     @media (max-width: 1100px) {
       .report-layout { grid-template-columns: 1fr; height: auto !important; }
@@ -118,18 +168,6 @@
       25% { box-shadow: 0 0 0 3px rgba(27, 42, 74, 0.35); }
     }
     .card-flash { animation: card-flash-pulse 1.1s ease; }
-
-    /* 매물 사진 자리: 사진 연결 전(PHOTO_PLACEHOLDER)에는 회색 박스 */
-    .listing-photo {
-      width: 100%; height: 132px; border-radius: 10px; margin-bottom: 12px; overflow: hidden;
-      background: #f1f5f9; color: #94a3b8; font-size: 12px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .listing-photo img { width: 100%; height: 100%; object-fit: cover; }
-
-    .listing-details { border-top: 1px solid #f1f5f9; margin-top: 10px; padding-top: 8px; }
-    .listing-details summary { cursor: pointer; font-size: 12px; font-weight: 700; color: #475569; }
-    .listing-details .body { font-size: 12px; color: #64748b; line-height: 1.6; margin-top: 6px; }
 
     /* 통근시간 산출 방식 배지 - 하단 탭 바 위에 뜬다 */
     #commute-source-badge {
@@ -215,8 +253,14 @@
           </div>
 
           <div class="card p-4 report-panel">
-            <h2 class="font-bold mb-1">주거정책 추천</h2>
-            <p class="text-xs text-gray-400 mb-3">매물 추천에 반영된 정책들이에요.</p>
+            <div class="pol-head">
+              <h2 class="font-bold">주거정책 추천</h2>
+              <button type="button" class="pol-correction-btn" id="policy-correction-btn" title="정책 정보가 틀렸거나 종료·누락된 정책을 관리자에게 이메일로 알려주세요">✉ 정책정보 정정신고</button>
+            </div>
+            <div class="pol-scope">
+              <span id="policy-scope-text"></span>
+              <button type="button" id="policy-reset" class="pol-reset hidden">직장 위치 기준으로 보기</button>
+            </div>
             <div class="overflow-x-auto">
               <table class="w-full text-[13px] leading-snug" style="table-layout: fixed">
                 <thead class="bg-gray-50">
@@ -268,13 +312,63 @@
     </div>
   </main>
 
+  <!-- 정책정보 정정신고 팝업: 정책 정보 오류/누락을 관리자 이메일로 보낸다 (백엔드 POST /api/support/policy-corrections) -->
+  <div class="pc-modal hidden" id="pc-modal" role="dialog" aria-modal="true" aria-labelledby="pc-title">
+    <div class="pc-backdrop"></div>
+    <form class="pc-card" id="pc-form" novalidate>
+      <div class="pc-head">
+        <h3 id="pc-title">정책정보 정정신고</h3>
+        <button type="button" class="pc-x" data-close aria-label="닫기">✕</button>
+      </div>
+      <p class="pc-desc">정책 정보가 틀렸거나, 종료·변경된 정책이거나, 빠진 정책이 있다면 알려주세요. 관리자가 이메일로 확인한 뒤 반영해요.</p>
+
+      <label class="pc-field">
+        <span>정정할 정책 <em style="font-weight:500;color:#94a3b8">(지금 표에 보이는 정책)</em></span>
+        <select id="pc-policy"></select>
+      </label>
+      <div class="pc-current hidden" id="pc-current"></div>
+
+      <label class="pc-field">
+        <span>정정 유형</span>
+        <select id="pc-type">
+          <option value="INFO_ERROR">지원 대상/금액 등 정보가 틀려요</option>
+          <option value="EXPIRED">종료되었거나 변경된 정책이에요</option>
+          <option value="MISSING">빠진 정책을 제보할게요</option>
+          <option value="OTHER">기타</option>
+        </select>
+      </label>
+
+      <div class="pc-row">
+        <label class="pc-field"><span>이름</span><input type="text" id="pc-name" maxlength="50" autocomplete="name" /></label>
+        <label class="pc-field"><span>답변받을 이메일</span><input type="email" id="pc-email" autocomplete="email" placeholder="example@email.com" /></label>
+      </div>
+
+      <label class="pc-field">
+        <span>정정할 내용</span>
+        <textarea id="pc-message" maxlength="1500" placeholder="어떤 부분이 어떻게 다른지 알려주세요. (예: 신청 기간이 올해 6월에 끝났어요 / 지원 금액이 월 20만원이 아니라 월 15만원이에요)"></textarea>
+        <div class="pc-count"><span id="pc-count">0</span>/1500</div>
+      </label>
+
+      <div class="pc-error hidden" id="pc-error" role="alert"></div>
+      <div class="pc-actions">
+        <button type="button" class="pc-cancel" data-close>취소</button>
+        <button type="submit" class="pc-submit" id="pc-submit">관리자에게 보내기</button>
+      </div>
+    </form>
+  </div>
+
   <!-- 하단 탭 바: 추천 매물 리포트(현재) / 실거래가 기준 리포트(기존 report-result.html 보존) -->
   <nav class="source-tabbar hidden" id="source-tabbar" aria-label="리포트 종류">
     <button type="button" class="source-tab active" aria-current="page">🏠 추천 매물 리포트</button>
     <button type="button" class="source-tab" id="legacy-report-tab">📊 실거래가 기준 리포트 (기존)</button>
   </nav>
 
+  <div class="rl-toast hidden" id="rl-toast" role="status" aria-live="polite"></div>
+
   <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/listing-card.js?v=20260928a"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/api/watchlist.js?v=20260928a"></script>
   <script src="../../js/api/recommendation.js?v=20260928a"></script>
   <script src="../../js/utils/chart-util.js?v=20260915d"></script>
   <script src="../../js/utils/map-util.js?v=20260928a"></script>
@@ -282,34 +376,8 @@
   <script>
     renderHeader("diagnosis"); // 지도 화면이라 푸터는 두지 않는다 (직방 지도 화면과 같이 화면을 꽉 채운다)
 
-    // 매물 설명/중개사 문구는 앞으로 "신규 매물 생성" 탭에서 사용자가 직접 입력할 수 있으니 화면에 넣기 전에 항상 이스케이프한다.
-    function esc(value) {
-      return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-    }
-
-    // 만원 단위 금액을 읽기 쉽게: 150000 -> "15억", 14500 -> "1억 4,500만원", 500 -> "500만원"
-    function fmtMoney(man) {
-      const n = Number(man || 0);
-      if (n >= 10000) {
-        const eok = Math.floor(n / 10000);
-        const rest = n % 10000;
-        return rest ? `${eok}억 ${rest.toLocaleString()}만원` : `${eok}억`;
-      }
-      return `${n.toLocaleString()}만원`;
-    }
-
-    // 만원 단위 비용: 소수 첫째 자리까지, 정수면 소수점 생략 (33.8 / 42)
-    function fmtNum(v) {
-      const n = Number(v ?? 0);
-      return (Math.round(n * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 });
-    }
-
-    // 이율(연 %)은 소수 둘째 자리까지: 6.35
-    function fmtRate(v) {
-      return Number(v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
-    }
-
-    const PHOTO_PLACEHOLDER = "PHOTO_PLACEHOLDER";
+    // 카드 본문 렌더링과 금액/이스케이프 도구는 마이페이지 관심 매물과 같이 쓰는 js/components/listing-card.js에 있다.
+    const { esc, fmtMoney, fmtNum, fmtRate, PHOTO_PLACEHOLDER } = CustomHouseListingCard;
 
     // localStorage 사용 이유: report-result.html 참고 (탭이 바뀌거나 세션이 끊겨도 유지되어야 함).
     const raw = localStorage.getItem("customhouse:lastListingDiagnosis");
@@ -366,6 +434,69 @@
       const wolseList = data.wolse_recommendations || [];
       const jeonseList = data.jeonse_recommendations || [];
       const allResults = [...wolseList, ...jeonseList];
+
+      // ---------- 관심매물 / 허위매물 신고 상태 ----------
+      // 신고 현황은 서버가 매물번호별로 세어 둔 값이다 (서버 기준 2건 이상이면 flagged -> "허위매물 주의").
+      const favoriteIds = new Set(); // 내가 관심매물로 담은 매물번호 (로그인했을 때만 채워진다)
+      const reportStatuses = {}; // listingId -> {count, flagged}
+      const myReported = new Set(); // 이 화면에서 내가 방금 신고한 매물번호 (버튼을 "신고 완료"로 바꾼다)
+      const isLoggedIn = () => !!(window.CustomHouseAuthApi && CustomHouseAuthApi.isLoggedIn());
+
+      let toastTimer = null;
+      function showToast(text) {
+        const el = document.getElementById("rl-toast");
+        el.textContent = text;
+        el.classList.remove("hidden");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.add("hidden"), 2600);
+      }
+
+      /** 카드 안의 "허위매물 주의" 표시와 신고 버튼 문구를 현재 상태에 맞게 다시 그린다. */
+      function paintReportState(li) {
+        const id = li.dataset.listingId;
+        const st = reportStatuses[id];
+        const warn = li.querySelector("[data-warn]");
+        if (warn) {
+          warn.classList.toggle("hidden", !(st && st.flagged));
+          if (st && st.flagged) warn.innerHTML = `<b>⚠ 허위매물 주의</b> <small>다른 이용자 신고 ${st.count}건이 접수된 매물이에요. 계약 전에 꼭 확인하세요.</small>`;
+        }
+        const btn = li.querySelector(".report-btn");
+        if (btn) {
+          btn.disabled = myReported.has(id);
+          btn.textContent = myReported.has(id) ? "🚩 신고 완료" : "🚩 허위매물 신고";
+        }
+      }
+
+      function paintFavoriteState(li) {
+        const btn = li.querySelector(".fav-btn");
+        if (!btn) return;
+        const on = favoriteIds.has(li.dataset.listingId);
+        btn.classList.toggle("on", on);
+        btn.setAttribute("aria-pressed", String(on));
+        btn.textContent = on ? "♥" : "♡";
+      }
+
+      const paintAllCards = (paint) => document.querySelectorAll("#wolse-list > li, #jeonse-list > li").forEach(paint);
+
+      /** 새로 그려진 카드들의 신고 현황을 서버에서 받아와 표시한다 (실패해도 카드는 그대로 쓸 수 있다). */
+      function hydrateReportStatuses(batch) {
+        const ids = batch.map((r) => r.listing_id).filter(Boolean);
+        CustomHouseWatchlistApi.getListingReportStatuses(ids)
+          .then((map) => {
+            Object.assign(reportStatuses, map);
+            paintAllCards(paintReportState);
+          })
+          .catch(() => {});
+      }
+
+      if (isLoggedIn()) {
+        CustomHouseWatchlistApi.getFavoriteListingIds()
+          .then((ids) => {
+            ids.forEach((id) => favoriteIds.add(id));
+            paintAllCards(paintFavoriteState);
+          })
+          .catch(() => {});
+      }
 
       const savedCondition = localStorage.getItem("customhouse:lastDiagnosisCondition");
       const condition = savedCondition ? JSON.parse(savedCondition) : null;
@@ -495,6 +626,7 @@
           document.querySelectorAll(".report-tab").forEach((b) => b.classList.toggle("active", b === btn));
           document.getElementById("wolse-panel").classList.toggle("hidden", tab !== "wolse");
           document.getElementById("jeonse-panel").classList.toggle("hidden", tab !== "jeonse");
+          resetPolicyScope(); // 탭이 바뀌면 매물 번호(idx)가 다른 목록을 가리키므로 선택을 풀고 직장 위치 기준으로 되돌린다
           CustomHouseClusterMapUtil.renderListingsMap(
             "map-container",
             tab === "wolse" ? wolseList : jeonseList,
@@ -526,126 +658,52 @@
         }
       });
 
-      // 매물 카드 1개.
-      // 가격 표시: 월세는 "월세/보증금", 전세는 "전세 보증금"을 가장 크게. 관리비는 이 매물의 실제 관리비다.
-      // 실거래가는 카드 맨 아래 "실거래 참고"에 이전 실거래 내역처럼 보조로만 보여준다.
-      function renderReference(ref) {
-        if (!ref) return "";
-        const isJeonse = (ref.monthly_rent || 0) === 0;
-        const price = isJeonse
-          ? `전세 ${fmtMoney(ref.deposit)}`
-          : `보증금 ${fmtMoney(ref.deposit)} / 월세 ${ref.monthly_rent}만원`;
-        const renewal =
-          ref.contract_type === "갱신" && (ref.pre_deposit || ref.pre_monthly_rent)
-            ? `<div>종전 계약: 보증금 ${fmtMoney(ref.pre_deposit)} / 월세 ${ref.pre_monthly_rent ?? 0}만원 · 갱신요구권 ${ref.use_rr_right === "Y" ? "사용" : "미사용"}</div>`
-            : "";
-        return `
-          <details class="listing-details">
-            <summary>📊 실거래 참고 (국토부 · 이 건물의 최근 계약)</summary>
-            <div class="body">
-              <div><b>${esc(ref.contract_date)}</b> ${esc(ref.contract_type)} · ${price}</div>
-              <div>${ref.area ? `${ref.area}㎡` : ""}${ref.floor ? ` · ${esc(ref.floor)}층` : ""}${ref.contract_term ? ` · 계약기간 ${esc(ref.contract_term)}` : ""}</div>
-              ${renewal}
-              <div class="text-gray-400 mt-1">국토교통부 실거래가 기준이며, 이 매물의 가격과는 다를 수 있어요.</div>
-            </div>
-          </details>`;
-      }
-
-      function renderBroker(b, listingId) {
-        if (!b || !b.name) return "";
-        return `
-          <details class="listing-details">
-            <summary>🏢 공인중개사 · ${esc(b.name)}</summary>
-            <div class="body">
-              <div>대표 ${esc(b.representative)} · 등록번호 ${esc(b.reg_no)}</div>
-              <div>📞 ${esc(b.phone)}</div>
-              <div>${esc(b.address)}</div>
-              ${b.comment ? `<div class="mt-1">“${esc(b.comment)}”</div>` : ""}
-            </div>
-          </details>`;
-      }
-
+      // 매물 카드 1개: 본문(사진~실거래 참고)은 공용 렌더러가 그리고, 관심(하트)/신고 버튼과 "허위매물 주의" 표시만 이 페이지에서 붙인다.
+      // 관심 매물로 담을 때는 이 카드의 매물 정보를 통째로 저장해 마이페이지에서 같은 카드로 다시 그린다 (toggleFavorite 참고).
       function renderListingCard(r, idx) {
-        const isJeonse = r.lease_type === "전세";
-        const hasPhoto = r.photo && r.photo !== PHOTO_PLACEHOLDER;
-
-        const headerRight = isJeonse
-          ? `<div class="text-lg font-extrabold whitespace-nowrap" style="color:var(--brand-600)">전세 ${fmtMoney(r.listing_deposit)}</div>`
-          : `
-              <div class="text-lg font-extrabold whitespace-nowrap" style="color:var(--brand-600)">월세 ${r.listing_monthly_rent}만원</div>
-              <div class="text-sm font-bold text-gray-700 mt-0.5 whitespace-nowrap">보증금 ${fmtMoney(r.listing_deposit)}</div>
-            `;
-
-        // 실질 주거비 = 월세 + 관리비 (교통비는 뺐다). 보증금전환 실질거주비 = 월세 + 관리비 + 보증금 기회비용(보증금 x 연 전환율% / 12, 전환율=한국부동산원 수도권 전월세 전환율)
-        const costBoxes = `
-          <div class="cost-boxes">
-            <div class="cost-box" title="월세 + 관리비">
-              <div class="lbl">실질 주거비</div>
-              <div class="val">${fmtNum(r.real_housing_cost)}만원/월</div>
-              <div class="sub">월세 + 관리비</div>
-            </div>
-            <div class="cost-box conv" title="월세 + 관리비 + 보증금 기회비용(보증금 x 연 ${fmtRate(data.deposit_conversion_rate)}% / 12)">
-              <div class="lbl">보증금전환 실질거주비</div>
-              <div class="val">${fmtNum(r.deposit_converted_cost)}만원/월</div>
-              <div class="sub">월세 + 관리비 + 보증금 이자 ${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(data.deposit_conversion_rate)}%)</div>
-            </div>
-          </div>`;
-
-        const facts = [
-          r.exclusive_area ? `${r.property_type === "단독다가구" ? "연면적" : "전용"} ${r.exclusive_area}㎡` : "",
-          r.unit_label ? esc(r.unit_label) : "",
-          r.rooms ? `방 ${r.rooms}·욕실 ${r.bathrooms ?? 1}` : "",
-          r.elevator === true ? "엘리베이터" : r.elevator === false ? "엘리베이터 없음" : "",
-          r.parking ? `주차 ${esc(r.parking)}` : "",
-        ].filter(Boolean).join(" · ");
-
-        const costBreakdown = `
-          <div title="${esc(r.maintenance_fee_items || "")}">관리비 ${r.maintenance_fee}만${r.maintenance_fee_items && r.maintenance_fee_items !== "없음" ? " <span class=\"text-gray-400\">(" + esc(r.maintenance_fee_items) + ")</span>" : ""}</div>`;
-
         return `
-        <li class="card p-5" data-idx="${idx}">
-          <div class="listing-photo">${hasPhoto ? `<img src="${esc(r.photo)}" alt="${esc(r.building_name)} 내부 사진" loading="lazy" />` : "📷 내부 사진 준비 중"}</div>
-          <div class="flex items-start justify-between mb-2">
-            <div>
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:var(--brand-100);color:var(--brand-700)">#${idx + 1}</span>
-              <button type="button" class="font-bold ml-2 building-name-link" data-idx="${idx}" title="지도에서 이 매물 위치 보기">${esc(r.building_name)}</button>
-              ${r.property_type ? `<span class="text-xs px-2 py-0.5 rounded-full ml-1 bg-gray-100 text-gray-600 whitespace-nowrap inline-block">${esc(r.property_type)}</span>` : ""}
-              ${r.is_semi_jeonse ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ml-1" style="background:#fef3c7;color:#92400e" title="보증금 ÷ 월세가 100 이상인 반전세형 매물이에요. 보증금이 부담되면 희망 보증금 조건으로 제외할 수 있어요.">반전세형</span>` : ""}
-              <span class="text-xs text-gray-400 ml-1" title="${esc(r.commute_source || "카카오 API")}">통근 약 ${r.commute_minutes}분</span>
-            </div>
-            <div class="text-right">${headerRight}</div>
+        <li class="card p-5" data-idx="${idx}" data-listing-id="${esc(r.listing_id)}">
+          <button type="button" class="fav-btn card-action ${favoriteIds.has(r.listing_id) ? "on" : ""}" data-listing-id="${esc(r.listing_id)}"
+            aria-pressed="${favoriteIds.has(r.listing_id)}" title="관심 매물 (마이페이지 관심 매물과 연동)">${favoriteIds.has(r.listing_id) ? "♥" : "♡"}</button>
+          <div class="fake-warn hidden" data-warn role="alert"></div>
+          ${CustomHouseListingCard.renderBody(r, { idx, conversionRate: data.deposit_conversion_rate })}
+          <div class="listing-foot">
+            <div class="listing-no">매물번호 ${esc(r.listing_id)}</div>
+            <button type="button" class="report-btn card-action" data-listing-id="${esc(r.listing_id)}"
+              title="가격·계약 여부·정보가 실제와 다른 매물이면 신고해주세요">🚩 허위매물 신고</button>
           </div>
-          <div class="text-sm text-gray-700 font-semibold mb-1 flex items-center gap-1">
-            <span aria-hidden="true">📍</span>
-            <span>${esc(r.address || `서울특별시 ${r.region}${r.dong ? ` ${r.dong}` : ""}`)}</span>
-          </div>
-          ${facts ? `<div class="text-xs text-gray-500 mb-1">${facts}</div>` : ""}
-          ${r.move_in_date ? `<div class="text-xs text-gray-400 mb-1">이사가능일 ${esc(r.move_in_date)}</div>` : ""}
-          <div class="text-xs text-gray-500 mt-2">${costBreakdown}</div>
-          ${costBoxes}
-          ${r.description ? `<details class="listing-details"><summary>📝 상세 설명</summary><div class="body">${esc(r.description)}</div></details>` : ""}
-          ${renderBroker(r.broker, r.listing_id)}
-          ${renderReference(r.reference_transaction)}
-          <div class="listing-no">매물번호 ${esc(r.listing_id)}</div>
         </li>`;
       }
 
-      function renderPolicyTable(recommendations) {
-        const uniquePolicies = new Map();
-        recommendations.forEach((r) => {
-          (r.matched_policies || []).forEach((p) => {
-            if (!uniquePolicies.has(p.id)) uniquePolicies.set(p.id, p);
-          });
-        });
-        document.getElementById("policy-table-body").innerHTML = Array.from(uniquePolicies.values())
-          .map((p) => `
+      // ---------- 주거정책 추천: 처음엔 직장 위치 자치구, 매물을 클릭하면 그 매물이 있는 자치구 ----------
+      // 정책은 자치구별로 한 번만 내려온다(policies_by_region). 지역값이 "서울"인 정책은 25개 자치구 모두에 해당하는 공통 정책이라
+      // 어느 자치구 기준이든 함께 나온다 (서버가 이미 합쳐서 준다). 표에서는 그 자치구 정책을 먼저, 서울 공통을 뒤에 둔다.
+      const policiesByRegion = data.policies_by_region || {};
+      let shownPolicies = []; // 지금 표에 보이는 정책 (정정신고 팝업의 "정정할 정책" 목록으로 쓴다)
+      const workRegion = data.work_region || condition?.workLocation || "";
+
+      function renderPolicies(region, listing) {
+        const all = policiesByRegion[region] || [];
+        const pols = [...all.filter((p) => p.region !== "서울"), ...all.filter((p) => p.region === "서울")];
+        const common = all.filter((p) => p.region === "서울").length;
+        shownPolicies = pols;
+        const suffix = `· 정책 ${pols.length}건 <span class="text-gray-400">(서울 공통 ${common}건 포함)</span>`;
+        document.getElementById("policy-scope-text").innerHTML = listing
+          ? `🏠 선택한 매물 위치 기준 · <b>${esc(region)}</b> <span class="text-gray-400">(${esc(listing.building_name)})</span> ${suffix}`
+          : `📍 직장 위치 기준 · <b>${esc(region || "-")}</b> ${suffix}`;
+        document.getElementById("policy-reset").classList.toggle("hidden", !listing);
+        document.getElementById("policy-table-body").innerHTML = pols
+          .map(
+            (p) => `
               <tr class="border-t border-gray-100">
-                <td class="px-2 py-2 text-gray-500 align-middle">${esc(p.agency)}</td>
+                <td class="px-2 py-2 text-gray-500 align-middle">${esc(p.agency)}<br /><span class="pol-tag ${p.region === "서울" ? "seoul" : "gu"}">${p.region === "서울" ? "서울 공통" : esc(p.region)}</span></td>
                 <td class="px-2 py-2 font-semibold align-middle">${esc(p.name)}</td>
                 <td class="px-2 py-2 text-gray-600 align-middle">${esc(p.description)}</td>
-              </tr>`)
+              </tr>`
+          )
           .join("");
-        document.getElementById("policy-empty").classList.toggle("hidden", uniquePolicies.size > 0);
+        document.getElementById("policy-empty").classList.toggle("hidden", pols.length > 0);
+        document.getElementById("policy-table-body").closest(".report-panel").scrollTop = 0;
       }
 
       const wolseListEl = document.getElementById("wolse-list");
@@ -663,6 +721,7 @@
           const batch = items.slice(rendered, rendered + LIST_PAGE_SIZE);
           listEl.insertAdjacentHTML("beforeend", batch.map((r, i) => renderListingCard(r, rendered + i)).join(""));
           rendered += batch.length;
+          hydrateReportStatuses(batch);
         }
         function loadAll() {
           while (rendered < items.length) loadMore();
@@ -676,12 +735,303 @@
 
       const wolseListController = renderInfiniteList(wolseBoxEl, wolseListEl, wolseList);
       const jeonseListController = renderInfiniteList(jeonseBoxEl, jeonseListEl, jeonseList);
-      renderPolicyTable(allResults);
+      renderPolicies(workRegion, null); // 처음 기본값: 직장 위치 자치구
 
       document.getElementById("wolse-empty").classList.toggle("hidden", wolseList.length > 0);
       document.getElementById("jeonse-empty").classList.toggle("hidden", jeonseList.length > 0);
 
-      // ---------- 지도 핀 클릭 -> 우측 목록에서 해당 매물 카드로 이동 ----------
+      // ---------- 정책정보 정정신고 팝업: 관리자에게 이메일로 보낸다 ----------
+      const pcModal = document.getElementById("pc-modal");
+      const pcForm = document.getElementById("pc-form");
+      const pcFormHtml = pcForm.innerHTML; // 보내기 성공 뒤 "완료" 화면으로 바꿨다가, 다시 열 때 원래 폼으로 되돌리기 위해 보관
+      let pcOpener = null;
+
+      const pcEl = (id) => document.getElementById(id);
+
+      function pcSetError(text) {
+        const box = pcEl("pc-error");
+        box.textContent = text || "";
+        box.classList.toggle("hidden", !text);
+      }
+
+      function pcFillPolicyOptions() {
+        pcEl("pc-policy").innerHTML =
+          `<option value="">특정 정책 없음 (빠진 정책 제보 / 기타)</option>` +
+          shownPolicies
+            .map((p, i) => `<option value="${i}">[${p.region === "서울" ? "서울 공통" : esc(p.region)}] ${esc(p.name)} (${esc(p.agency)})</option>`)
+            .join("");
+        pcEl("pc-current").classList.add("hidden");
+      }
+
+      function pcBindCloseButtons() {
+        pcForm.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", closePolicyCorrection));
+      }
+
+      // 폼이 (다시) 그려질 때마다 안쪽 요소의 이벤트를 연결한다 ("완료" 화면으로 바뀐 뒤 다시 열 수 있어서)
+      function pcBindForm() {
+        const policySel = pcEl("pc-policy");
+        policySel.addEventListener("change", () => {
+          const p = shownPolicies[Number(policySel.value)];
+          const box = pcEl("pc-current");
+          box.classList.toggle("hidden", !p);
+          if (p) box.innerHTML = `<b>현재 표시된 내용</b><br />${esc(p.description)}`;
+        });
+        const msg = pcEl("pc-message");
+        msg.addEventListener("input", () => (pcEl("pc-count").textContent = String(msg.value.length)));
+        pcBindCloseButtons();
+      }
+
+      function openPolicyCorrection() {
+        pcMode = "policy";
+        pcOpener = document.activeElement;
+        pcForm.innerHTML = pcFormHtml;
+        pcBindForm();
+        pcFillPolicyOptions();
+        pcModal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+        pcEl("pc-name").focus();
+      }
+
+      function closePolicyCorrection() {
+        pcModal.classList.add("hidden");
+        document.body.style.overflow = "";
+        if (pcOpener && pcOpener.focus) pcOpener.focus();
+      }
+
+      // ---------- 허위매물 신고 / 로그인 안내: 같은 팝업 틀(#pc-modal)을 쓰고 안쪽 내용만 바꾼다 ----------
+      // pcMode: "policy"(정책정보 정정신고) | "listing"(허위매물 신고) | "login"(로그인 안내)
+      let pcMode = "policy";
+      let pcTarget = null; // 신고 대상 매물 (listing 모드)
+
+      const LISTING_REPORT_TYPES = [
+        ["FAKE_PRICE", "가격이 실제와 달라요"],
+        ["ALREADY_SOLD", "이미 계약된 매물이에요"],
+        ["WRONG_INFO", "면적·층·옵션 등 정보가 달라요"],
+        ["PHOTO_MISMATCH", "사진이 실제와 달라요"],
+        ["OTHER", "기타"],
+      ];
+
+      function listingPriceText(r) {
+        return r.lease_type === "전세"
+          ? `전세 ${fmtMoney(r.listing_deposit)}`
+          : `보증금 ${fmtMoney(r.listing_deposit)} / 월세 ${r.listing_monthly_rent}만원`;
+      }
+
+      function cachedNickname() {
+        try {
+          const c = JSON.parse(localStorage.getItem("customhouse:nicknameCache") || "null");
+          return c && c.nickname ? c.nickname : "";
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function lrFormHtml(r) {
+        return `
+          <div class="pc-head">
+            <h3 id="pc-title">허위매물 신고</h3>
+            <button type="button" class="pc-x" data-close aria-label="닫기">✕</button>
+          </div>
+          <p class="pc-desc">가격이나 계약 여부, 매물 정보가 실제와 다르다면 알려주세요. 관리자가 이메일로 확인해요. 신고가 2건 이상 쌓이면 다른 이용자에게 '허위매물 주의' 표시가 떠요.</p>
+
+          <div class="pc-field">
+            <span>신고할 매물</span>
+            <div class="pc-current" style="margin:0">
+              <b>${esc(r.building_name)}</b> ${r.property_type ? `· ${esc(r.property_type)}` : ""}${r.unit_label ? ` · ${esc(r.unit_label)}` : ""}<br />
+              ${esc(r.address || `서울특별시 ${r.region}`)}<br />
+              ${esc(listingPriceText(r))} · 매물번호 ${esc(r.listing_id)}
+            </div>
+          </div>
+
+          <label class="pc-field">
+            <span>신고 유형</span>
+            <select id="pc-type">
+              ${LISTING_REPORT_TYPES.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}
+            </select>
+          </label>
+
+          <div class="pc-row">
+            <label class="pc-field"><span>신고자 <em style="font-weight:500;color:#94a3b8">(로그인 계정)</em></span><input type="text" id="pc-name" readonly value="${esc(cachedNickname() || (typeof getLoggedInEmail === "function" ? getLoggedInEmail() : "") || "")}" /></label>
+            <label class="pc-field"><span>답변받을 이메일</span><input type="email" id="pc-email" autocomplete="email" placeholder="example@email.com" value="${esc((typeof getLoggedInEmail === "function" ? getLoggedInEmail() : "") || "")}" /></label>
+          </div>
+
+          <label class="pc-field">
+            <span>신고 내용</span>
+            <textarea id="pc-message" maxlength="1500" placeholder="어떤 점이 실제와 다른지 알려주세요. (예: 중개사에게 확인했더니 이미 계약이 끝났어요 / 실제 월세는 70만원이라고 해요)"></textarea>
+            <div class="pc-count"><span id="pc-count">0</span>/1500</div>
+          </label>
+
+          <div class="pc-error hidden" id="pc-error" role="alert"></div>
+          <div class="pc-actions">
+            <button type="button" class="pc-cancel" data-close>취소</button>
+            <button type="submit" class="pc-submit" id="pc-submit">신고 보내기</button>
+          </div>`;
+      }
+
+      function pcOpen(opener) {
+        pcOpener = opener || document.activeElement;
+        pcModal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+      }
+
+      function openListingReport(r, opener) {
+        if (!isLoggedIn()) return openLoginNotice("허위매물 신고", opener);
+        pcMode = "listing";
+        pcTarget = r;
+        pcForm.innerHTML = lrFormHtml(r);
+        const msg = pcEl("pc-message");
+        msg.addEventListener("input", () => (pcEl("pc-count").textContent = String(msg.value.length)));
+        pcBindCloseButtons();
+        pcOpen(opener);
+        pcEl("pc-type").focus();
+      }
+
+      // 로그인하지 않은 상태에서 신고/관심 버튼을 누르면: 로그인 안내 (로그인은 새 탭에서 하고, 이 화면에서 다시 누르면 된다)
+      function openLoginNotice(actionLabel, opener) {
+        pcMode = "login";
+        pcTarget = null;
+        pcForm.innerHTML = `
+          <div class="pc-head">
+            <h3 id="pc-title">로그인이 필요해요</h3>
+            <button type="button" class="pc-x" data-close aria-label="닫기">✕</button>
+          </div>
+          <div class="pc-done">
+            <div class="ico">🔒</div>
+            <p><b>${esc(actionLabel)}</b>은(는) 로그인한 회원만 할 수 있어요.<br />새 탭에서 로그인한 뒤, 이 화면에서 다시 눌러주세요.<br /><span style="font-size:12px;color:#94a3b8">(이 추천 결과는 그대로 유지돼요)</span></p>
+          </div>
+          <div class="pc-actions" style="justify-content:center;margin-top:16px">
+            <button type="button" class="pc-cancel" data-close>닫기</button>
+            <a class="pc-submit" style="display:inline-block;text-decoration:none;font-size:14px;font-weight:700;border-radius:10px;padding:9px 18px" href="../auth/login.html" target="_blank" rel="noopener">로그인하러 가기</a>
+          </div>`;
+        pcBindCloseButtons();
+        pcOpen(opener);
+      }
+
+      async function submitListingReport() {
+        const email = pcEl("pc-email").value.trim();
+        const message = pcEl("pc-message").value.trim();
+        const r = pcTarget;
+
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return pcSetError("답변받을 이메일을 올바르게 입력해주세요.");
+        if (!message) return pcSetError("신고 내용을 입력해주세요.");
+        pcSetError("");
+
+        const submitBtn = pcEl("pc-submit");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "보내는 중...";
+        try {
+          const status = await CustomHouseWatchlistApi.reportListing(r.listing_id, {
+            reportType: pcEl("pc-type").value,
+            message,
+            contactEmail: email || null,
+            address: r.address || null,
+            leaseType: r.lease_type || null,
+            deposit: Math.round(Number(r.listing_deposit)) || 0,
+            monthlyRent: Math.round(Number(r.listing_monthly_rent)) || 0,
+          });
+          myReported.add(r.listing_id);
+          reportStatuses[r.listing_id] = status;
+          paintAllCards(paintReportState);
+          pcForm.innerHTML = `
+            <div class="pc-done">
+              <div class="ico">✅</div>
+              <p><b>허위매물 신고가 접수되었어요.</b><br />관리자가 확인한 뒤 필요하면 입력하신 이메일로 연락드릴게요.${
+                status && status.flagged ? `<br /><span style="color:#c2410c">이 매물은 신고 ${status.count}건이 쌓여 '허위매물 주의'로 표시돼요.</span>` : ""
+              }</p>
+            </div>
+            <div class="pc-actions" style="justify-content:center;margin-top:16px">
+              <button type="button" class="pc-submit" data-close>닫기</button>
+            </div>`;
+          pcBindCloseButtons();
+        } catch (err) {
+          if (err.code === "ALREADY_REPORTED") {
+            myReported.add(r.listing_id);
+            paintAllCards(paintReportState);
+          }
+          pcSetError(err.message || "신고를 보내지 못했어요. 잠시 후 다시 시도해주세요.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "신고 보내기";
+        }
+      }
+
+      pcForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (pcMode === "listing") return submitListingReport();
+        if (pcMode !== "policy") return;
+        const name = pcEl("pc-name").value.trim();
+        const email = pcEl("pc-email").value.trim();
+        const message = pcEl("pc-message").value.trim();
+        const p = shownPolicies[Number(pcEl("pc-policy").value)] || null;
+
+        if (!name) return pcSetError("이름을 입력해주세요.");
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return pcSetError("답변받을 이메일을 올바르게 입력해주세요.");
+        if (!message) return pcSetError("정정할 내용을 입력해주세요.");
+        pcSetError("");
+
+        const submitBtn = pcEl("pc-submit");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "보내는 중...";
+        try {
+          await CustomHouseRecommendationApi.submitPolicyCorrection({
+            name, email, message,
+            correctionType: pcEl("pc-type").value,
+            policyId: p ? p.id : null,
+            policyName: p ? p.name : null,
+            policyAgency: p ? p.agency : null,
+            policyRegion: p ? p.region : null,
+            currentDescription: p ? (p.description || "").slice(0, 500) : null,
+          });
+          pcForm.innerHTML = `
+            <div class="pc-done">
+              <div class="ico">✅</div>
+              <p><b>정정신고가 접수되었어요.</b><br />관리자가 확인한 뒤 입력하신 이메일(${esc(email)})로 답변드릴게요.</p>
+            </div>
+            <div class="pc-actions" style="justify-content:center;margin-top:16px">
+              <button type="button" class="pc-submit" data-close>닫기</button>
+            </div>`;
+          pcBindCloseButtons();
+        } catch (err) {
+          pcSetError(err.message || "정정신고를 보내지 못했어요. 잠시 후 다시 시도해주세요.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "관리자에게 보내기";
+        }
+      });
+
+      pcEl("policy-correction-btn").addEventListener("click", openPolicyCorrection);
+      pcModal.querySelector(".pc-backdrop").addEventListener("click", closePolicyCorrection);
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !pcModal.classList.contains("hidden")) closePolicyCorrection();
+      });
+
+      // ---------- 매물 선택 -> 왼쪽 주거정책 추천이 그 매물이 있는 자치구 기준으로 바뀐다 ----------
+      const isWolseTabNow = () => !document.getElementById("wolse-panel").classList.contains("hidden");
+      const clearSelectionUI = () =>
+        document.querySelectorAll("#wolse-list > li.selected, #jeonse-list > li.selected").forEach((li) => li.classList.remove("selected"));
+
+      function selectListing(idx) {
+        const r = (isWolseTabNow() ? wolseList : jeonseList)[idx];
+        if (!r) return;
+        clearSelectionUI();
+        (isWolseTabNow() ? wolseListEl : jeonseListEl).querySelector(`li[data-idx="${idx}"]`)?.classList.add("selected");
+        renderPolicies(r.region, r);
+      }
+
+      function resetPolicyScope() {
+        clearSelectionUI();
+        renderPolicies(workRegion, null);
+      }
+      document.getElementById("policy-reset").addEventListener("click", resetPolicyScope);
+
+      // 카드를 클릭하면 선택한다 (상세 설명/중개사/실거래 참고를 펼치는 조작이나 링크는 선택으로 보지 않는다)
+      function handleCardClick(e) {
+        const li = e.target.closest("li[data-idx]");
+        if (!li || e.target.closest("details, a, .card-action")) return;
+        selectListing(Number(li.dataset.idx));
+      }
+      wolseListEl.addEventListener("click", handleCardClick);
+      jeonseListEl.addEventListener("click", handleCardClick);
+
+      // ---------- 지도 핀 클릭 -> 우측 목록에서 해당 매물 카드로 이동 (그 매물도 선택된다) ----------
       function scrollToBuildingCard(idx) {
         const isWolseTab = !document.getElementById("wolse-panel").classList.contains("hidden");
         const controller = isWolseTab ? wolseListController : jeonseListController;
@@ -689,6 +1039,7 @@
         const boxEl = isWolseTab ? wolseBoxEl : jeonseBoxEl;
 
         controller.loadAll(); // 목표 카드가 아직 스크롤로 안 불러와진 상태일 수 있어 전부 렌더링한다.
+        selectListing(idx); // 카드가 그려진 뒤에 선택해야 선택 표시(파란 선)가 붙는다
 
         const card = listEl.querySelector(`li[data-idx="${idx}"]`);
         if (!card) return;
@@ -703,6 +1054,64 @@
       }
       wolseListEl.addEventListener("click", handleBuildingNameClick);
       jeonseListEl.addEventListener("click", handleBuildingNameClick);
+
+      // ---------- 카드의 관심매물(하트) / 허위매물 신고 버튼 ----------
+      // 카드가 스크롤로 10건씩 이어서 그려지므로 목록 요소에서 클릭을 받아 처리한다 (이벤트 위임).
+      const listingOfCard = (li) => (li.closest("#wolse-list") ? wolseList : jeonseList)[Number(li.dataset.idx)];
+
+      async function toggleFavorite(btn) {
+        const li = btn.closest("li[data-idx]");
+        const r = listingOfCard(li);
+        if (!r) return;
+        if (!isLoggedIn()) return openLoginNotice("관심 매물 담기", btn);
+
+        const id = r.listing_id;
+        const wasOn = favoriteIds.has(id);
+        // 눌렀을 때 바로 바뀌어 보이게 하고, 서버 저장이 실패하면 되돌린다
+        wasOn ? favoriteIds.delete(id) : favoriteIds.add(id);
+        paintAllCards(paintFavoriteState);
+        btn.disabled = true;
+        try {
+          if (wasOn) {
+            await CustomHouseWatchlistApi.removeListingFavorite(id);
+            showToast("관심 매물에서 뺐어요.");
+          } else {
+            await CustomHouseWatchlistApi.addListingFavorite({
+              listingId: id,
+              address: r.address || null,
+              region: r.region || null,
+              leaseType: r.lease_type || null,
+              buildingName: r.building_name || null,
+              propertyType: r.property_type || null,
+              unitLabel: r.unit_label || null,
+              deposit: Math.round(Number(r.listing_deposit)) || 0,
+              monthlyRent: Math.round(Number(r.listing_monthly_rent)) || 0,
+              maintenanceFee: Math.round(Number(r.maintenance_fee)) || 0,
+              // 마이페이지에서 리포트와 같은 카드로 다시 그리려고 매물 정보를 통째로 저장한다 (이율은 카드 계산에 필요해 함께 담는다)
+              snapshot: JSON.stringify({ ...r, _conversion_rate: data.deposit_conversion_rate }),
+            });
+            showToast("관심 매물에 담았어요. 마이페이지 '관심 매물'에서 볼 수 있어요.");
+          }
+        } catch (err) {
+          wasOn ? favoriteIds.add(id) : favoriteIds.delete(id);
+          paintAllCards(paintFavoriteState);
+          showToast(err.message || "처리하지 못했어요. 잠시 후 다시 시도해주세요.");
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      function handleCardActionClick(e) {
+        const fav = e.target.closest(".fav-btn");
+        if (fav) return toggleFavorite(fav);
+        const rep = e.target.closest(".report-btn");
+        if (rep) {
+          const r = listingOfCard(rep.closest("li[data-idx]"));
+          if (r) openListingReport(r, rep);
+        }
+      }
+      wolseListEl.addEventListener("click", handleCardActionClick);
+      jeonseListEl.addEventListener("click", handleCardActionClick);
     }
   </script>
 </body>

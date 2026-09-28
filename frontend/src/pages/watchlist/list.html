@@ -8,6 +8,7 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <link rel="stylesheet" href="../../css/listing-card.css?v=20260928a" />
 
   <style>
     * {
@@ -821,8 +822,9 @@
 
   <script src="../../js/components/header.js?v=20260921a"></script>
   <script src="../../js/components/footer.js?v=20260928c"></script>
+  <script src="../../js/components/listing-card.js?v=20260928a"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/watchlist.js?v=20260915b"></script>
+  <script src="../../js/api/watchlist.js?v=20260928a"></script>
 
   <script>
     renderHeader("watchlist");
@@ -910,8 +912,13 @@
       const errorEl = document.getElementById("watchlist-error");
 
       let items;
+      let listingFavorites = [];
       try {
-        items = await CustomHouseWatchlistApi.getWatchlist();
+        // 추천 매물(리포트의 하트로 담은 매물)은 별도 API라 실패해도 기존 관심 매물 목록은 그대로 보여준다
+        [items, listingFavorites] = await Promise.all([
+          CustomHouseWatchlistApi.getWatchlist(),
+          CustomHouseWatchlistApi.getFavoriteListings().catch(() => []),
+        ]);
         errorEl.classList.add("hidden");
       } catch (err) {
         listEl.innerHTML = "";
@@ -921,13 +928,85 @@
         return;
       }
 
-      if (items.length === 0) {
+      if (items.length === 0 && listingFavorites.length === 0) {
         emptyEl.classList.remove("hidden");
         listEl.innerHTML = "";
         return;
       }
 
       emptyEl.classList.add("hidden");
+
+      // 추천 매물 카드: 진단 리포트의 월세/전세 추천 매물에서 하트로 담은 매물 (가격 재확인/기존 신고 대신 매물번호와 허위매물 주의를 보여준다)
+      // 리포트에서 담을 때 카드의 매물 정보를 통째로 저장해 두었으니(snapshot) 리포트와 같은 카드로 보여준다.
+      // 전체 정보 저장 이전에 담은 매물(snapshot 없음)은 아래의 간단 카드로 보여준다.
+      const parseSnapshot = (fav) => {
+        if (!fav.snapshot) return null;
+        try {
+          const r = JSON.parse(fav.snapshot);
+          return r && typeof r === "object" ? r : null;
+        } catch (e) {
+          return null;
+        }
+      };
+
+      const listingCardsHtml = listingFavorites
+        .map((fav) => {
+          const full = parseSnapshot(fav);
+          if (full) {
+            return `
+            <li class="property-card" data-listing-id="${escapeHtml(fav.listingId)}">
+              <div class="flex items-center justify-between mb-3">
+                <span class="status-badge status-normal">추천 매물 · 관심</span>
+                <span style="font-size:11px;color:#94a3b8">리포트에서 담을 당시의 정보예요</span>
+              </div>
+              ${
+                fav.flagged
+                  ? `<div class="report-warning" style="margin-bottom:12px">⚠ 허위매물 주의 · 신고 ${fav.reportCount}건이 접수된 매물이에요. 계약 전에 꼭 확인하세요.</div>`
+                  : ""
+              }
+              ${CustomHouseListingCard.renderBody(full)}
+              <div class="property-actions" style="justify-content:space-between">
+                <span class="listing-no">매물번호 ${escapeHtml(fav.listingId)}</span>
+                <button type="button" class="listing-remove-btn action-button remove">삭제</button>
+              </div>
+            </li>`;
+          }
+
+          const isJeonse = fav.leaseType === "전세";
+          const title = [fav.buildingName, fav.propertyType, fav.unitLabel].filter(Boolean).join(" · ");
+          return `
+            <li class="property-card" data-listing-id="${escapeHtml(fav.listingId)}">
+              <div class="property-top">
+                <div>
+                  <div class="property-location">${escapeHtml(fav.region || "")}</div>
+                  ${title ? `<div class="property-address" style="font-weight:700">${escapeHtml(title)}</div>` : ""}
+                  <div class="property-address">${escapeHtml(fav.address || "")}</div>
+                  <div class="property-price">
+                    ${
+                      isJeonse
+                        ? `<span class="price-main">전세 ${fav.deposit ?? 0}만</span>`
+                        : `<span class="price-main">보증금 ${fav.deposit ?? 0}만</span>
+                           <span class="price-divider">/</span>
+                           <span class="price-main">월세 ${fav.monthlyRent ?? 0}만</span>`
+                    }
+                    ${fav.maintenanceFee != null ? `<span class="maintenance">관리비 ${fav.maintenanceFee}만</span>` : ""}
+                  </div>
+                </div>
+                <span class="status-badge status-normal">추천 매물</span>
+              </div>
+              ${
+                fav.flagged
+                  ? `<div class="report-warning">⚠ 허위매물 주의 · 신고 ${fav.reportCount}건이 접수된 매물이에요</div>`
+                  : ""
+              }
+              <div style="font-size:11px;color:#94a3b8;margin-top:8px">리포트에서 하트를 껐다가 다시 눌러 담으면 매물 전체 정보가 이곳에 표시돼요.</div>
+              <div class="property-actions">
+                <span style="font-size:12px;color:#94a3b8;align-self:center">매물번호 ${escapeHtml(fav.listingId)}</span>
+                <button type="button" class="listing-remove-btn action-button remove">삭제</button>
+              </div>
+            </li>`;
+        })
+        .join("");
 
       listEl.innerHTML = items
         .map((item) => {
@@ -968,7 +1047,17 @@
               </div>
             </li>`;
         })
-        .join("");
+        .join("") + listingCardsHtml;
+
+      listEl.querySelectorAll("[data-listing-id]").forEach((li) => {
+        const removeBtn = li.querySelector(".listing-remove-btn");
+        removeBtn.addEventListener("click", () =>
+          runAction(removeBtn, async () => {
+            await CustomHouseWatchlistApi.removeListingFavorite(li.dataset.listingId);
+            await loadWatchlist();
+          })
+        );
+      });
 
       listEl.querySelectorAll("[data-watchlist-id]").forEach((li) => {
         const watchlistItemId = li.dataset.watchlistId;

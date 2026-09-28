@@ -68,6 +68,8 @@
 | `vote_records` | `domain/board/entity/VoteRecord.java` | 미정 | 투표 내역 (1인 1표) |
 | `post_likes` | `domain/board/entity/PostLike.java` | 미정 | 게시글 좋아요 |
 | `post_scraps` | `domain/board/entity/PostScrap.java` | 미정 | 게시글 스크랩 |
+| `listing_reports` | `domain/listing/entity/ListingReport.java` | 송귀성 | 추천 매물(더미 매물 CSV) 허위매물 신고 (회원당 매물 1번) |
+| `listing_favorites` | `domain/listing/entity/ListingFavorite.java` | 송귀성 | 추천 매물 관심매물 (마이페이지 관심 매물에 함께 표시) |
 | ~~`registry_analysis`~~ | `domain/watchlist/entity/RegistryAnalysis.java` | 김시연 | ⏳ **미구현.** 실제 등기부등본 API 연동이 필요해 스키마 설계만 되어있는 상태 (자세한 내용은 9번 항목 참고) |
 
 ## 3. 테이블 상세
@@ -226,7 +228,19 @@ PostMeta처럼 자체 id를 가진 진짜 엔티티(`HousingConditionPreference`
 | post_likes | id PK, post_id, user_id | **UNIQUE(post_id, user_id)** `uk_like_post_user` |
 | post_scraps | id PK, post_id, user_id | **UNIQUE(post_id, user_id)** `uk_scrap_post_user` |
 
-> ⚠️ 운영(`ddl-auto: validate`)에서는 위 7개 테이블을 수동으로 만들어야 합니다.
+#### listing_reports / listing_favorites (추천 매물 신고·관심)
+추천 매물은 DB가 아니라 `docs/samples/dummyhouses/*.csv`에서 오므로 매물 테이블이 없습니다. 두 테이블 모두 CSV의 `매물등록번호`
+(예: `SEOCHO-202609-0001`)를 `listing_id` 문자열로 저장하고, 회원은 FK 없이 `user_id`만 저장합니다.
+기존 `properties`/`favorites`와는 별개입니다 (`properties.address`가 UNIQUE라 한 주소를 공유하는 더미 매물을 담을 수 없어서).
+
+| 테이블 | 컬럼 | 제약 |
+|---|---|---|
+| listing_reports | id PK, listing_id VARCHAR(40), user_id BIGINT, report_type VARCHAR(30), message VARCHAR(1500) | **UNIQUE(listing_id, user_id)** `uk_listing_report_user_listing` = 회원당 매물 1번 신고, 인덱스 `idx_listing_report_listing`. 신고 수가 2건 이상이면 카드에 "허위매물 주의"(서버 `ListingReportService.FLAG_THRESHOLD`) |
+| listing_favorites | id PK, user_id BIGINT, listing_id VARCHAR(40), address VARCHAR(300), region VARCHAR(30), lease_type VARCHAR(10), building_name VARCHAR(100), property_type VARCHAR(30), unit_label VARCHAR(60), deposit INT, monthly_rent INT, maintenance_fee INT, snapshot TEXT | **UNIQUE(user_id, listing_id)** `uk_listing_fav_user_listing`, 인덱스 `idx_listing_fav_user`. 주소/가격 컬럼은 예전 관심매물의 간단 표시용이고, `snapshot`(JSON)에 리포트 카드의 전체 매물 정보를 통째로 저장해 마이페이지에서 리포트와 같은 카드로 다시 그린다. 운영(validate)에는 `ALTER TABLE listing_favorites ADD COLUMN snapshot TEXT;` 필요 |
+
+> 회원 탈퇴 시 `listing_favorites`는 함께 지우고, `listing_reports`는 신고 누적 집계를 위해 남깁니다.
+
+> ⚠️ 운영(`ddl-auto: validate`)에서는 위 9개 테이블을 수동으로 만들어야 합니다.
 > 가장 간단한 방법: dev(H2/로컬 MySQL)를 `update`로 띄워 테이블을 자동 생성시킨 뒤 `SHOW CREATE TABLE posts;` 등으로 DDL을 뽑아 운영에 적용하세요
 > (컬럼 규칙: 카멜케이스 필드 → 스네이크케이스, 예: `viewCount` → `view_count`).
 
@@ -246,6 +260,7 @@ users 1 ─── N   posts / comments      (writer_id, FK 없음)
 posts 1 ─── N   post_metas / comments / vote_options
 vote_options 1 ─── N vote_records     (post_id+user_id 유니크 = 1인 1표)
 users N ─── N   posts                 (post_likes, post_scraps 로 연결)
+users 1 ─── N   listing_reports / listing_favorites  (user_id, FK 없음. 매물은 CSV의 매물등록번호 문자열)
 ```
 
 전부 애플리케이션 레벨 FK입니다 (JPA `@ManyToOne` 대신 `Long userId`/`propertyId`로 직접 들고 있는

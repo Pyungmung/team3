@@ -1,6 +1,7 @@
 package com.customhouse.domain.support.controller;
 
 import com.customhouse.domain.support.dto.InquiryRequest;
+import com.customhouse.domain.support.dto.PolicyCorrectionRequest;
 import com.customhouse.domain.support.service.SupportMailService;
 import com.customhouse.global.common.ApiResponse;
 import jakarta.validation.Valid;
@@ -27,5 +28,12 @@ public class SupportController {
     public ResponseEntity<ApiResponse<Void>> submitInquiry(@Valid @RequestBody InquiryRequest request) {
         supportMailService.sendInquiry(request);
         return ResponseEntity.ok(ApiResponse.ok("문의가 접수되었습니다.", null));
+    }
+
+    /** 리포트 "주거정책 추천" 옆 "정책정보 정정신고" 팝업 - 정책 정보 오류/누락을 관리자에게 이메일로 알린다. */
+    @PostMapping("/policy-corrections")
+    public ResponseEntity<ApiResponse<Void>> submitPolicyCorrection(@Valid @RequestBody PolicyCorrectionRequest request) {
+        supportMailService.sendPolicyCorrection(request);
+        return ResponseEntity.ok(ApiResponse.ok("정정신고가 접수되었습니다. 확인 후 반영할게요.", null));
     }
 }

@@ -470,6 +470,29 @@
         { name: "user_id", type: "BIGINT", unique: true },
       ],
     },
+    listing_reports: {
+      title: "listing_reports", owner: "송귀성",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "listing_id", type: "VARCHAR(40)", unique: true },
+        { name: "user_id", type: "BIGINT", fk: true, unique: true },
+        { name: "report_type", type: "VARCHAR(30)" },
+        { name: "message", type: "VARCHAR(1500)" },
+      ],
+    },
+    listing_favorites: {
+      title: "listing_favorites", owner: "송귀성",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "user_id", type: "BIGINT", fk: true, unique: true },
+        { name: "listing_id", type: "VARCHAR(40)", unique: true },
+        { name: "address", type: "VARCHAR(300)" },
+        { name: "lease_type", type: "VARCHAR(10)" },
+        { name: "deposit", type: "INT" },
+        { name: "monthly_rent", type: "INT" },
+        { name: "snapshot", type: "TEXT" },
+      ],
+    },
   };
 
   // ---- 2. 배치 (행/열 그리드. null = 빈 칸) ----
@@ -480,6 +503,7 @@
     [null, "properties", "registry_logs", "registry_analysis"],
     ["comments", "posts", "post_metas", null],
     ["post_likes", "vote_options", "vote_records", "post_scraps"],
+    [null, "listing_reports", "listing_favorites", null],
   ];
 
   // ---- 3. 관계선 (from = "1" 쪽, to = "N" 또는 "0..1" 쪽) ----
@@ -496,6 +520,8 @@
     { from: "posts", to: "post_metas", label: "부가정보", mult: ["1", "N"] },
     { from: "posts", to: "vote_options", label: "투표항목", mult: ["1", "N"] },
     { from: "vote_options", to: "vote_records", label: "투표", mult: ["1", "N"] },
+    { from: "users", to: "listing_reports", label: "신고", mult: ["1", "N"], elbow: true },
+    { from: "users", to: "listing_favorites", label: "관심", mult: ["1", "N"], elbow: true },
   ];
 
   // ---- 4. 레이아웃 상수 ----

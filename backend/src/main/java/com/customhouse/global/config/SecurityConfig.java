@@ -64,6 +64,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/mypage/**").authenticated()
                         .requestMatchers("/api/payments/**").authenticated()
                         .requestMatchers("/api/watchlist/**").authenticated()
+                        // 추천 매물 허위매물 신고: 신고 수 조회(카드에 "허위매물 주의" 표시용)는 공개, 신고는 로그인 필요
+                        .requestMatchers(HttpMethod.POST, "/api/listings/reports/counts").permitAll()
+                        .requestMatchers("/api/listings/**").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()
                         .anyRequest().permitAll()
                 )
