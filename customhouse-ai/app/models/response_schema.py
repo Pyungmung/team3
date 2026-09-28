@@ -12,6 +12,7 @@ class MatchedPolicy(BaseModel):
 
     id: str
     name: str
+    region: str = ""  # "서울"이면 서울 전역(25개 자치구 모두) 공통 정책, 자치구 이름(예: 강남구)이면 그 자치구 정책
     agency: str  # 소관 기관명 (예: 국토교통부, 서울특별시, 주택도시기금)
     description: str  # 지원혜택 내용 (자유 텍스트)
 
@@ -110,6 +111,8 @@ class ListingRecommendation(BuildingRecommendation):
     deposit_converted_cost(보증금전환 실질거주비)를 별도로 내려준다."""
 
     transportation_cost: int = Field(0, exclude=True)  # 응답에 포함하지 않는다 (교통비 삭제)
+    # 정책은 매물마다 반복해서 붙이지 않고(응답의 70%를 차지했다) 응답 최상위의 policies_by_region에 자치구별로 한 번만 담는다.
+    matched_policies: list[MatchedPolicy] = Field(default_factory=list, exclude=True)
     deposit_opportunity_cost: float = 0  # 만원/월 = 보증금 x 연 전환율% / 12 (전환율은 응답의 deposit_conversion_rate)
     deposit_converted_cost: float = 0    # 만원/월 = 월세 + 관리비 + 보증금 기회비용 (보증금전환 실질거주비)
 
@@ -163,4 +166,9 @@ class ListingDiagnosisResponse(BaseModel):
     rir_metro_affordable_rent: float | None = None     # 만원/월, 수도권 RIR을 내 월소득에 적용한 적정 월세 (= affordable_rent)
     rir_overall_percent: float | None = None           # 전국 RIR(%) - 참고
     rir_by_income: list[RirIncomeLevel] = []           # 소득수준별(하위/중위/상위) RIR과 적정 월세
+    # 주거정책 추천: 자치구별로 그 자치구에 매칭된 정책(지역값이 "서울"인 공통 정책 + 그 자치구 정책). 리포트는 처음엔 직장 위치
+    # 자치구(work_region)의 정책을 보여주고, 매물을 클릭하면 그 매물 자치구(매물의 region)의 정책으로 바꾼다.
+    # 추천 결과에 나온 자치구 + 직장 자치구만 담는다.
+    work_region: str = ""
+    policies_by_region: dict[str, list[MatchedPolicy]] = {}
     disclaimer: str = "더미 매물 데이터 기반 추정치이며, 실제 매물·시세·정책 자격과 다를 수 있습니다. 실거래가는 참고용입니다."

@@ -79,8 +79,7 @@ def _clean_nan(record: dict) -> dict:
     return record
 
 
-def _to_result(listing: dict, region_commute: int, commute_source: str, matched_policies: list[dict],
-               deposit_rate_percent: float) -> dict:
+def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_rate_percent: float) -> dict:
     rent = listing["monthly_rent"] or 0
     deposit = listing["deposit"] or 0
     maintenance_fee = listing["maintenance_fee"] or 0
@@ -116,7 +115,7 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, matched_
         "deposit_converted_cost": deposit_converted_cost,
         "baseline_cost": real_housing_cost,  # 비교할 별도 기준이 없다 (월세/전세 모두 절감액 0)
         "monthly_savings": 0,
-        "matched_policies": matched_policies,
+        "matched_policies": [],  # 정책은 응답 최상위 policies_by_region에 자치구별로 한 번만 담는다 (매물마다 반복하지 않는다)
         "data_source": f"더미 매물 (등록 {listing['registered_date']})",
         # --- 더미 매물 전용 필드 ---
         "listing_id": listing["listing_id"],
@@ -222,6 +221,7 @@ def run_listing_diagnosis(request) -> dict:
     today = date.today()
 
     wolse_results, jeonse_results = [], []
+    policies_by_region: dict[str, list[dict]] = {}  # 자치구 -> 그 자치구에 매칭된 정책 (서울 공통 + 그 자치구)
     listing_by_id: dict[str, dict] = {}
     total_candidates = 0
 
@@ -229,7 +229,7 @@ def run_listing_diagnosis(request) -> dict:
         listings = listing_repository.load_district(region.name)
         if not listings:
             continue
-        matched_policies = policy_matcher.match_display_policies(request, building_region=region.name)  # 구별 1회
+        policies_by_region[region.name] = policy_matcher.match_display_policies(request, building_region=region.name)  # 구별 1회
 
         for listing in listings:
             if listing["listing_status"] != listing_schema.LISTING_STATUS_AVAILABLE:
@@ -246,7 +246,7 @@ def run_listing_diagnosis(request) -> dict:
                 continue
 
             total_candidates += 1
-            result = _to_result(listing, region_commute, commute_source, matched_policies, deposit_rate.rate_percent)
+            result = _to_result(listing, region_commute, commute_source, deposit_rate.rate_percent)
             listing_by_id[listing["listing_id"]] = listing
             (wolse_results if listing["lease_type"] == "월세" else jeonse_results).append(result)
 
@@ -268,6 +268,15 @@ def run_listing_diagnosis(request) -> dict:
     wolse = _refine(wolse)
     jeonse = _refine(jeonse)
 
+    # 주거정책 추천: 직장 위치 자치구(work_region) 정책을 기본으로 보여주고, 매물을 클릭하면 그 매물 자치구 정책으로 바꾼다.
+    # 지역값이 "서울"인 정책은 어느 자치구든(25개 모두) match_display_policies가 함께 돌려준다. 추천 결과에 나온 자치구와
+    # 직장 자치구의 정책만 내려준다 (직장 자치구가 통근권 목록에 없어도 기본 표시가 비지 않게 따로 계산).
+    work_region = request.work_location
+    if work_region not in policies_by_region:
+        policies_by_region[work_region] = policy_matcher.match_display_policies(request, building_region=work_region)
+    wanted = {r["region"] for r in wolse + jeonse} | {work_region}
+    policies_by_region = {name: pols for name, pols in policies_by_region.items() if name in wanted}
+
     used_distance_estimate = any(
         r["commute_source"] == calculator.ESTIMATE_SOURCE_LABEL for r in wolse + jeonse
     )
@@ -282,6 +291,8 @@ def run_listing_diagnosis(request) -> dict:
         "used_distance_estimate": used_distance_estimate,
         "total_candidates": total_candidates,
         "deposit_limit": deposit_limit,
+        "work_region": work_region,
+        "policies_by_region": policies_by_region,
         "deposit_conversion_rate": deposit_rate.rate_percent,
         "deposit_conversion_rate_base": deposit_rate.base_month,
         "deposit_conversion_rate_label": deposit_rate.label,
