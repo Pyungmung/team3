@@ -51,7 +51,7 @@
     const price = r.lease_type === "전세" ? `전세 ${r.listing_deposit}만원` : `${r.listing_monthly_rent}만원/월 · 보증금 ${r.listing_deposit}만원`;
     return (
       `<div style="padding:6px 10px;font-size:12px;white-space:nowrap;"><b>${esc(r.building_name)}</b><br/>` +
-      `${esc(price)} · 실질 ${r.real_housing_cost}만원/월<br/>${esc(r.address || r.region)}</div>`
+      `${esc(price)}<br/>실질 ${r.real_housing_cost}만원/월 · 보증금전환 ${Math.round((r.deposit_converted_cost ?? 0) * 10) / 10}만원/월<br/>${esc(r.address || r.region)}</div>`
     );
   }
 
