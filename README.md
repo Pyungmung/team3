@@ -110,6 +110,23 @@ curl -X POST http://localhost:8080/api/recommendation/diagnosis \
   `listing_builder.py`(행안부 도로명주소·카카오 좌표·국토부 실거래 조회, 신규 매물 생성 탭에서 재사용).
 - CSV 재생성: `cd customhouse-ai && python scripts/gen_dummyhouses.py` (작업 파일은 `scripts/_work/`, Git 제외).
 
+### 추천 리포트 부가 기능 - pull 받은 뒤 구동 확인 (2026-09-28)
+
+`.env`/`config.js`가 없는 새 클론에서도 아래 기능은 키 없이 동작하도록 확인했습니다 (키가 있으면 더 정확해질 뿐입니다).
+
+| 기능 | 필요한 것 | 키/설정이 없으면 |
+|---|---|---|
+| 매물 추천·지도 카드 | 저장소에 포함된 CSV(`docs/samples/dummyhouses`) | 카카오 REST 키가 없으면 통근시간을 직선거리 추정으로 계산 ("직선거리 추정" 배지), 카카오맵 JS 키(`frontend/src/js/config.js`)가 없으면 지도만 비어 있고 목록은 정상 |
+| 소득 대비 주거비 비율(RIR)·적정 월세 | `docs/RIR.csv` (포함됨) | 파일을 못 읽으면 기본 20% |
+| 보증금전환 실질거주비 | `REB_API_KEY` (한국부동산원) | 키가 없으면 저장값/기본 6.35% 사용 |
+| 주거정책 추천(자치구별) | `customhouse-ai/app/data/policies.json` (포함됨) | - |
+| 정책정보 정정신고 / 허위매물 신고 메일 | `backend/.env`의 `MAIL_USERNAME`, `MAIL_APP_PASSWORD` | 정정신고는 발송 실패 안내, 허위매물 신고는 **신고 저장은 되고** 메일만 서버 로그에 실패로 남음 |
+| 허위매물 신고 / 관심매물(하트) | 로그인(회원가입은 이메일 인증 메일이 필요) | 비로그인이면 로그인 안내 팝업 |
+
+- 정책 목록(`docs/housing_policy_list.csv`)을 고친 뒤에는 `cd customhouse-ai && python scripts/convert_policies.py`로 `policies.json`을 다시 만들어야 화면에 반영됩니다.
+- 새 테이블 `listing_reports`, `listing_favorites`는 dev(H2)/local-mysql에서는 서버를 켜면 자동 생성됩니다. 운영(`ddl-auto: validate`)은 수동 DDL이 필요합니다 (`docs/DATABASE.md` 참고).
+- 로컬에서 메일 없이 기능을 확인하려면 받은 메일을 파일에 저장만 하는 가짜 SMTP 서버(로컬 25xx 포트)를 두고 `SPRING_MAIL_HOST/PORT`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false` 환경변수로 백엔드를 띄우면 실제 메일이 나가지 않습니다.
+
 ## 5. 회원가입 / 로그인 (curl)
 
 ```bash
