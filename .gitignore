@@ -32,3 +32,6 @@ frontend/src/js/config.js
 
 # --- 더미 매물 생성 작업 폴더(캐시/로그/임시 CSV) ---
 customhouse-ai/scripts/_work/
+
+# --- 한국부동산원 전환율 조회 캐시 (customhouse-ai/app/services/reb_conversion_rate.py가 만드는 파일) ---
+customhouse-ai/app/data/cache/

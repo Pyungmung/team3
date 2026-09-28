@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     kakao_rest_app_key: str | None = None  # 카카오모빌리티 길찾기(자동차) REST API - services/kakao_mobility.py
     juso_api_key: str | None = None        # 행정안전부 도로명주소 검색 API(business.juso.go.kr) - services/juso_api.py
     juso_api_key_av: str | None = None     # 행정안전부 상세주소 API - 위와 별도 발급/승인키 (건물명 보완용)
+    kosis_api_key: str | None = None       # KOSIS 국가통계포털 OpenAPI 인증키 (kosis.kr/openapi) - 수도권 기준 RIR 등 통계 조회용
     pinecone_api_key: str | None = None    # Pinecone (RAG, 심화 단계). 서버리스 API라 environment 값은 불필요.
 
 

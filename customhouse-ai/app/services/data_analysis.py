@@ -59,9 +59,14 @@ def _proportional_allocate(region_sizes: dict[str, int], budget: int) -> dict[st
     return allocation
 
 
-def rank_by_real_cost(results: list[dict], top_n: int | None = 5, require_savings: bool = True) -> list[dict]:
+def rank_by_real_cost(
+    results: list[dict], top_n: int | None = 5, require_savings: bool = True, cost_key: str = "real_housing_cost"
+) -> list[dict]:
     """실질 주거비(real_housing_cost) 오름차순으로 정렬해 상위 N개를 반환한다. top_n이 None이면
     자르지 않고 전부(최대치) 반환한다.
+
+    cost_key: 순위를 매기는 비용 항목 이름 (기본 "real_housing_cost"). 더미 매물 추천(listing_recommender.py)은
+    "deposit_converted_cost"(보증금전환 실질거주비)로 넘긴다 (2026-09-28). 기본값이라 기존 실거래가 리포트 동작은 그대로다.
 
     require_savings=True면 "기존 예상 주거비(baseline_cost)보다 실제로 더 싼" 매물만 남긴다
     (절감액 monthly_savings > 0). 2026-09-28: 월세는 보증금 조정(전월세전환율/대출금리 가정)
@@ -99,14 +104,14 @@ def rank_by_real_cost(results: list[dict], top_n: int | None = 5, require_saving
         for r in savings_results:
             by_region.setdefault(r["region"], []).append(r)
         for region_results in by_region.values():
-            region_results.sort(key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))
+            region_results.sort(key=lambda r: (r[cost_key], -r["monthly_savings"]))
 
         allocation = _proportional_allocate({region: len(items) for region, items in by_region.items()}, top_n)
         savings_results = [item for region, items in by_region.items() for item in items[: allocation[region]]]
 
     if _PANDAS_AVAILABLE:
         df = pd.DataFrame(savings_results)
-        df = df.sort_values(by=["real_housing_cost", "monthly_savings"], ascending=[True, False])
+        df = df.sort_values(by=[cost_key, "monthly_savings"], ascending=[True, False])
         return df.to_dict(orient="records")
 
-    return sorted(savings_results, key=lambda r: (r["real_housing_cost"], -r["monthly_savings"]))
+    return sorted(savings_results, key=lambda r: (r[cost_key], -r["monthly_savings"]))

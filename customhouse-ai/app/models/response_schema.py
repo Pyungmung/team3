@@ -2,7 +2,7 @@
 [담당: 송귀성] Pydantic 응답 스키마
 진단 결과 및 추천 리포트 규격을 정의한다.
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MatchedPolicy(BaseModel):
@@ -103,7 +103,15 @@ class ListingRecommendation(BuildingRecommendation):
     """더미 매물 1건 단위 추천. 기존 BuildingRecommendation 필드(지도/차트/카드가 그대로 쓴다)에
     매물 상세 정보를 더한다. 기존 필드 의미: listing_deposit/listing_monthly_rent = 매물 보증금/월세,
     maintenance_fee = 이 매물의 관리비(구 평균이 아님), address = 도로명주소, deal_date = 빈 문자열,
-    loan_interest = 항상 0 (보증금 한도를 넘는 매물은 대출로 메운다고 보지 않고 추천에서 제외한다)."""
+    loan_interest = 항상 0 (보증금 한도를 넘는 매물은 대출로 메운다고 보지 않고 추천에서 제외한다).
+
+    2026-09-28: 교통비는 비용에서 뺐다. real_housing_cost = 월세 + 관리비. 부모 클래스의 transportation_cost는 필수 필드라
+    지울 수 없어 기본값 0으로 덮어쓰고 응답(JSON)에서는 내보내지 않는다(exclude). 보증금 크기까지 월 비용으로 환산한
+    deposit_converted_cost(보증금전환 실질거주비)를 별도로 내려준다."""
+
+    transportation_cost: int = Field(0, exclude=True)  # 응답에 포함하지 않는다 (교통비 삭제)
+    deposit_opportunity_cost: float = 0  # 만원/월 = 보증금 x 연 전환율% / 12 (전환율은 응답의 deposit_conversion_rate)
+    deposit_converted_cost: float = 0    # 만원/월 = 월세 + 관리비 + 보증금 기회비용 (보증금전환 실질거주비)
 
     listing_id: str = ""             # 매물등록번호 (예: SEOCHO-202609-0001)
     listing_status: str = ""         # 계약가능/계약중 (추천에는 계약가능만 나온다)
@@ -134,4 +142,9 @@ class ListingDiagnosisResponse(BaseModel):
     used_distance_estimate: bool = False
     total_candidates: int = 0  # 조건(통근권/상태/희망가/유형)을 통과한 매물 수 - 화면에 "N건 중 상위 표시" 용
     deposit_limit: int = 0     # 만원, 이 금액을 넘는 보증금의 매물은 추천에서 제외됨 (희망 보증금, 없으면 현재 보유 보증금)
+    # 보증금을 월 비용으로 환산한 이율 = 한국부동산원 수도권 전월세 전환율(종합주택) 최신 월 값 (reb_conversion_rate.py)
+    deposit_conversion_rate: float = 0          # 연 %, 예: 6.35
+    deposit_conversion_rate_base: str = ""      # 통계 기준 월 "2026-07"
+    deposit_conversion_rate_label: str = ""     # 출처 문구
+    deposit_conversion_rate_is_fallback: bool = False  # True면 조회 실패로 대체값(이전 조회값/저장값/기본값)을 쓴 것
     disclaimer: str = "더미 매물 데이터 기반 추정치이며, 실제 매물·시세·정책 자격과 다를 수 있습니다. 실거래가는 참고용입니다."

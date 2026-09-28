@@ -5,29 +5,39 @@
 docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실거래가는 추천 대상이 아니라 매물마다
 붙는 "참고 실거래"(reference_transaction)로만 내려준다.
 
-처리 흐름 (통근시간/교통비/정책/순위는 calculator·policy_matcher·data_analysis를 그대로 재사용):
+처리 흐름 (통근시간/정책/순위는 calculator·policy_matcher·data_analysis를 그대로 재사용):
 1. 직장 좌표, 소득 기준 적정 월세(RIR 30%)
 2. 자치구 대표좌표 기준 1차 통근권 필터 (이동수단별 버퍼, REGION_PREFILTER_BUFFER_MIN_BY_MODE)
 3. 통근권 자치구의 CSV 매물 -> 계약가능만, 선호 유형, 보증금 한도 이하, 희망 월세 이하, 이사희망시기 필터.
    보증금 한도 = 희망 보증금(전세액)이 있으면 그 값, 없으면 현재 보유 보증금. 한도를 넘는 매물은 추천하지 않는다
    (2026-09-28: 예전엔 부족한 보증금을 대출로 채운다고 가정해 이자를 비용에 더했는데, 보증금이 부족한 매물을
    추천하는 게 이상하다는 지적으로 대출이자 계산을 없애고 한도 필터로 바꿨다)
-4. 비용 계산: 월세는 CSV 월세 그대로, 관리비는 그 매물의 관리비. 실질 주거비 = 월세 + 관리비 + 교통비
-   (대출이자 항목은 응답 호환을 위해 남기되 항상 0)
-5. 월세/전세 따로 실질 주거비 낮은 순으로 상위 TOP_N (지역별 비례 배분)
+4. 비용 계산 (2026-09-28: 교통비는 비용에서 아예 뺐다 - 통근시간은 희망 통근시간 필터와 표시에만 쓴다):
+   - 실질 주거비 = 월세 + 관리비                                   (월세는 CSV 월세 그대로, 관리비는 그 매물의 관리비)
+   - 보증금 기회비용(월) = 보증금 x 연 전환율% / 12                 (보증금을 월 비용으로 환산한 값)
+   - 보증금전환 실질거주비 = 월세 + 관리비 + 보증금 기회비용        (보증금 크기까지 월 비용으로 환산해 비교)
+   전환율은 한국부동산원(R-ONE) 수도권 전월세 전환율(종합주택)의 가장 최근 월 값이다 (reb_conversion_rate.py,
+   2026-09-28: 예전 고정값 연 4.5%에서 변경. 이 앱은 수도권만 다루므로 수도권 값 하나만 쓴다)
+   (대출이자/교통비 항목은 응답 호환을 위해 남기되 각각 0, 응답에서는 교통비를 내보내지 않는다)
+5. 월세/전세 따로 **보증금전환 실질거주비** 낮은 순으로 상위 TOP_N (지역별 비례 배분) - 순위 기준은 2026-09-28부터
+   실질 주거비가 아니라 보증금전환 실질거주비다 (보증금이 큰 반전세가 월세만 낮다는 이유로 상위를 차지하지 않게)
 6. 최종 목록만 매물 자신의 좌표로 통근시간을 정확히 다시 계산(CSV에 좌표가 이미 있어 주소/좌표 외부 API
-   호출은 없다)해서 희망 통근시간을 넘는 매물 제외, 교통비/실질 주거비 갱신 후 재정렬
+   호출은 없다)해서 희망 통근시간을 넘는 매물을 제외한다
 """
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
-from app.services import calculator, data_analysis, listing_repository, listing_schema, policy_matcher
+from app.services import calculator, data_analysis, listing_repository, listing_schema, policy_matcher, reb_conversion_rate
 
 logger = logging.getLogger(__name__)
 
 TOP_N = 1000  # 월세/전세 각각 최대 추천 수 (지도 마커/카드 렌더링이 버틸 수 있는 상한)
+
+# 추천 순위를 매기는 비용 항목: 보증금전환 실질거주비 (월세 + 관리비 + 보증금 기회비용)
+RANK_COST_KEY = "deposit_converted_cost"
+
 
 # 희망 이사 일정 -> 이사가능일이 오늘로부터 며칠 이내여야 하는지. 그 외(WITHIN_6M/EXPLORING/미지정)는 제한 없음.
 MOVE_SCHEDULE_MAX_DAYS = {"IMMEDIATE": 30, "WITHIN_3M": 90}
@@ -67,13 +77,16 @@ def _clean_nan(record: dict) -> dict:
     return record
 
 
-def _to_result(listing: dict, region_commute: int, commute_source: str, transportation_cost: int,
-               matched_policies: list[dict]) -> dict:
+def _to_result(listing: dict, region_commute: int, commute_source: str, matched_policies: list[dict],
+               deposit_rate_percent: float) -> dict:
     rent = listing["monthly_rent"] or 0
     deposit = listing["deposit"] or 0
     maintenance_fee = listing["maintenance_fee"] or 0
     loan_interest = 0  # 보증금 부족분 대출이자는 계산하지 않는다 - 보증금 한도를 넘는 매물을 아예 추천하지 않는다
-    real_housing_cost = rent + maintenance_fee + loan_interest + transportation_cost
+    real_housing_cost = rent + maintenance_fee + loan_interest  # 교통비는 뺐다
+    # 보증금 기회비용(월) = 보증금 x 연 전환율% / 12 (한국부동산원 수도권 전월세 전환율), 보증금전환 실질거주비 = 월세 + 관리비 + 보증금 기회비용 (만원, 소수 첫째 자리)
+    deposit_opportunity_cost = round(deposit * deposit_rate_percent / 100 / 12, 1)
+    deposit_converted_cost = round(rent + maintenance_fee + deposit_opportunity_cost, 1)
     return {
         # --- 기존 BuildingRecommendation 필드 (지도/차트/카드 공용) ---
         "region": listing["region"],
@@ -95,9 +108,10 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, transpor
         "rent": rent,
         "maintenance_fee": maintenance_fee,
         "loan_interest": loan_interest,
-        "transportation_cost": transportation_cost,
         "government_support": 0,
         "real_housing_cost": real_housing_cost,
+        "deposit_opportunity_cost": deposit_opportunity_cost,
+        "deposit_converted_cost": deposit_converted_cost,
         "baseline_cost": real_housing_cost,  # 비교할 별도 기준이 없다 (월세/전세 모두 절감액 0)
         "monthly_savings": 0,
         "matched_policies": matched_policies,
@@ -153,6 +167,9 @@ def run_listing_diagnosis(request) -> dict:
     affordable_rent = calculator.calculate_affordable_rent(effective_monthly_income)
     rir = round((affordable_rent / effective_monthly_income) * 100, 1) if effective_monthly_income else 0.0
 
+    # 보증금을 월 비용으로 환산하는 이율: 한국부동산원 수도권 전월세 전환율(종합주택) 최신 월 값 (12시간 캐시, 조회 실패 시 대체값)
+    deposit_rate = reb_conversion_rate.get_metro_conversion_rate()
+
     # 보증금 한도: 희망 보증금/전세액이 있으면 그 금액, 없으면 현재 보유 보증금. 이를 넘는 매물은 추천하지 않는다.
     deposit_limit = request.desired_deposit if request.desired_deposit is not None else request.deposit
 
@@ -186,7 +203,6 @@ def run_listing_diagnosis(request) -> dict:
         listings = listing_repository.load_district(region.name)
         if not listings:
             continue
-        transportation_cost = calculator._transportation_cost(region_commute)
         matched_policies = policy_matcher.match_display_policies(request, building_region=region.name)  # 구별 1회
 
         for listing in listings:
@@ -204,13 +220,13 @@ def run_listing_diagnosis(request) -> dict:
                 continue
 
             total_candidates += 1
-            result = _to_result(listing, region_commute, commute_source, transportation_cost, matched_policies)
+            result = _to_result(listing, region_commute, commute_source, matched_policies, deposit_rate.rate_percent)
             listing_by_id[listing["listing_id"]] = listing
             (wolse_results if listing["lease_type"] == "월세" else jeonse_results).append(result)
 
-    # 월세/전세 각각 실질 주거비 낮은 순 상위 N (절감 기준이 없으니 require_savings=False)
-    wolse = data_analysis.rank_by_real_cost(wolse_results, top_n=TOP_N, require_savings=False)
-    jeonse = data_analysis.rank_by_real_cost(jeonse_results, top_n=TOP_N, require_savings=False)
+    # 월세/전세 각각 보증금전환 실질거주비 낮은 순 상위 N (절감 기준이 없으니 require_savings=False)
+    wolse = data_analysis.rank_by_real_cost(wolse_results, top_n=TOP_N, require_savings=False, cost_key=RANK_COST_KEY)
+    jeonse = data_analysis.rank_by_real_cost(jeonse_results, top_n=TOP_N, require_savings=False, cost_key=RANK_COST_KEY)
 
     # 최종 목록만 매물 자신의 좌표로 통근시간을 정확히 다시 계산 (CSV에 좌표가 있으므로 지오코딩은 없다)
     def _refine(recommendations: list[dict]) -> list[dict]:
@@ -218,14 +234,9 @@ def run_listing_diagnosis(request) -> dict:
         kept = calculator._recompute_precise_commute(
             recommendations, work_lat, work_lon, request.transport_type, request.max_commute_minutes
         )
-        for r in kept:  # 통근시간이 정확해졌으니 교통비와 실질 주거비도 맞춰 갱신하고 다시 정렬
-            r["transportation_cost"] = calculator._transportation_cost(r["commute_minutes"])
-            r["real_housing_cost"] = (
-                r["rent"] + r["maintenance_fee"] + r["loan_interest"] + r["transportation_cost"]
-            )
-            r["baseline_cost"] = r["real_housing_cost"]
+        for r in kept:  # 교통비가 없으니 통근시간이 정확해져도 비용은 그대로다 - 매물 상세 정보만 붙인다
             _attach_details(r, listing_by_id[r["listing_id"]])
-        kept.sort(key=lambda r: (r["real_housing_cost"], r["listing_id"]))
+        kept.sort(key=lambda r: (r[RANK_COST_KEY], r["listing_id"]))
         return kept
 
     wolse = _refine(wolse)
@@ -245,4 +256,8 @@ def run_listing_diagnosis(request) -> dict:
         "used_distance_estimate": used_distance_estimate,
         "total_candidates": total_candidates,
         "deposit_limit": deposit_limit,
+        "deposit_conversion_rate": deposit_rate.rate_percent,
+        "deposit_conversion_rate_base": deposit_rate.base_month,
+        "deposit_conversion_rate_label": deposit_rate.label,
+        "deposit_conversion_rate_is_fallback": deposit_rate.is_fallback,
     }
