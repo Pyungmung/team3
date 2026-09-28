@@ -377,6 +377,9 @@ def run_diagnosis(request) -> dict:
 
     for region, commute, commute_source in eligible:
         transportation_cost = _transportation_cost(commute)
+        # 정책 매칭 결과는 (요청, 지역)에만 의존해서 지역 안 모든 매물이 같다 - 매물마다 다시 계산하면
+        # 후보 6만 건에서 콜드 진단이 수십 초 걸렸다(2026-09-28 프로파일링), 지역당 한 번만 구한다.
+        matched_policies = policy_matcher.match_display_policies(request, building_region=region.name)
 
         for building in candidates_by_region[region.name]:
             if type_filter and building["property_type"] not in type_filter:
@@ -389,11 +392,22 @@ def run_diagnosis(request) -> dict:
             if request.desired_rent is not None and building["monthly_rent"] > request.desired_rent:
                 continue
 
-            dedup_key = (region.name, building["building_name"], building["dong"])
-            if building["unnamed"]:
-                # 건물명 없는 매물(단독다가구 등)은 이름이 "동네+형태"로 같아서, 그대로 두면 동네당
-                # 1건만 남는다. 가격/면적까지 같아야 같은 매물로 본다.
-                dedup_key += (building["deposit"], building["monthly_rent"], building["exclusive_area"])
+            # 중복 제거 기준은 "거래 1건"의 정체성(건물+지번+층+면적+보증금+월세+거래월)이다.
+            # 예전엔 (지역, 건물명, 동)만 봐서, 같은 건물에서 서로 다른 계약(예: 같은 오피스텔의
+            # 1층 500/10과 3층 500/40)이 여러 건 있어도 임의의 1건만 남고 나머지는 사라졌다
+            # (2026-09-28 - 실거래 월세를 정확히 보여주는 게 가장 중요한데, 어떤 계약이 보일지가
+            # 우연에 좌우되는 문제). 국토부가 같은 계약을 두 번 내려주는 경우만 걸러낸다.
+            dedup_key = (
+                region.name,
+                building["building_name"],
+                building["dong"],
+                building["jibun_search_keyword"],
+                building["floor"],
+                building["exclusive_area"],
+                building["deposit"],
+                building["monthly_rent"],
+                building["deal_date"],
+            )
             if dedup_key in seen_buildings:
                 continue
             seen_buildings.add(dedup_key)
@@ -427,7 +441,6 @@ def run_diagnosis(request) -> dict:
             # 2) 정책 매칭 - "주거정책 추천" 표에 보여줄 정보성 매칭 (매물 지역 기준).
             # CSV 실데이터는 지원혜택이 자유 텍스트라 정형 수치가 없어 government_support는
             # 항상 0 - policy_matcher.py 모듈 docstring 참고.
-            matched_policies = policy_matcher.match_display_policies(request, building_region=region.name)
             government_support = 0
 
             real_housing_cost = rent + maintenance_fee + loan_interest + transportation_cost - government_support

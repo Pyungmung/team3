@@ -7,7 +7,7 @@ calculator.py가 이 후보 중에서 예산에 맞는 것을 골라 추천한�
 
     GET https://apis.data.go.kr/1613000/{RTMSDataSvcAptRent|RTMSDataSvcOffiRent|
                                         RTMSDataSvcRHRent|RTMSDataSvcSHRent}/getXXX
-        ?serviceKey=...&LAWD_CD=11680&DEAL_YMD=202608&numOfRows=300
+        ?serviceKey=...&LAWD_CD=11680&DEAL_YMD=202608&numOfRows=1000&pageNo=1  (totalCount만큼 페이지 반복, _fetch_one)
 
     ⚠️ &type=json 파라미터는 이 API에서 무시된다 - 정상 응답은 항상 XML로 온다.
        (인증/게이트웨이 오류 응답만 JSON으로 온다. 아래 _parse_response가 둘 다 처리한다.)
@@ -131,9 +131,9 @@ def _parse_amount(raw) -> float | None:
         return None
 
 
-def _parse_response(text: str, lawd_cd: str, deal_ymd: str) -> list[dict]:
+def _parse_response(text: str, lawd_cd: str, deal_ymd: str) -> tuple[list[dict], int]:
     """
-    정상 응답(XML)이면 item 목록을 dict 리스트로 반환하고,
+    정상 응답(XML)이면 (item 목록, 전체 건수 totalCount)를 반환하고,
     인증/게이트웨이 오류 응답(JSON)이면 MolitApiError를 던진다.
     """
     stripped = text.lstrip()
@@ -159,10 +159,15 @@ def _parse_response(text: str, lawd_cd: str, deal_ymd: str) -> list[dict]:
         result_msg = root.findtext("header/resultMsg")
         raise MolitApiError(f"국토교통부 API 오류(LAWD_CD={lawd_cd}, {deal_ymd}): {result_code} - {result_msg}")
 
-    return [
+    items = [
         {child.tag: (child.text or "").strip() for child in item_el}
         for item_el in root.findall("body/items/item")
     ]
+    try:
+        total_count = int(root.findtext("body/totalCount") or len(items))
+    except ValueError:
+        total_count = len(items)
+    return items, total_count
 
 
 def _recent_deal_ymds(months_back: int = MONTHS_BACK) -> list[str]:
@@ -178,22 +183,42 @@ def _recent_deal_ymds(months_back: int = MONTHS_BACK) -> list[str]:
     return ymds
 
 
-def _fetch_one(lawd_cd: str, property_type: str, deal_ymd: str) -> list[dict]:
-    """(법정동코드, 유형, 월) 1건을 조회해서 raw item 목록으로 돌려준다. 실패 시 MolitApiError."""
-    params = {
-        "serviceKey": settings.data_go_kr_api_key,
-        "LAWD_CD": lawd_cd,
-        "DEAL_YMD": deal_ymd,
-        "numOfRows": 300,
-    }
-    url = MOLIT_BASE_URL + PROPERTY_TYPES[property_type]["endpoint"]
-    try:
-        res = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SEC)
-        res.raise_for_status()
-    except requests.RequestException as e:
-        raise MolitApiError(f"국토교통부 API 호출 실패 ({property_type}, LAWD_CD={lawd_cd}, {deal_ymd}): {e}") from e
+MOLIT_PAGE_SIZE = 1000
+MOLIT_MAX_PAGES = 20  # 무한루프 방지 안전장치 (한 지역·유형·월이 2만 건을 넘을 일은 없다)
 
-    return _parse_response(res.text, lawd_cd, deal_ymd)
+
+def _fetch_one(lawd_cd: str, property_type: str, deal_ymd: str) -> list[dict]:
+    """(법정동코드, 유형, 월) 1건을 조회해서 raw item 목록으로 돌려준다. 실패 시 MolitApiError.
+
+    페이지네이션(2026-09-28): 예전엔 numOfRows=300으로 한 번만 호출해서, 거래가 300건을 넘는
+    지역·유형·월은 뒤쪽이 통째로 잘렸다 (실측: 관악구 오피스텔 2026.8은 314건인데 300건만 수집,
+    광진구·강동구 유형별 후보가 정확히 600건=300건x2개월로 잘린 흔적). 응답의 totalCount를 보고
+    전부 가져올 때까지 pageNo를 올려가며 반복 호출한다."""
+    url = MOLIT_BASE_URL + PROPERTY_TYPES[property_type]["endpoint"]
+    collected: list[dict] = []
+
+    for page_no in range(1, MOLIT_MAX_PAGES + 1):
+        params = {
+            "serviceKey": settings.data_go_kr_api_key,
+            "LAWD_CD": lawd_cd,
+            "DEAL_YMD": deal_ymd,
+            "numOfRows": MOLIT_PAGE_SIZE,
+            "pageNo": page_no,
+        }
+        try:
+            res = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SEC)
+            res.raise_for_status()
+        except requests.RequestException as e:
+            raise MolitApiError(
+                f"국토교통부 API 호출 실패 ({property_type}, LAWD_CD={lawd_cd}, {deal_ymd}, page={page_no}): {e}"
+            ) from e
+
+        items, total_count = _parse_response(res.text, lawd_cd, deal_ymd)
+        collected.extend(items)
+        if not items or len(collected) >= total_count:
+            break
+
+    return collected
 
 
 def _road_address_from_item(item: dict, region_name: str) -> str | None:
