@@ -295,6 +295,7 @@
         { name: "provider", type: "VARCHAR(20)" },
         { name: "provider_id", type: "VARCHAR(100)" },
         { name: "refresh_token", type: "VARCHAR(500)" },
+        { name: "role", type: "VARCHAR(20)" },
       ],
     },
     housing_conditions: {
@@ -480,6 +481,31 @@
         { name: "message", type: "VARCHAR(1500)" },
       ],
     },
+    loan_products: {
+      title: "loan_products", owner: "송귀성",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "loan_type", type: "VARCHAR(30)", unique: true },
+        { name: "min_age", type: "INT" },
+        { name: "max_age", type: "INT" },
+        { name: "max_income_single", type: "INT" },
+        { name: "max_income_couple", type: "INT" },
+        { name: "max_asset", type: "INT" },
+        { name: "max_listing_deposit", type: "INT" },
+        { name: "max_exclusive_area", type: "DOUBLE" },
+        { name: "max_loan_ratio_percent", type: "DOUBLE" },
+        { name: "max_loan_amount", type: "INT" },
+        { name: "preferences", type: "TEXT" },
+      ],
+    },
+    loan_reference_links: {
+      title: "loan_reference_links", owner: "송귀성",
+      columns: [
+        { name: "id", type: "BIGINT", pk: true },
+        { name: "loan_type", type: "VARCHAR(30)", unique: true },
+        { name: "reference_url", type: "VARCHAR(500)" },
+      ],
+    },
     listing_favorites: {
       title: "listing_favorites", owner: "송귀성",
       columns: [
@@ -503,7 +529,8 @@
     [null, "properties", "registry_logs", "registry_analysis"],
     ["comments", "posts", "post_metas", null],
     ["post_likes", "vote_options", "vote_records", "post_scraps"],
-    [null, "listing_reports", "listing_favorites", null],
+    [null, "listing_reports", "listing_favorites", "loan_products"],
+    [null, null, null, "loan_reference_links"],
   ];
 
   // ---- 3. 관계선 (from = "1" 쪽, to = "N" 또는 "0..1" 쪽) ----

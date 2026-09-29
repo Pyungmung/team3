@@ -65,6 +65,12 @@ jwt:
   access-token-expire-ms: 3600000       # 1시간
   refresh-token-expire-ms: 1209600000   # 14일
 
+# [담당: 송귀성] 관리자 계정 (상단 "관리자 수정" 탭). 서버가 켜질 때 이 이메일 계정을 만들거나 관리자로 승격한다.
+# 비밀번호는 backend/.env의 ADMIN_PASSWORD에만 둔다 (Git/채팅 금지). 값이 없으면 아무것도 만들지 않는다.
+admin:
+  email: ${ADMIN_EMAIL:admin@admin.com}
+  password: ${ADMIN_PASSWORD:}
+
 # 로그인 성공 후 JWT를 담아 되돌려보낼 프론트엔드 콜백 페이지
 oauth2:
   success-redirect-url: http://localhost:3000/pages/auth/oauth-callback.html

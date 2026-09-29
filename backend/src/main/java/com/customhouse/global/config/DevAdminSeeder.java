@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
  * admin 계정이 없으면 만들어 준다 (이미 있으면 건드리지 않아서 MySQL처럼 데이터가 남는 환경에서도 안전).
  *
  * 로그인이 이메일 형식만 받아서(LoginRequest @Email) 아이디는 admin@admin.com 이다.
- * 이 프로젝트에는 아직 권한(role) 개념이 없어서 일반 회원과 권한 차이는 없다.
+ * 이 계정은 일반 회원(USER) 권한이다. 관리자(ADMIN) 권한은 backend/.env의 ADMIN_PASSWORD를 채웠을 때
+ * AdminAccountInitializer가 이 계정을 승격하면서 비밀번호도 .env 값으로 바꾼다 (여기 적힌 비밀번호로는 관리자가 될 수 없다).
  *
  * 주의: 비밀번호가 코드에 그대로 적혀 있으므로 운영(prod) 프로필에서는 절대 만들지 않는다 (@Profile("!prod")).
  */

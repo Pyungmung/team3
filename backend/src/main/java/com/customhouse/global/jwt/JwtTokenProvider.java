@@ -20,6 +20,7 @@ public class JwtTokenProvider {
 
     private static final String CLAIM_EMAIL = "email";
     private static final String CLAIM_TYPE = "type";
+    private static final String CLAIM_ROLE = "role";
 
     /**
      * .env에 JWT_SECRET= 처럼 "키는 있는데 값이 빈" 줄이 있으면, spring.config.import는
@@ -44,21 +45,22 @@ public class JwtTokenProvider {
         this.refreshTokenExpireMs = refreshTokenExpireMs;
     }
 
-    public String generateAccessToken(Long userId, String email) {
-        return buildToken(userId, email, "ACCESS", accessTokenExpireMs);
+    public String generateAccessToken(Long userId, String email, String role) {
+        return buildToken(userId, email, role, "ACCESS", accessTokenExpireMs);
     }
 
-    public String generateRefreshToken(Long userId, String email) {
-        return buildToken(userId, email, "REFRESH", refreshTokenExpireMs);
+    public String generateRefreshToken(Long userId, String email, String role) {
+        return buildToken(userId, email, role, "REFRESH", refreshTokenExpireMs);
     }
 
-    private String buildToken(Long userId, String email, String type, long expireMs) {
+    private String buildToken(Long userId, String email, String role, String type, long expireMs) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expireMs);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim(CLAIM_EMAIL, email)
+                .claim(CLAIM_ROLE, role == null || role.isBlank() ? "USER" : role)
                 .claim(CLAIM_TYPE, type)
                 .issuedAt(now)
                 .expiration(expiry)
@@ -81,6 +83,12 @@ public class JwtTokenProvider {
 
     public String getEmail(String token) {
         return parseClaims(token).get(CLAIM_EMAIL, String.class);
+    }
+
+    /** 토큰의 권한(USER/ADMIN). 권한 클레임이 없는 예전 토큰은 USER로 본다. */
+    public String getRole(String token) {
+        String role = parseClaims(token).get(CLAIM_ROLE, String.class);
+        return role == null || role.isBlank() ? "USER" : role;
     }
 
     private Claims parseClaims(String token) {

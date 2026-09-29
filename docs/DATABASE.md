@@ -70,6 +70,8 @@
 | `post_scraps` | `domain/board/entity/PostScrap.java` | 미정 | 게시글 스크랩 |
 | `listing_reports` | `domain/listing/entity/ListingReport.java` | 송귀성 | 추천 매물(더미 매물 CSV) 허위매물 신고 (회원당 매물 1번) |
 | `listing_favorites` | `domain/listing/entity/ListingFavorite.java` | 송귀성 | 추천 매물 관심매물 (마이페이지 관심 매물에 함께 표시) |
+| `loan_products` | `domain/loan/entity/LoanProduct.java` | 송귀성 | 전세자금대출 5종의 자격 조건/우대사항 (관리자 수정 > 전세자금대출) |
+| `loan_reference_links` | `domain/loan/entity/LoanReferenceLink.java` | 송귀성 | 대출별 참고 확인 페이지 주소 (자격 조건과 무관, 관리자 수정 > 전세자금대출) |
 | ~~`registry_analysis`~~ | `domain/watchlist/entity/RegistryAnalysis.java` | 김시연 | ⏳ **미구현.** 실제 등기부등본 API 연동이 필요해 스키마 설계만 되어있는 상태 (자세한 내용은 9번 항목 참고) |
 
 ## 3. 테이블 상세
@@ -88,6 +90,7 @@
 | provider | VARCHAR(20) | NOT NULL | `LOCAL` \| `NAVER` |
 | provider_id | VARCHAR(100) | | 소셜 로그인 고유 ID |
 | refresh_token | VARCHAR(500) | | 최근 발급된 JWT refresh token (대조용) |
+| role | VARCHAR(20) | NOT NULL, 기본 `USER` | 권한 `USER` \| `ADMIN`. `ADMIN`은 상단 "관리자 수정" 탭과 `/api/admin/**` 사용 가능. 회원가입으로는 만들 수 없고 서버 시작 시 `AdminAccountInitializer`가 `.env`의 `ADMIN_PASSWORD`로 admin 계정을 만들거나 승격한다 — 운영(`validate`)은 `ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'USER';` 수동 적용 필요 |
 
 ### housing_conditions (마이페이지 조건)
 | 컬럼 | 타입 | 제약 | 설명 |
@@ -240,7 +243,35 @@ PostMeta처럼 자체 id를 가진 진짜 엔티티(`HousingConditionPreference`
 
 > 회원 탈퇴 시 `listing_favorites`는 함께 지우고, `listing_reports`는 신고 누적 집계를 위해 남깁니다.
 
-> ⚠️ 운영(`ddl-auto: validate`)에서는 위 9개 테이블을 수동으로 만들어야 합니다.
+#### loan_products (전세자금대출 조건, 관리자 수정)
+대출 5종(`GENERAL_BEOTIMMOK`, `YOUTH_BEOTIMMOK`, `SME_YOUTH_BEOTIMMOK`, `NEWBORN_BEOTIMMOK`, `YOUTH_MONTHLY_RENT`)은 코드(`LoanType`)에 고정이고, 저장된 조건만 행으로 있다(삭제하면 행이 지워져 "미설정").
+값이 NULL이면 그 조건은 "제한 없음"이다. 이후 이자 계산식이 이 조건으로 자격 판별과 우대금리 차감을 한다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK | |
+| loan_type | VARCHAR(30) | NOT NULL, **UNIQUE** `uk_loan_product_type` | `LoanType` 코드 |
+| min_age / max_age | INT | | 나이(만) 최소/최대 |
+| max_income_single / max_income_couple | INT | | 연소득 이하(개인/부부합산, 만원) |
+| max_asset | INT | | 총자산 이하(만원) |
+| max_listing_deposit | INT | | 매물 보증금 이하(만원) — 넘는 매물에는 이 대출을 적용하지 않음 |
+| max_exclusive_area | DOUBLE | | 전용면적 이하(㎡) |
+| max_loan_ratio_percent | DOUBLE | | 최대 대출금 비율한도(%) — 매물 보증금 중 이 비율까지만 대출 가능 (2026-09-29) |
+| max_loan_amount | INT | | 최대 대출금액(만원) — 매물과 무관한 대출 절대 상한. 비율한도와 절대 상한을 둘 다 넣으면 더 낮은 쪽이 실제 한도 (2026-09-29) |
+| preferences | TEXT | | 우대사항(8종: 기초생활수급자·차상위계층·한부모가족·자립준비청년·신혼부부·다자녀가구·무주택여부·중소기업 취업청년) JSON: `{"NEWLYWED": {"required": false, "discount": 0.2}, ...}` (필수 여부 + 우대금리 차감 %p) |
+
+#### loan_reference_links (전세자금대출 참고 확인 페이지 주소, 관리자 수정)
+대출별 "참고 확인 페이지" 주소만 보관한다(2026-09-29). 자격 조건·계산 로직과는 전혀 무관하고, 관리자가 그 대출을 조사할 때
+참고한 홈페이지 링크를 적어두는 용도다. `loan_products`와 일부러 같은 테이블에 두지 않았다 — 그래야 이 링크만 저장해도
+그 대출이 "저장됨"(모든 매물에 적용)으로 바뀌지 않는다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | BIGINT | PK | |
+| loan_type | VARCHAR(30) | NOT NULL, **UNIQUE** `uk_loan_reference_link_type` | `LoanType` 코드 |
+| reference_url | VARCHAR(500) | | 참고 확인 페이지 주소. 비어 있으면 저장 안 함 |
+
+> ⚠️ 운영(`ddl-auto: validate`)에서는 위 11개 테이블을 수동으로 만들어야 합니다.
 > 가장 간단한 방법: dev(H2/로컬 MySQL)를 `update`로 띄워 테이블을 자동 생성시킨 뒤 `SHOW CREATE TABLE posts;` 등으로 DDL을 뽑아 운영에 적용하세요
 > (컬럼 규칙: 카멜케이스 필드 → 스네이크케이스, 예: `viewCount` → `view_count`).
 
@@ -261,6 +292,7 @@ posts 1 ─── N   post_metas / comments / vote_options
 vote_options 1 ─── N vote_records     (post_id+user_id 유니크 = 1인 1표)
 users N ─── N   posts                 (post_likes, post_scraps 로 연결)
 users 1 ─── N   listing_reports / listing_favorites  (user_id, FK 없음. 매물은 CSV의 매물등록번호 문자열)
+loan_products / loan_reference_links   (대출 종류 코드 5종 고정, 다른 테이블과 연결 없음)
 ```
 
 전부 애플리케이션 레벨 FK입니다 (JPA `@ManyToOne` 대신 `Long userId`/`propertyId`로 직접 들고 있는

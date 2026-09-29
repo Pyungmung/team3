@@ -144,9 +144,22 @@ function logout() {
   window.location.href = computeAuthHref("index.html");
 }
 
-/** header.js의 computeHref와 동일한 규칙(pages/ 기준 상대경로 보정) */
+/**
+ * header.js의 computeHref와 동일한 규칙(pages/ 기준 상대경로 보정).
+ * 2026-09-29: index.html이 src/ 밖으로 옮겨지면서 header.js와 같은 특별 처리를 그대로 맞춘다 (주석은 header.js 참고).
+ */
 function computeAuthHref(targetFromPagesRoot) {
-  const depth = window.location.pathname.split("/pages/")[1]?.split("/").length - 1 || 0;
+  const afterPages = window.location.pathname.split("/pages/")[1];
+  const onSiteRoot = afterPages === undefined;
+
+  if (targetFromPagesRoot === "index.html") {
+    if (onSiteRoot) return "index.html";
+    const depth = afterPages.split("/").length - 1;
+    return "../".repeat(depth + 2) + "index.html";
+  }
+  if (onSiteRoot) return "src/pages/" + targetFromPagesRoot;
+
+  const depth = afterPages.split("/").length - 1;
   return "../".repeat(Math.max(depth, 0)) + targetFromPagesRoot;
 }
 

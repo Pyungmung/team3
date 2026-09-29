@@ -19,6 +19,10 @@ function renderHeader(activeMenu = "") {
     { key: "watchlist", label: "관심 매물", href: computeHref("watchlist/list.html") },
     { key: "mypage", label: "마이페이지", href: computeHref("mypage/index.html") },
   ];
+  // 관리자 계정에게만 "관리자 수정" 탭이 보인다 (표시용일 뿐, 실제 접근 제한은 백엔드 /api/admin/** 가 한다)
+  if (getLoggedInRole() === "ADMIN") {
+    menus.push({ key: "admin", label: "관리자 수정", href: computeHref("admin/loans.html") });
+  }
 
   const email = getLoggedInEmail();
 
@@ -141,8 +145,40 @@ function getLoggedInEmail() {
   }
 }
 
-/** pages/ 하위 어느 깊이에서 호출돼도 루트(pages/) 기준 상대경로를 맞춰준다. */
+/** JWT payload의 role 클레임(USER/ADMIN)을 읽어온다. 클레임이 없는 예전 토큰은 USER. 표시 용도로만 사용한다. */
+function getLoggedInRole() {
+  const token = localStorage.getItem(HEADER_ACCESS_TOKEN_KEY);
+  if (!token) return null;
+
+  try {
+    const payload = token.split(".")[1];
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return decoded.role || "USER";
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * pages/ 하위 어느 깊이에서 호출돼도 루트(pages/) 기준 상대경로를 맞춰준다.
+ * 2026-09-29: 메인 홈페이지(index.html)가 src/ 밖(사이트 진짜 루트)으로 옮겨지면서 두 가지를 특별 처리한다.
+ *   1) target이 "index.html"이면 pages/ 기준이 아니라 src/ 밖을 가리켜야 하므로 depth에 2를 더 올라간다
+ *      (pages/ 한 칸 + src/ 한 칸). 이미 index.html에 있으면 자기 자신이라 그대로 "index.html".
+ *   2) 지금 있는 페이지 자체가 index.html이면(경로에 "/pages/"가 없음) 다른 target은 전부 "src/pages/" 밑에
+ *      있으므로 그 접두사를 붙인다. "../assets/images/..."처럼 이미 위로 올라가는 target이 와도
+ *      "src/pages/../assets/images/..." → "src/assets/images/..."로 정상적으로 상쇄된다.
+ */
 function computeHref(targetFromPagesRoot) {
-  const depth = window.location.pathname.split("/pages/")[1]?.split("/").length - 1 || 0;
+  const afterPages = window.location.pathname.split("/pages/")[1];
+  const onSiteRoot = afterPages === undefined;
+
+  if (targetFromPagesRoot === "index.html") {
+    if (onSiteRoot) return "index.html";
+    const depth = afterPages.split("/").length - 1;
+    return "../".repeat(depth + 2) + "index.html";
+  }
+  if (onSiteRoot) return "src/pages/" + targetFromPagesRoot;
+
+  const depth = afterPages.split("/").length - 1;
   return "../".repeat(Math.max(depth, 0)) + targetFromPagesRoot;
 }

@@ -1,13 +1,14 @@
 <!DOCTYPE html>
+<!-- [담당: 양혜승] 메인 홈페이지. 2026-09-29: frontend/src 밖(사이트 진짜 루트)로 옮겨서 다른 페이지(src/pages/**)와 경로 구조가 다르다 -->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맞집 | 청년 맞춤형 주거 케어</title>
-  
+
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <link rel="stylesheet" href="../css/main.css?v=20260918a" />
+
+  <link rel="stylesheet" href="src/css/main.css?v=20260918a" />
 </head>
 
 <body>
@@ -34,7 +35,7 @@
           </p>
           
           <div class="home-hero-button-group">
-            <a href="./diagnosis/input-form.html" class="home-primary-button">
+            <a href="./src/pages/diagnosis/input-form.html" class="home-primary-button">
               내 주거비 진단하기
               <span aria-hidden="true">→</span>
             </a>
@@ -388,7 +389,7 @@
         </div>
         
         <div class="home-service-grid">
-          <a href="./diagnosis/input-form.html" class="home-service-card home-service-card-featured">
+          <a href="./src/pages/diagnosis/input-form.html" class="home-service-card home-service-card-featured">
             <div class="home-service-card-top">
               <span class="home-service-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
@@ -410,7 +411,7 @@
             <span class="home-service-link">진단 시작하기 <span>→</span></span>
           </a>
           
-          <a href="./diagnosis/input-form.html" class="home-service-card">
+          <a href="./src/pages/diagnosis/input-form.html" class="home-service-card">
             <div class="home-service-card-top">
               <span class="home-service-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
@@ -432,7 +433,7 @@
             <span class="home-service-link">지역 확인하기 <span>→</span></span>
           </a>
           
-          <a href="./watchlist/list.html" class="home-service-card">
+          <a href="./src/pages/watchlist/list.html" class="home-service-card">
             <div class="home-service-card-top">
               <span class="home-service-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
@@ -454,7 +455,7 @@
             <span class="home-service-link">매물 둘러보기 <span>→</span></span>
           </a>
           
-          <a href="./diagnosis/input-form.html" class="home-service-card home-service-card-policy">
+          <a href="./src/pages/diagnosis/input-form.html" class="home-service-card home-service-card-policy">
             <div class="home-service-card-top">
               <span class="home-service-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
@@ -498,7 +499,7 @@
               월급·보증금·직장 위치만 입력하면 돼요.
             </p>
             
-            <a href="./diagnosis/input-form.html" class="home-primary-button">
+            <a href="./src/pages/diagnosis/input-form.html" class="home-primary-button">
               내 주거비 진단하기
               <span aria-hidden="true">→</span>
             </a>
@@ -511,8 +512,8 @@
   <!-- Footer -->
   <div id="app-footer"></div>
   
-  <script src="../js/components/header.js?v=20260918a"></script>
-  <script src="../js/components/footer.js?v=20260928c"></script>
+  <script src="src/js/components/header.js?v=20260918a"></script>
+  <script src="src/js/components/footer.js?v=20260928c"></script>
   
   <script>
     renderHeader("");
