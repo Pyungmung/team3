@@ -63,4 +63,20 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     @Column(nullable = false)
     private boolean marketingConsent = false;
+
+    /**
+     * 권한: USER(일반 회원) / ADMIN(관리자, 상단 "관리자 수정" 탭과 /api/admin/** 사용 가능). 2026-09-28 추가.
+     * 관리자는 DB의 이 값으로만 정해지고(AdminAccountInitializer 참고) 회원가입으로는 만들 수 없다.
+     * 기존 회원 행에도 안전하게 컬럼이 추가되도록(ddl-auto: update) DB 기본값을 함께 준다.
+     */
+    @Builder.Default
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'USER'")
+    private String role = ROLE_USER;
+
+    public static final String ROLE_USER = "USER";
+    public static final String ROLE_ADMIN = "ADMIN";
+
+    public boolean isAdmin() {
+        return ROLE_ADMIN.equals(role);
+    }
 }

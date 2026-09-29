@@ -13,12 +13,16 @@ docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실�
    (2026-09-28: 예전엔 부족한 보증금을 대출로 채운다고 가정해 이자를 비용에 더했는데, 보증금이 부족한 매물을
    추천하는 게 이상하다는 지적으로 대출이자 계산을 없애고 한도 필터로 바꿨다)
 4. 비용 계산 (2026-09-28: 교통비는 비용에서 아예 뺐다 - 통근시간은 희망 통근시간 필터와 표시에만 쓴다):
-   - 실질 주거비 = 월세 + 관리비                                   (월세는 CSV 월세 그대로, 관리비는 그 매물의 관리비)
-   - 보증금 기회비용(월) = 보증금 x 연 전환율% / 12                 (보증금을 월 비용으로 환산한 값)
-   - 보증금전환 실질거주비 = 월세 + 관리비 + 보증금 기회비용        (보증금 크기까지 월 비용으로 환산해 비교)
+   - 실질 주거비 = 월세 + 관리비 + 대출이자                         (월세는 CSV 월세 그대로, 관리비는 그 매물의 관리비.
+     2026-09-29: 전세는 월세가 없어 관리비만 남으면 실제 부담이 안 보여서, 매물 보증금 중 지금 가진 보증금으로
+     못 채우는 부족분에 이자를 적용해 더한다. 금리는 아래 "보증금 기회비용"과 같은 값(전환율 API)을 그대로 쓴다
+     (당초 임시 3% 고정값을 썼다가, 같은 API 값으로 통일했다 - 원금(부족분 vs 보증금 전체)만 다르다).
+     월세는 대출이자 0 - 월세 자체가 이미 실제 부담을 보여준다)
+   - 보증금 기회비용(월) = 보증금 x 연 전환율% / 12                 (보증금 전체를 월 비용으로 환산한 값 - 위 대출이자와 원금만 다른 같은 금리)
+   - 보증금액 전환 이자기회비용 = 월세 + 관리비 + 보증금 기회비용   (보증금 크기까지 월 비용으로 환산해 비교)
    전환율은 한국부동산원(R-ONE) 수도권 전월세 전환율(종합주택)의 가장 최근 월 값이다 (reb_conversion_rate.py,
    2026-09-28: 예전 고정값 연 4.5%에서 변경. 이 앱은 수도권만 다루므로 수도권 값 하나만 쓴다)
-   (대출이자/교통비 항목은 응답 호환을 위해 남기되 각각 0, 응답에서는 교통비를 내보내지 않는다)
+   (교통비 항목은 응답 호환을 위해 남기되 0, 응답에서는 내보내지 않는다)
 5. 월세/전세 따로 **보증금전환 실질거주비** 낮은 순으로 상위 TOP_N (지역별 비례 배분) - 순위 기준은 2026-09-28부터
    실질 주거비가 아니라 보증금전환 실질거주비다 (보증금이 큰 반전세가 월세만 낮다는 이유로 상위를 차지하지 않게)
 6. 최종 목록만 매물 자신의 좌표로 통근시간을 정확히 다시 계산(CSV에 좌표가 이미 있어 주소/좌표 외부 API
@@ -30,7 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
 from app.services import (
-    calculator, data_analysis, listing_repository, listing_schema, policy_matcher, reb_conversion_rate, rir_stats,
+    calculator, data_analysis, listing_repository, listing_schema, loan_matcher, policy_matcher, reb_conversion_rate, rir_stats,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,11 +83,23 @@ def _clean_nan(record: dict) -> dict:
     return record
 
 
-def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_rate_percent: float) -> dict:
+def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_rate_percent: float, current_deposit: int) -> dict:
     rent = listing["monthly_rent"] or 0
     deposit = listing["deposit"] or 0
     maintenance_fee = listing["maintenance_fee"] or 0
-    loan_interest = 0  # 보증금 부족분 대출이자는 계산하지 않는다 - 보증금 한도를 넘는 매물을 아예 추천하지 않는다
+    # 전세는 월세가 없어서 "실질 주거비"가 관리비만 남아 실제 부담을 못 보여줬다 (2026-09-29). 매물 보증금 중
+    # 지금 가진 보증금(current_deposit)으로 못 채우는 부족분만 대출로 메운다고 보고, 그 금액에 이자를 적용해
+    # 관리비에 더한다. 금리는 "보증금액 전환 이자기회비용"(deposit_opportunity_cost)과 같은 값(deposit_rate_percent -
+    # 한국부동산원 R-ONE 수도권 전월세 전환율 API)을 그대로 재사용한다(2026-09-29: 임시 3% 고정값에서 변경).
+    # 월세는 월세 자체가 이미 실제 부담을 보여주므로 그대로 0 (기존과 동일).
+    if listing["lease_type"] == "전세":
+        deposit_shortfall = max(0, deposit - current_deposit)  # 부족분(대출금액): 매물 보증금 - 현재 보증금
+        # real_housing_cost/loan_interest는 응답 모델(response_schema.BuildingRecommendation)에서 int라
+        # 기존 calculator.py의 대출이자 계산과 같이 정수(만원)로 반올림한다 (소수 자리는 deposit_opportunity_cost 등 float 필드가 담당).
+        loan_interest = round(deposit_shortfall * deposit_rate_percent / 100 / 12)
+    else:
+        deposit_shortfall = 0
+        loan_interest = 0
     real_housing_cost = rent + maintenance_fee + loan_interest  # 교통비는 뺐다
     # 보증금 기회비용(월) = 보증금 x 연 전환율% / 12 (한국부동산원 수도권 전월세 전환율), 보증금전환 실질거주비 = 월세 + 관리비 + 보증금 기회비용 (만원, 소수 첫째 자리)
     deposit_opportunity_cost = round(deposit * deposit_rate_percent / 100 / 12, 1)
@@ -109,6 +125,7 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_
         "rent": rent,
         "maintenance_fee": maintenance_fee,
         "loan_interest": loan_interest,
+        "deposit_shortfall": deposit_shortfall,  # 부족분(대출금액) = 매물 보증금 - 현재 보증금 (전세만, 월세는 0)
         "government_support": 0,
         "real_housing_cost": real_housing_cost,
         "deposit_opportunity_cost": deposit_opportunity_cost,
@@ -246,7 +263,7 @@ def run_listing_diagnosis(request) -> dict:
                 continue
 
             total_candidates += 1
-            result = _to_result(listing, region_commute, commute_source, deposit_rate.rate_percent)
+            result = _to_result(listing, region_commute, commute_source, deposit_rate.rate_percent, request.deposit)
             listing_by_id[listing["listing_id"]] = listing
             (wolse_results if listing["lease_type"] == "월세" else jeonse_results).append(result)
 
@@ -262,6 +279,8 @@ def run_listing_diagnosis(request) -> dict:
         )
         for r in kept:  # 교통비가 없으니 통근시간이 정확해져도 비용은 그대로다 - 매물 상세 정보만 붙인다
             _attach_details(r, listing_by_id[r["listing_id"]])
+            # 관리자 화면에서 저장한 대출 조건으로 이 매물에 신청 가능한 대출을 판별한다 (저장된 대출이 없으면 빈 목록)
+            r["eligible_loans"] = loan_matcher.match_eligible_loans(request, r)
         kept.sort(key=lambda r: (r[RANK_COST_KEY], r["listing_id"]))
         return kept
 

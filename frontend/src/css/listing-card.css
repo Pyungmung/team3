@@ -7,6 +7,10 @@
 .cost-box.conv .val { color: #1d4ed8; }
 .cost-box .sub { font-size: 11px; color: #94a3b8; line-height: 1.4; }
 
+/* 조건을 충족한 대출의 "[대출이름] 실질주거비" - 기존 두 비용 박스와 같은 자리에 이어서 나온다 (같은 .cost-boxes 그리드) */
+.cost-box.loan { background: #ecfdf5; border-color: #a7f3d0; margin-top: 8px; }
+.cost-box.loan .val { color: #047857; }
+
 /* 매물 사진 자리: 사진 연결 전(PHOTO_PLACEHOLDER)에는 회색 박스 */
 .listing-photo {
   width: 100%; height: 132px; border-radius: 10px; margin-bottom: 12px; overflow: hidden;

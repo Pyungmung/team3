@@ -88,7 +88,8 @@ cd frontend
 python serve.py        # http://localhost:3000
 ```
 
-- 브라우저에서 http://localhost:3000/pages/index.html 접속
+- 브라우저에서 http://localhost:3000/ 접속 (2026-09-29: 메인 홈페이지가 `frontend/index.html`로 옮겨져 루트에서 바로 뜬다.
+  다른 페이지들은 여전히 `http://localhost:3000/src/pages/...`)
 - "내 주거비 절약 진단받기" → 조건 입력 → 결과 리포트까지 실제로 동작합니다.
 - 회원가입/로그인은 `pages/auth/signup.html` 한 화면에서 탭으로 전환되며(`login.html`은 그 화면의 로그인 탭으로 연결) 실제로 동작하고,
   로그인하면 우측 상단이 "로그인" 버튼에서 이메일 + "로그아웃" 버튼으로 바뀝니다.
@@ -123,6 +124,12 @@ curl -X POST http://localhost:8080/api/recommendation/diagnosis \
 | 정책정보 정정신고 / 허위매물 신고 메일 | `backend/.env`의 `MAIL_USERNAME`, `MAIL_APP_PASSWORD` | 정정신고는 발송 실패 안내, 허위매물 신고는 **신고 저장은 되고** 메일만 서버 로그에 실패로 남음 |
 | 허위매물 신고 / 관심매물(하트) | 로그인(회원가입은 이메일 인증 메일이 필요) | 비로그인이면 로그인 안내 팝업 |
 
+- **전세자금대출 자격 표시**: 관리자 계정("관리자 수정" 탭)이 저장한 대출 조건(`loan_products`)을 백엔드가 AI 엔진 요청에 실어 보내고, AI 엔진(`customhouse-ai/app/services/loan_matcher.py`, 판별 규칙은 `policy_matcher.py`와 같음)이 매물마다 신청 가능한 대출을 판별해 카드에 "[대출이름] 신청 가능"으로 표시합니다. 전세 매물에는 전세 대출, 월세 매물에는 청년전용 보증부월세대출만 붙고, 저장하지 않은 대출·"정책 대출 활용" 해제 시에는 표시되지 않습니다.
+카드에는 "[대출이름] 실질주거비"(월세+관리비+보증금 대출이자)도 함께 표시됩니다 — 2026-09-29 기준 실제 대출별 금리표가 아직 없어
+5개 대출 공통 임시 기본금리 3%(`customhouse-ai/app/services/loan_matcher.py`의 `DEFAULT_BASE_RATE_PERCENT`)에서 사용자가 해당하는
+우대사항의 우대금리만 뺀 참고용 값입니다(우대금리 차감은 그 우대사항이 "필수"가 아니어도 해당하면 적용되고, 자격 판별과는 별개입니다).
+표 이미지를 보고 실제 금리표를 반영하면 이 값이 대체됩니다. 관리자 화면을 쓰려면 `backend/.env`의 `ADMIN_PASSWORD`가 필요합니다.
+AI 엔진 테스트: `cd customhouse-ai && python tests/test_loan_matcher.py`, `python tests/test_kakao_quota_guard.py`.
 - 정책 목록(`docs/housing_policy_list.csv`)을 고친 뒤에는 `cd customhouse-ai && python scripts/convert_policies.py`로 `policies.json`을 다시 만들어야 화면에 반영됩니다.
 - 새 테이블 `listing_reports`, `listing_favorites`는 dev(H2)/local-mysql에서는 서버를 켜면 자동 생성됩니다. 운영(`ddl-auto: validate`)은 수동 DDL이 필요합니다 (`docs/DATABASE.md` 참고).
 - 로컬에서 메일 없이 기능을 확인하려면 받은 메일을 파일에 저장만 하는 가짜 SMTP 서버(로컬 25xx 포트)를 두고 `SPRING_MAIL_HOST/PORT`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false` 환경변수로 백엔드를 띄우면 실제 메일이 나가지 않습니다.

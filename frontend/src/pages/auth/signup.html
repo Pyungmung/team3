@@ -267,7 +267,7 @@
   <div class="container">
 
     <div class="intro">
-      <a href="../index.html" class="logo">맞집</a>
+      <a href="../../../index.html" class="logo">맞집</a>
       <h2>내게 맞는 집,<br>더 가벼운 주거</h2>
       <p>
         맞집에서 회원가입하고<br>
@@ -748,7 +748,7 @@
 
       try {
         await CustomHouseAuthApi.login({ email, password });
-        window.location.href = "../index.html";
+        window.location.href = "../../../index.html";
       } catch (err) {
         setMessage("login-message", err.message || "로그인 중 오류가 발생했습니다.", false);
         $("login-btn").disabled = false;

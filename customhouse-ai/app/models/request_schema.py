@@ -16,6 +16,44 @@ None → 기본값 치환을 해준다 (단순히 Field(default=...)만으로는
 from pydantic import BaseModel, Field, field_validator
 
 
+class LoanPreferenceSetting(BaseModel):
+    """대출 1개의 우대사항 1개 설정 (관리자 화면). required=True면 그 우대사항에 해당해야 대출 자격이 되고,
+    discount는 해당할 때 깎아주는 우대금리(%p) - 자격 판별에는 쓰지 않고 이자 계산 단계에서 쓴다."""
+
+    required: bool = False
+    discount: float = 0.0
+
+    class Config:
+        populate_by_name = True
+
+
+class LoanProductCondition(BaseModel):
+    """관리자 화면(관리자 수정 > 전세자금대출)에서 저장한 대출 1종의 자격 조건. 백엔드가 DB에서 읽어 요청에 실어 보낸다
+    (브라우저가 보낸 값이 아니다). 값이 None인 조건은 "제한 없음". 금액은 만원, 면적은 ㎡."""
+
+    type: str                       # 대출 코드 (GENERAL_BEOTIMMOK 등)
+    name: str                       # 화면에 보여줄 대출 이름
+    lease_type: str = Field("전세", alias="leaseType")   # 이 대출이 붙는 매물 유형: 전세 / 월세
+    min_age: int | None = Field(None, alias="minAge")
+    max_age: int | None = Field(None, alias="maxAge")
+    max_income_single: int | None = Field(None, alias="maxIncomeSingle")
+    max_income_couple: int | None = Field(None, alias="maxIncomeCouple")
+    max_asset: int | None = Field(None, alias="maxAsset")
+    max_listing_deposit: int | None = Field(None, alias="maxListingDeposit")
+    max_exclusive_area: float | None = Field(None, alias="maxExclusiveArea")
+    max_loan_ratio_percent: float | None = Field(None, alias="maxLoanRatioPercent")  # 매물 보증금의 이 비율(%)까지만 대출 가능
+    max_loan_amount: int | None = Field(None, alias="maxLoanAmount")  # 만원, 매물과 무관한 대출 절대 상한
+    preferences: dict[str, LoanPreferenceSetting] = Field(default_factory=dict)
+
+    class Config:
+        populate_by_name = True
+
+    @field_validator("preferences", mode="before")
+    @classmethod
+    def _default_preferences(cls, v):
+        return {} if v is None else v
+
+
 class DiagnosisRequest(BaseModel):
     annual_income: int = Field(..., ge=0, description="소득 (연소득, 만원)", alias="annualIncome")
     couple_annual_income: int | None = Field(
@@ -85,6 +123,10 @@ class DiagnosisRequest(BaseModel):
         alias="preferredBuildingTypes",
     )
 
+    # 관리자 화면에서 저장한 대출 조건. 백엔드(Spring)가 DB에서 읽어 실어 보내며 브라우저 입력이 아니다.
+    # 비어 있으면(저장된 대출 없음/조회 실패) 대출 자격 판별은 하지 않는다.
+    loan_products: list[LoanProductCondition] = Field(default_factory=list, alias="loanProducts")
+
     class Config:
         populate_by_name = True
 
@@ -93,7 +135,7 @@ class DiagnosisRequest(BaseModel):
     def _default_max_commute(cls, v):
         return 30 if v is None else v
 
-    @field_validator("preferential_statuses", "preferred_building_types", mode="before")
+    @field_validator("preferential_statuses", "preferred_building_types", "loan_products", mode="before")
     @classmethod
     def _default_empty_list(cls, v):
         return [] if v is None else v

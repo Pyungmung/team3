@@ -68,9 +68,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/listings/reports/counts").permitAll()
                         .requestMatchers("/api/listings/**").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()
+                        // 관리자 전용 (상단 "관리자 수정" 탭). 토큰 없으면 401, 일반 회원이면 403
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().permitAll()
                 )
-                .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                .exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpStatus.FORBIDDEN.value());
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write(
+                            "{\"success\":false,\"code\":\"FORBIDDEN\",\"message\":\"권한이 없습니다.\",\"data\":null}"
+                    );
+                }).authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
                     response.setContentType("application/json;charset=UTF-8");
                     response.getWriter().write(

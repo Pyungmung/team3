@@ -26,6 +26,7 @@ import time
 import requests
 
 from app.core.config import settings
+from app.services import kakao_quota_guard
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,11 @@ def _set_cached(cache_key: tuple, minutes: int) -> None:
 
 
 def _request(url: str, origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float) -> dict:
+    # 직전에 카카오 API 호출 한도 초과를 감지했으면, 어차피 또 실패할 호출을 아예 하지 않고 바로
+    # 추정치로 폴백하게 한다 (kakao_quota_guard 모듈독스트링 참고 - 안 그러면 매물마다 느리게 재시도한다).
+    if kakao_quota_guard.is_blocked():
+        raise KakaoRoutingError(f"카카오 API 호출 한도 초과로 호출을 건너뜁니다({url})")
+
     headers = {"Authorization": f"KakaoAK {settings.kakao_rest_app_key}"}
     params = {
         "start_x": origin_lon,
@@ -78,10 +84,21 @@ def _request(url: str, origin_lat: float, origin_lon: float, dest_lat: float, de
     # 2026-09-28 실측: 정상 좌표인데도 순간적으로 400이 났다가 그대로 재요청하면 바로 성공하는
     # 산발적 실패가 있었다(카카오 서버 쪽 일시적 문제로 추정, kakao_mobility.py와 동일 증상) -
     # 재시도 없이 그냥 실패 처리하면 멀쩡한 매물이 억울하게 후보에서 빠지므로 1회만 짧게 재시도한다.
+    # 단, 호출 한도 초과는 재시도해도 똑같이 실패하므로 감지되면 그 자리에서 바로 실패 처리한다.
     last_error: Exception | None = None
     for attempt in range(2):
         try:
             res = requests.get(url, headers=headers, params=params, timeout=REQUEST_TIMEOUT_SEC)
+        except requests.RequestException as e:
+            last_error = KakaoRoutingError(f"카카오맵 경로 조회 API 호출 실패({url}): {e}")
+            continue
+
+        if kakao_quota_guard.is_quota_exceeded_response(res.status_code, res.text):
+            if kakao_quota_guard.report_quota_exceeded():
+                logger.warning(f"카카오 API 호출 한도를 초과해 {kakao_quota_guard.BACKOFF_SEC}초간 호출을 건너뜁니다.")
+            raise KakaoRoutingError(f"카카오 API 호출 한도 초과({url})")
+
+        try:
             res.raise_for_status()
             return res.json()
         except requests.RequestException as e:

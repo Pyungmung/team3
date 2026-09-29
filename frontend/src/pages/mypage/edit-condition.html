@@ -1846,7 +1846,7 @@
     try {
       await CustomHouseUserApi.deleteAccount(isLocal ? deletePasswordInput.value : null);
       alert("탈퇴가 완료되었습니다. 그동안 맞집을 이용해주셔서 감사합니다.");
-      window.location.href = "../index.html";
+      window.location.href = "../../../index.html";
     } catch (err) {
       if (isPreparingError(err)) {
         setMsg(deleteAccountMsg, "준비 중");

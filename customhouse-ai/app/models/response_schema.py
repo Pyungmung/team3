@@ -100,19 +100,35 @@ class ReferenceTransaction(BaseModel):
     jibun: str = ""
 
 
+class EligibleLoan(BaseModel):
+    """이 매물에 신청할 수 있는 대출 (관리자 화면의 조건을 통과한 대출) + "[대출이름] 실질주거비".
+    2026-09-29: 실제 대출별 금리표가 아직 없어 기본금리 3%(loan_matcher.DEFAULT_BASE_RATE_PERCENT) 공통 임시값에서
+    우대금리만 반영한 값이다 - 표 이미지 분석 후 대출마다 실제 금리로 교체될 예정이라 참고용으로만 쓴다."""
+
+    type: str   # 대출 코드 (GENERAL_BEOTIMMOK 등)
+    name: str   # 화면에 보여줄 대출 이름
+    rate_percent: float = 0.0      # 우대금리 반영한 최종 금리 (연 %, 임시 기본금리 기준)
+    loan_principal: float = 0.0    # 만원, 대출로 메우는 부족분 = 매물 보증금 - 보유 보증금(0 이상)
+    monthly_interest: float = 0.0  # 만원/월 = loan_principal x 연 rate_percent% / 12
+    effective_cost: float = 0.0    # 만원/월 = 월세 + 관리비 + monthly_interest ("[대출이름] 실질주거비")
+
+
 class ListingRecommendation(BuildingRecommendation):
     """더미 매물 1건 단위 추천. 기존 BuildingRecommendation 필드(지도/차트/카드가 그대로 쓴다)에
     매물 상세 정보를 더한다. 기존 필드 의미: listing_deposit/listing_monthly_rent = 매물 보증금/월세,
     maintenance_fee = 이 매물의 관리비(구 평균이 아님), address = 도로명주소, deal_date = 빈 문자열,
-    loan_interest = 항상 0 (보증금 한도를 넘는 매물은 대출로 메운다고 보지 않고 추천에서 제외한다).
+    loan_interest = 전세만 계산됨(월세는 항상 0) - 매물 보증금 중 사용자가 지금 가진 보증금(deposit)으로 못 채우는
+    부족분에 이자를 적용한 값. 금리는 deposit_opportunity_cost와 같은 값(응답의 deposit_conversion_rate, 한국부동산원
+    R-ONE 수도권 전월세 전환율 API)을 쓰고, 원금(부족분 vs 보증금 전체)만 다르다 (2026-09-29).
 
-    2026-09-28: 교통비는 비용에서 뺐다. real_housing_cost = 월세 + 관리비. 부모 클래스의 transportation_cost는 필수 필드라
-    지울 수 없어 기본값 0으로 덮어쓰고 응답(JSON)에서는 내보내지 않는다(exclude). 보증금 크기까지 월 비용으로 환산한
-    deposit_converted_cost(보증금전환 실질거주비)를 별도로 내려준다."""
+    2026-09-28: 교통비는 비용에서 뺐다. real_housing_cost = 월세 + 관리비 + loan_interest. 부모 클래스의
+    transportation_cost는 필수 필드라 지울 수 없어 기본값 0으로 덮어쓰고 응답(JSON)에서는 내보내지 않는다(exclude).
+    보증금 크기까지 월 비용으로 환산한 deposit_converted_cost(화면 표시명: 보증금액 전환 이자기회비용)를 별도로 내려준다."""
 
     transportation_cost: int = Field(0, exclude=True)  # 응답에 포함하지 않는다 (교통비 삭제)
     # 정책은 매물마다 반복해서 붙이지 않고(응답의 70%를 차지했다) 응답 최상위의 policies_by_region에 자치구별로 한 번만 담는다.
     matched_policies: list[MatchedPolicy] = Field(default_factory=list, exclude=True)
+    deposit_shortfall: int = 0  # 만원, 부족분(대출금액) = 매물 보증금 - 현재 보증금 (전세만, 월세는 0). loan_interest의 원금.
     deposit_opportunity_cost: float = 0  # 만원/월 = 보증금 x 연 전환율% / 12 (전환율은 응답의 deposit_conversion_rate)
     deposit_converted_cost: float = 0    # 만원/월 = 월세 + 관리비 + 보증금 기회비용 (보증금전환 실질거주비)
 
@@ -135,6 +151,7 @@ class ListingRecommendation(BuildingRecommendation):
     postal_code: str = ""
     address_source: str = ""         # 주소출처 (단독다가구는 같은 동의 실제 도로명주소를 빌려 옴)
     reference_transaction: ReferenceTransaction | None = None
+    eligible_loans: list[EligibleLoan] = Field(default_factory=list)  # 조건을 통과한 대출 (loan_matcher.match_eligible_loans)
 
 
 class RirIncomeLevel(BaseModel):
