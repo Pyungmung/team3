@@ -48,7 +48,7 @@ class LoanProductServiceTest {
     }
 
     private LoanProductRequest request(Integer minAge, Integer maxAge, Map<String, LoanPreference> prefs) {
-        return new LoanProductRequest(minAge, maxAge, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, prefs);
+        return new LoanProductRequest(minAge, maxAge, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, prefs, null);
     }
 
     @Test
@@ -82,7 +82,7 @@ class LoanProductServiceTest {
     void 저장하면_조건과_우대사항이_그대로_돌아오고_빠진_우대사항은_기본값이다() {
         when(repository.findByLoanType("YOUTH_BEOTIMMOK")).thenReturn(Optional.empty());
         Map<String, LoanPreference> prefs = new HashMap<>();
-        prefs.put("NEWLYWED", new LoanPreference(true, 0.2));
+        prefs.put("NEWLYWED", new LoanPreference(true, 0.2, null, null, null, null, null));
 
         LoanProductResponse res = service.save("YOUTH_BEOTIMMOK", request(19, 34, prefs));
 
@@ -94,10 +94,97 @@ class LoanProductServiceTest {
         assertThat(res.maxExclusiveArea()).isEqualTo(85.0);
         assertThat(res.maxLoanRatioPercent()).isEqualTo(80.0);
         assertThat(res.maxLoanAmount()).isEqualTo(20000);
-        assertThat(res.preferences().get("NEWLYWED")).isEqualTo(new LoanPreference(true, 0.2));
+        assertThat(res.preferences().get("NEWLYWED")).isEqualTo(new LoanPreference(true, 0.2, null, null, null, null, null));
         assertThat(res.preferences().get("NO_HOME")).isEqualTo(LoanPreference.EMPTY);
         assertThat(res.preferences()).hasSize(LoanPreferenceKey.values().length);
         assertThat(res.preferences().get("SME_EMPLOYED_YOUTH")).isEqualTo(LoanPreference.EMPTY);
+    }
+
+    @Test
+    void 우대사항의_한도_재반영_값도_그대로_저장되고_돌아온다() {
+        when(repository.findByLoanType("YOUTH_BEOTIMMOK")).thenReturn(Optional.empty());
+        Map<String, LoanPreference> prefs = new HashMap<>();
+        prefs.put("NEWLYWED", new LoanPreference(false, 0.0, 30000, 6000, 8000, 25000, 90.0));
+
+        LoanProductResponse res = service.save("YOUTH_BEOTIMMOK", request(19, 34, prefs));
+
+        assertThat(res.preferences().get("NEWLYWED")).isEqualTo(new LoanPreference(false, 0.0, 30000, 6000, 8000, 25000, 90.0));
+        // 재반영 값을 넣지 않은 다른 우대사항은 그대로 EMPTY(전부 null)다
+        assertThat(res.preferences().get("MULTI_CHILD")).isEqualTo(LoanPreference.EMPTY);
+    }
+
+    @Test
+    void 대출금리표를_저장하면_4행_3열_그대로_돌아온다() {
+        when(repository.findByLoanType("GENERAL_BEOTIMMOK")).thenReturn(Optional.empty());
+        List<List<Double>> rateTable = List.of(
+                List.of(2.5, 2.6, 2.7),
+                List.of(2.7, 2.8, 2.9),
+                List.of(3.0, 3.1, 3.2),
+                List.of(3.3, 3.4, 3.5));
+        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, Map.of(), rateTable);
+
+        LoanProductResponse res = service.save("GENERAL_BEOTIMMOK", req);
+
+        assertThat(res.rateTable()).isEqualTo(rateTable);
+    }
+
+    @Test
+    void 대출금리표를_저장하지_않으면_null이다() {
+        when(repository.findByLoanType("GENERAL_BEOTIMMOK")).thenReturn(Optional.empty());
+
+        LoanProductResponse res = service.save("GENERAL_BEOTIMMOK", request(19, 34, Map.of()));
+
+        assertThat(res.rateTable()).isNull();
+    }
+
+    @Test
+    void 대출금리표는_4행이_아니면_검증_오류() {
+        List<List<Double>> wrongRows = List.of(List.of(2.5, 2.6, 2.7));
+        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, Map.of(), wrongRows);
+
+        assertThatThrownBy(() -> service.save("GENERAL_BEOTIMMOK", req))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    void 대출금리표는_한_행이라도_3열이_아니면_검증_오류() {
+        List<List<Double>> wrongCols = List.of(
+                List.of(2.5, 2.6),
+                List.of(2.7, 2.8, 2.9),
+                List.of(3.0, 3.1, 3.2),
+                List.of(3.3, 3.4, 3.5));
+        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, Map.of(), wrongCols);
+
+        assertThatThrownBy(() -> service.save("GENERAL_BEOTIMMOK", req))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    void 대출금리는_0에서_15퍼센트_사이여야_한다() {
+        List<List<Double>> tooHigh = List.of(
+                List.of(2.5, 2.6, 2.7),
+                List.of(2.7, 2.8, 2.9),
+                List.of(3.0, 3.1, 3.2),
+                List.of(3.3, 3.4, 20.0));
+        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, Map.of(), tooHigh);
+
+        assertThatThrownBy(() -> service.save("GENERAL_BEOTIMMOK", req))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    void 저장된_대출금리표_JSON이_깨져_있어도_기본값으로_내려온다() {
+        LoanProduct broken = LoanProduct.of(com.customhouse.domain.loan.entity.LoanType.GENERAL_BEOTIMMOK);
+        broken.update(null, null, null, null, null, null, null, null, null, null, "{not json");
+        when(repository.findByLoanType(any())).thenReturn(Optional.empty());
+        when(repository.findByLoanType("GENERAL_BEOTIMMOK")).thenReturn(Optional.of(broken));
+
+        List<LoanProductResponse> loans = service.getAll().loans();
+
+        assertThat(loans.get(0).rateTable()).isNull();
     }
 
     @Test
@@ -128,7 +215,7 @@ class LoanProductServiceTest {
         assertThat(limited.maxLoanRatioPercent()).isEqualTo(80.0);
         assertThat(limited.maxLoanAmount()).isEqualTo(20000);
 
-        LoanProductRequest noLimit = new LoanProductRequest(19, 39, 5000, 6000, 33700, 20000, 85.0, null, null, Map.of());
+        LoanProductRequest noLimit = new LoanProductRequest(19, 39, 5000, 6000, 33700, 20000, 85.0, null, null, Map.of(), null);
         LoanProductResponse res = service.save("YOUTH_BEOTIMMOK", noLimit);
         assertThat(res.maxLoanRatioPercent()).isNull();
         assertThat(res.maxLoanAmount()).isNull();
@@ -193,7 +280,7 @@ class LoanProductServiceTest {
 
     @Test
     void 정해진_항목이_아닌_우대사항_키는_거부한다() {
-        Map<String, LoanPreference> prefs = Map.of("HACK", new LoanPreference(true, 1.0));
+        Map<String, LoanPreference> prefs = Map.of("HACK", new LoanPreference(true, 1.0, null, null, null, null, null));
 
         assertThatThrownBy(() -> service.save("YOUTH_BEOTIMMOK", request(19, 34, prefs)))
                 .isInstanceOf(CustomException.class)
@@ -222,7 +309,7 @@ class LoanProductServiceTest {
     @Test
     void 저장된_JSON이_깨져_있어도_목록은_기본값으로_내려온다() {
         LoanProduct broken = LoanProduct.of(com.customhouse.domain.loan.entity.LoanType.GENERAL_BEOTIMMOK);
-        broken.update(null, null, null, null, null, null, null, null, null, "{not json");
+        broken.update(null, null, null, null, null, null, null, null, null, "{not json", null);
         when(repository.findByLoanType(any())).thenReturn(Optional.empty());
         when(repository.findByLoanType("GENERAL_BEOTIMMOK")).thenReturn(Optional.of(broken));
 

@@ -9,6 +9,11 @@ CSV 실데이터는 지원혜택이 자유 텍스트(대출 조건/현물 지원
 수치를 뽑아낼 수 없다. 그래서 이제 정책 매칭은 "주거정책 추천" 표에 보여주기 위한
 정보성 매칭으로만 쓰이고(agency/name/description), 실질 주거비(real_housing_cost)
 계산에는 더 이상 반영하지 않는다 (government_support는 항상 0 - calculator.py 참고).
+
+2026-09-30: 기준중위소득 100%(1인가구, 월) 값은 이제 관리자 수정 > 기준소득관리에서 저장한 값
+(request.income_standard.median_income_100_percent_monthly_won, 원 단위)을 우선 쓴다. 이 값이
+없으면(조회 실패 등) 예전처럼 policies.json의 median_income_100_percent_monthly_manwon(만원 단위,
+docs/housing_policy_list.csv 15열을 convert_policies.py가 변환해둔 값)으로 폴백한다 - _median_income_100_percent_monthly_manwon 참고.
 """
 import json
 import threading
@@ -41,7 +46,13 @@ def load_policies() -> list[dict]:
     return _load_policy_data()["policies"]
 
 
-def _median_income_100_percent_monthly_manwon() -> float:
+def _median_income_100_percent_monthly_manwon(request) -> float:
+    """기준중위소득 100%(1인가구, 월, 만원). 관리자 수정 > 기준소득관리에 저장된 값(원 단위)이 있으면 ÷10000해서
+    쓰고, 없으면 policies.json의 값(이미 만원 단위, docs/housing_policy_list.csv를 변환한 레거시 값)으로 폴백한다."""
+    income_standard = getattr(request, "income_standard", None)
+    won = income_standard.median_income_100_percent_monthly_won if income_standard else None
+    if won is not None:
+        return won / 10000
     return _load_policy_data()["median_income_100_percent_monthly_manwon"]
 
 
@@ -82,7 +93,7 @@ def _median_income_ok(policy: dict, request) -> bool:
     percent = policy.get("median_income_percent")
     if percent is None:
         return True
-    threshold_monthly_manwon = _median_income_100_percent_monthly_manwon() * (percent / 100)
+    threshold_monthly_manwon = _median_income_100_percent_monthly_manwon(request) * (percent / 100)
     return request.effective_monthly_income <= threshold_monthly_manwon
 
 

@@ -149,6 +149,158 @@ def test_필수_중소기업_취업청년은_직업유형_SME여야_한다():
     assert names(req(loans, jobType=None)) == []
 
 
+def test_우대사항의_재반영_값이_있으면_해당_사용자에게만_공통_한도를_대체한다():
+    # 매물 보증금 제한 20000인데, 신혼부부는 30000까지 재반영 - 체크한 사람만 그 한도로 심사
+    loans = [loan(maxListingDeposit=20000, preferences={"NEWLYWED": {"overrideMaxListingDeposit": 30000}})]
+    listing = {**JEONSE, "listing_deposit": 25000}
+    assert names(req(loans, preferentialStatuses=["NEWLYWED"]), listing) == ["GENERAL_BEOTIMMOK"]
+    assert names(req(loans, preferentialStatuses=[]), listing) == []
+
+
+def test_재반영_값이_공란이면_공통_한도를_그대로_쓴다():
+    loans = [loan(maxListingDeposit=20000, preferences={"NEWLYWED": {}})]
+    listing = {**JEONSE, "listing_deposit": 20001}
+    assert names(req(loans, preferentialStatuses=["NEWLYWED"]), listing) == []
+
+
+def test_공통_한도가_제한없음이면_재반영_값과_무관하게_제한없음이다():
+    loans = [loan(preferences={"NEWLYWED": {"overrideMaxListingDeposit": 10000}})]
+    listing = {**JEONSE, "listing_deposit": 999999}
+    assert names(req(loans, preferentialStatuses=["NEWLYWED"]), listing) == ["GENERAL_BEOTIMMOK"]
+
+
+def test_연소득과_최대_대출금액도_우대사항_재반영_값을_따른다():
+    loans = [loan(
+        maxIncomeSingle=5000, maxLoanAmount=10000,
+        preferences={"MULTI_CHILD": {"overrideMaxIncomeSingle": 8000, "overrideMaxLoanAmount": 20000}},
+    )]
+    r = req(loans, annualIncome=7000, preferentialStatuses=["MULTI_CHILD"], deposit=0)
+    listing = {**JEONSE, "listing_deposit": 15000}  # 부족분 15000: 재반영 대출한도(20000) 안에는 들지만 공통(10000)은 넘음
+    assert names(r, listing) == ["GENERAL_BEOTIMMOK"]
+    assert names(req(loans, annualIncome=7000, preferentialStatuses=[], deposit=0), listing) == []
+
+
+def test_최대_대출금_비율한도도_우대사항_재반영_값을_따른다():
+    loans = [loan(
+        maxLoanRatioPercent=10,
+        preferences={"NEWLYWED": {"overrideMaxLoanRatioPercent": 80}},
+    )]
+    listing = {**JEONSE, "listing_deposit": 15000}  # 부족분 11500: 재반영 비율한도(80% -> 12000) 안에는 들지만 공통(10% -> 1500)은 넘음
+    r = req(loans, preferentialStatuses=["NEWLYWED"], deposit=3500)
+    assert names(r, listing) == ["GENERAL_BEOTIMMOK"]
+    assert names(req(loans, preferentialStatuses=[], deposit=3500), listing) == []
+
+
+def test_비율한도_재반영과_절대상한_재반영이_함께_있으면_더_낮은_쪽이_적용된다():
+    # 공통 조건(비율5%/절대1)은 재반영 값 유무를 가르는 "제한없음이 아님" 용도일 뿐, 신혼부부에겐 재반영 값만 쓰인다
+    loans = [loan(maxLoanRatioPercent=5, maxLoanAmount=1, preferences={
+        "NEWLYWED": {"overrideMaxLoanRatioPercent": 80, "overrideMaxLoanAmount": 5000},
+    })]
+    # 매물 보증금 15000의 재반영 비율한도 80% = 12000, 재반영 절대상한 5000 -> 더 낮은 5000이 실제 한도
+    listing = {**JEONSE, "listing_deposit": 15000}
+    r = req(loans, preferentialStatuses=["NEWLYWED"], deposit=10000)  # 부족분 5000 (경계, 통과)
+    assert names(r, listing) == ["GENERAL_BEOTIMMOK"]
+    assert names(req(loans, preferentialStatuses=["NEWLYWED"], deposit=9999), listing) == []  # 부족분 5001 (초과, 탈락)
+
+
+def test_두_우대사항_모두_해당하면_더_관대한_재반영_값을_쓴다():
+    loans = [loan(maxListingDeposit=20000, preferences={
+        "NEWLYWED": {"overrideMaxListingDeposit": 25000},
+        "MULTI_CHILD": {"overrideMaxListingDeposit": 30000},
+    })]
+    listing = {**JEONSE, "listing_deposit": 28000}
+    assert names(req(loans, preferentialStatuses=["NEWLYWED", "MULTI_CHILD"]), listing) == ["GENERAL_BEOTIMMOK"]
+    assert names(req(loans, preferentialStatuses=["NEWLYWED"]), listing) == []
+
+
+RATE_TABLE = [
+    [2.5, 2.6, 2.7],   # ~2천만원 이하
+    [2.7, 2.8, 2.9],   # 2천 초과~4천 이하
+    [3.0, 3.1, 3.2],   # 4천 초과~6천 이하
+    [3.3, 3.4, 3.5],   # 6천 초과~7.5천 이하
+]
+
+
+def test_대출금리표가_있으면_소득_보증금_구간에_맞는_금리를_쓴다():
+    loans = [loan(rateTable=RATE_TABLE)]
+    listing = {**JEONSE, "listing_deposit": 3000, "listing_monthly_rent": 0, "maintenance_fee": 0}  # 5천 이하 구간(열 0)
+    # 연소득 1500만원 -> 행 0(~2천 이하) x 열 0(5천 이하) = 2.5%
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0), listing)[0]
+    assert r["rate_percent"] == 2.5
+    # 연소득 3000만원 -> 행 1(2천초과~4천이하) x 열 0 = 2.7%
+    r2 = loan_matcher.match_eligible_loans(req(loans, annualIncome=3000, deposit=0), listing)[0]
+    assert r2["rate_percent"] == 2.7
+
+
+def test_대출금리표_임차보증금_구간은_매물_보증금_기준이다():
+    loans = [loan(rateTable=RATE_TABLE)]
+    # 연소득 1500만원(행 0) 고정, 매물 보증금만 구간별로 바꾼다
+    cheap = loan_matcher.match_eligible_loans(
+        req(loans, annualIncome=1500, deposit=0), {**JEONSE, "listing_deposit": 5000})[0]
+    mid = loan_matcher.match_eligible_loans(
+        req(loans, annualIncome=1500, deposit=0), {**JEONSE, "listing_deposit": 10000})[0]
+    expensive = loan_matcher.match_eligible_loans(
+        req(loans, annualIncome=1500, deposit=0), {**JEONSE, "listing_deposit": 10001})[0]
+    assert cheap["rate_percent"] == 2.5    # 5천만원 이하(경계 포함)
+    assert mid["rate_percent"] == 2.6      # 5천 초과~1억 이하(경계 포함)
+    assert expensive["rate_percent"] == 2.7  # 1억 초과
+
+
+def test_대출금리표에서도_소득은_개인_부부합산_중_큰_값을_쓴다():
+    loans = [loan(rateTable=RATE_TABLE)]
+    listing = {**JEONSE, "listing_deposit": 3000}
+    # 본인 소득은 1500(행 0)이지만 부부합산이 5000(행 2)이면 더 큰 쪽인 행 2를 쓴다
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, coupleAnnualIncome=5000, deposit=0), listing)[0]
+    assert r["rate_percent"] == 3.0
+
+
+def test_소득이_모든_구간을_넘으면_마지막_구간을_쓴다():
+    loans = [loan(rateTable=RATE_TABLE)]
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=100000, deposit=0), listing)[0]
+    assert r["rate_percent"] == 3.3  # 마지막 행(6천초과~7.5천이하)
+
+
+def test_대출금리표가_없으면_market_rate_percent를_기본금리로_쓴다():
+    loans = [loan()]  # rateTable 없음
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0), listing, market_rate_percent=6.35)[0]
+    assert r["rate_percent"] == 6.35
+    assert r["is_temporary_rate"] is True
+
+
+def test_market_rate_percent를_안_넘기면_기존_기본값을_쓴다():
+    loans = [loan()]
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0), listing)[0]
+    assert r["rate_percent"] == loan_matcher.DEFAULT_BASE_RATE_PERCENT
+
+
+def test_대출금리표가_있으면_market_rate_percent를_무시하고_표_값을_쓴다():
+    loans = [loan(rateTable=RATE_TABLE)]
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0), listing, market_rate_percent=6.35)[0]
+    assert r["rate_percent"] == 2.5  # 표 값 그대로 - market_rate_percent(6.35)는 무시된다
+    assert r["is_temporary_rate"] is False
+
+
+def test_기본금리가_기준금리_API_값이어도_우대금리_차감은_그대로_적용된다():
+    loans = [loan(preferences={"NEWLYWED": {"discount": 0.5}})]  # rateTable 없음
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(
+        req(loans, deposit=0, preferentialStatuses=["NEWLYWED"]), listing, market_rate_percent=6.35)[0]
+    assert r["rate_percent"] == 5.85
+
+
+def test_대출금리표_기본금리에서도_우대금리_차감이_적용된다():
+    loans = [loan(rateTable=RATE_TABLE, preferences={"NEWLYWED": {"discount": 0.5}})]
+    listing = {**JEONSE, "listing_deposit": 3000}
+    no_check = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0, preferentialStatuses=[]), listing)[0]
+    checked = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0, preferentialStatuses=["NEWLYWED"]), listing)[0]
+    assert no_check["rate_percent"] == 2.5
+    assert checked["rate_percent"] == 2.0
+
+
 def test_여러_대출은_각자_조건으로_따로_판별된다():
     loans = [
         loan("GENERAL_BEOTIMMOK", maxIncomeSingle=5000),
