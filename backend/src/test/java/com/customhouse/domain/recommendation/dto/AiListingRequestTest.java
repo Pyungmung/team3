@@ -1,5 +1,6 @@
 package com.customhouse.domain.recommendation.dto;
 
+import com.customhouse.domain.incomestandard.dto.IncomeStandardResponse;
 import com.customhouse.domain.loan.dto.LoanPreference;
 import com.customhouse.domain.loan.dto.LoanProductResponse;
 import org.junit.jupiter.api.Test;
@@ -28,9 +29,10 @@ class AiListingRequestTest {
     void 사용자_조건은_최상위로_펼쳐지고_대출_조건이_함께_실린다() throws Exception {
         LoanProductResponse loan = new LoanProductResponse("GENERAL_BEOTIMMOK", "일반 버팀목 전세대출", "전세", true,
                 19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000,
-                Map.of("NEWLYWED", new LoanPreference(true, 0.2)), null, null);
+                Map.of("NEWLYWED", new LoanPreference(true, 0.2, null, null, null, null, null)), null, null, null);
 
-        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(recommend(), List.of(loan))));
+        IncomeStandardResponse incomeStandard = new IncomeStandardResponse(15.8, 18.4, 18.3, 16.2, 19.4, 2024, "국토교통부,「주거실태조사」", 2_564_238L, null);
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(recommend(), List.of(loan), incomeStandard)));
 
         // 기존 요청 필드는 AI 엔진이 기대하는 이름 그대로 최상위에 있다 (감싸이지 않는다)
         assertThat(json.get("annualIncome").asInt()).isEqualTo(3400);
@@ -47,6 +49,11 @@ class AiListingRequestTest {
         assertThat(l.get("maxLoanAmount").asInt()).isEqualTo(20000);
         assertThat(l.get("preferences").get("NEWLYWED").get("required").asBoolean()).isTrue();
         assertThat(l.get("preferences").get("NEWLYWED").get("discount").asDouble()).isEqualTo(0.2);
+        // 기준소득 통계
+        JsonNode is = json.get("incomeStandard");
+        assertThat(is.get("rirMetroPercent").asDouble()).isEqualTo(18.4);
+        assertThat(is.get("rirOverallPercent").asDouble()).isEqualTo(15.8);
+        assertThat(is.get("medianIncome100PercentMonthly").asLong()).isEqualTo(2_564_238L);
     }
 
     @Test
@@ -54,7 +61,7 @@ class AiListingRequestTest {
         String body = "{\"annualIncome\":3400,\"deposit\":800,\"workLocation\":\"강남구\",\"loanProducts\":[{\"type\":\"HACK\"}]}";
         RecommendRequest parsed = mapper.readValue(body, RecommendRequest.class);
 
-        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(parsed, List.of())));
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(parsed, List.of(), null)));
 
         assertThat(json.get("loanProducts")).isEmpty();   // 서버가 붙인 값만 나간다
     }

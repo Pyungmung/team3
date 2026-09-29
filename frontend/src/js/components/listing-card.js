@@ -113,16 +113,21 @@
       </div>`;
 
     // 관리자 화면에서 저장한 대출 조건을 통과한 대출 (AI 엔진이 매물마다 판별) - "[대출이름] 실질주거비"를 다른 비용 박스와 같은 모양으로 보여준다.
-    // 2026-09-29: 실제 대출별 금리표가 아직 없어 공통 임시 기본금리(3%)에서 우대금리만 반영한 참고용 값이다.
+    // 2026-09-30: 대출별 실제 금리표(관리자 입력)가 있으면 그 금리를, 없으면 기준금리 API(보증금액 전환 이자기회비용과 같은 값)를
+    // 대신 쓰고 우대금리만 반영한다 - is_temporary_rate가 어느 쪽인지 나타낸다.
     const loanBoxes = (r.eligible_loans || [])
       .map(
         (l) => `
-          <div class="cost-box loan" title="입력하신 조건이 이 대출의 자격 조건을 충족해요. 금리는 임시 기본금리(3%)에서 우대금리만 반영한 참고용이며, 실제 금리·한도·신청 가능 여부는 금융기관 심사로 확정돼요.">
+          <div class="cost-box loan" title="${
+            l.is_temporary_rate
+              ? "입력하신 조건이 이 대출의 자격 조건을 충족해요. 이 대출은 아직 실제 금리표가 없어 기준금리(보증금 전환율 API)에서 우대금리만 반영한 참고용이며, 실제 금리·한도·신청 가능 여부는 금융기관 심사로 확정돼요."
+              : "입력하신 조건이 이 대출의 자격 조건을 충족해요. 관리자가 등록한 이 대출의 실제 금리표에서 우대금리를 반영한 값이며, 실제 한도·신청 가능 여부는 금융기관 심사로 확정돼요."
+          }">
             <div class="lbl">${esc(l.name)} 실질주거비</div>
             <div class="val">${fmtNum(l.effective_cost)}만원/월</div>
             <div class="sub">${
               l.loan_principal > 0
-                ? `월세 + 관리비 + 부족분 ${fmtNum(l.loan_principal)}만 대출이자 ${fmtNum(l.monthly_interest)}만 (연 ${fmtRate(l.rate_percent)}%, 임시금리)`
+                ? `월세 + 관리비 + 부족분 ${fmtNum(l.loan_principal)}만 대출이자 ${fmtNum(l.monthly_interest)}만 (연 ${fmtRate(l.rate_percent)}%${l.is_temporary_rate ? ", 기준금리 적용" : ""})`
                 : "보유 보증금으로 충분해 대출이 필요 없어요 (이자 0원)"
             }</div>
           </div>`

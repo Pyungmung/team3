@@ -102,12 +102,15 @@ class ReferenceTransaction(BaseModel):
 
 class EligibleLoan(BaseModel):
     """이 매물에 신청할 수 있는 대출 (관리자 화면의 조건을 통과한 대출) + "[대출이름] 실질주거비".
-    2026-09-29: 실제 대출별 금리표가 아직 없어 기본금리 3%(loan_matcher.DEFAULT_BASE_RATE_PERCENT) 공통 임시값에서
-    우대금리만 반영한 값이다 - 표 이미지 분석 후 대출마다 실제 금리로 교체될 예정이라 참고용으로만 쓴다."""
+    2026-09-30: 관리자가 대출별 실제 금리표(대출금리, 소득 x 보증금 구간표)를 저장해두면 그 표의 금리를 쓴다.
+    아직 표를 안 넣은 대출은 기준금리 API 값(한국부동산원 수도권 전월세 전환율 - "보증금액 전환 이자기회비용"과
+    같은 값, loan_matcher.match_eligible_loans의 market_rate_percent)을 대신 쓰고, is_temporary_rate로
+    어느 쪽인지 구분한다(프론트가 "기준금리 적용" 표시 여부를 정하는 데 쓴다)."""
 
     type: str   # 대출 코드 (GENERAL_BEOTIMMOK 등)
     name: str   # 화면에 보여줄 대출 이름
-    rate_percent: float = 0.0      # 우대금리 반영한 최종 금리 (연 %, 임시 기본금리 기준)
+    rate_percent: float = 0.0      # 우대금리 반영한 최종 금리 (연 %)
+    is_temporary_rate: bool = True  # True면 이 대출에 아직 실제 금리표가 없어 임시 기본금리를 쓴 것
     loan_principal: float = 0.0    # 만원, 대출로 메우는 부족분 = 매물 보증금 - 보유 보증금(0 이상)
     monthly_interest: float = 0.0  # 만원/월 = loan_principal x 연 rate_percent% / 12
     effective_cost: float = 0.0    # 만원/월 = 월세 + 관리비 + monthly_interest ("[대출이름] 실질주거비")
@@ -181,7 +184,8 @@ class ListingDiagnosisResponse(BaseModel):
     rir_source: str = ""                               # 출처
     rir_monthly_income: float = 0                      # 만원, 적정 월세 계산에 쓴 내 월소득 (입력한 연소득 / 12)
     rir_metro_affordable_rent: float | None = None     # 만원/월, 수도권 RIR을 내 월소득에 적용한 적정 월세 (= affordable_rent)
-    rir_overall_percent: float | None = None           # 전국 RIR(%) - 참고
+    rir_overall_percent: float | None = None           # 전국 RIR(%) - 리포트에 참고용으로 표시(최상위 기준은 수도권)
+    rir_overall_affordable_rent: float | None = None   # 만원/월, 전국 RIR을 내 월소득에 적용한 적정 월세 (참고용)
     rir_by_income: list[RirIncomeLevel] = []           # 소득수준별(하위/중위/상위) RIR과 적정 월세
     # 주거정책 추천: 자치구별로 그 자치구에 매칭된 정책(지역값이 "서울"인 공통 정책 + 그 자치구 정책). 리포트는 처음엔 직장 위치
     # 자치구(work_region)의 정책을 보여주고, 매물을 클릭하면 그 매물 자치구(매물의 region)의 정책으로 바꾼다.

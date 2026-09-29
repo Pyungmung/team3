@@ -18,10 +18,37 @@ from pydantic import BaseModel, Field, field_validator
 
 class LoanPreferenceSetting(BaseModel):
     """대출 1개의 우대사항 1개 설정 (관리자 화면). required=True면 그 우대사항에 해당해야 대출 자격이 되고,
-    discount는 해당할 때 깎아주는 우대금리(%p) - 자격 판별에는 쓰지 않고 이자 계산 단계에서 쓴다."""
+    discount는 해당할 때 깎아주는 우대금리(%p) - 자격 판별에는 쓰지 않고 이자 계산 단계에서 쓴다.
+    2026-09-30: override_* 5종은 신혼부부/다자녀가구처럼 일부 우대사항이 공통 조건과 다른 한도를 쓸 때의
+    재반영 값이다 - None이면 공통 조건(max_listing_deposit 등)을 그대로 쓰고, 값이 있고 사용자가 그
+    우대사항에 해당하면 그 값으로 최종 한도가 바뀐다 (loan_matcher._effective_limit 참고)."""
 
     required: bool = False
     discount: float = 0.0
+    override_max_listing_deposit: int | None = Field(None, alias="overrideMaxListingDeposit")
+    override_max_income_single: int | None = Field(None, alias="overrideMaxIncomeSingle")
+    override_max_income_couple: int | None = Field(None, alias="overrideMaxIncomeCouple")
+    override_max_loan_amount: int | None = Field(None, alias="overrideMaxLoanAmount")
+    override_max_loan_ratio_percent: float | None = Field(None, alias="overrideMaxLoanRatioPercent")
+
+    class Config:
+        populate_by_name = True
+
+
+class IncomeStandardCondition(BaseModel):
+    """관리자 화면(관리자 수정 > 기준소득관리)에서 저장한 기준소득 통계. 백엔드가 DB에서 읽어 요청에 실어 보낸다
+    (브라우저가 보낸 값이 아니다). 값이 없는 필드는 None - 그 경우 호출하는 쪽(rir_stats/policy_matcher)이
+    기존 CSV/JSON 폴백으로 대신한다 (2026-09-30: docs/RIR.csv + docs/housing_policy_list.csv 15열을 대체).
+    RIR은 % 단위, 기준중위소득은 원 단위(1원까지 정확한 정수, 보건복지부 고시 원문 그대로)."""
+
+    rir_overall_percent: float | None = Field(None, alias="rirOverallPercent")   # 전국(전체) - 리포트 참고용
+    rir_metro_percent: float | None = Field(None, alias="rirMetroPercent")       # 수도권 - 리포트 최상위 기준값
+    rir_low_percent: float | None = Field(None, alias="rirLowPercent")          # 하위(1-4분위)
+    rir_mid_percent: float | None = Field(None, alias="rirMidPercent")          # 중위(5-8분위)
+    rir_high_percent: float | None = Field(None, alias="rirHighPercent")        # 상위(9-10분위)
+    rir_year: int | None = Field(None, alias="rirYear")
+    rir_source: str | None = Field(None, alias="rirSource")
+    median_income_100_percent_monthly_won: int | None = Field(None, alias="medianIncome100PercentMonthly")
 
     class Config:
         populate_by_name = True
@@ -44,6 +71,10 @@ class LoanProductCondition(BaseModel):
     max_loan_ratio_percent: float | None = Field(None, alias="maxLoanRatioPercent")  # 매물 보증금의 이 비율(%)까지만 대출 가능
     max_loan_amount: int | None = Field(None, alias="maxLoanAmount")  # 만원, 매물과 무관한 대출 절대 상한
     preferences: dict[str, LoanPreferenceSetting] = Field(default_factory=dict)
+    # 대출금리표: [행(부부합산 연소득 4구간)][열(임차보증금 3구간)] = 연 금리(%). None이면 아직 실제 금리표가 없어
+    # loan_matcher.DEFAULT_BASE_RATE_PERCENT(임시 고정금리)를 쓴다 - loan_matcher.RATE_TABLE_INCOME_BRACKETS_MANWON/
+    # RATE_TABLE_DEPOSIT_BRACKETS_MANWON이 행/열의 구간 정의다.
+    rate_table: list[list[float]] | None = Field(None, alias="rateTable")
 
     class Config:
         populate_by_name = True
@@ -126,6 +157,10 @@ class DiagnosisRequest(BaseModel):
     # 관리자 화면에서 저장한 대출 조건. 백엔드(Spring)가 DB에서 읽어 실어 보내며 브라우저 입력이 아니다.
     # 비어 있으면(저장된 대출 없음/조회 실패) 대출 자격 판별은 하지 않는다.
     loan_products: list[LoanProductCondition] = Field(default_factory=list, alias="loanProducts")
+
+    # 관리자 화면(관리자 수정 > 기준소득관리)에서 저장한 RIR/기준중위소득. 백엔드가 DB에서 읽어 실어 보내며
+    # 브라우저 입력이 아니다. None이면(조회 실패 등) CSV/JSON 폴백을 쓴다 (IncomeStandardCondition 참고).
+    income_standard: IncomeStandardCondition | None = Field(None, alias="incomeStandard")
 
     class Config:
         populate_by_name = True

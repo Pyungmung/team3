@@ -51,7 +51,9 @@ async function getLoans() {
   return adminLoansUnwrap(res, "대출 조건을 불러오지 못했어요.");
 }
 
-/** 수정완료: 조건 저장. payload = {minAge, maxAge, maxIncomeSingle, maxIncomeCouple, maxAsset, maxExclusiveArea, preferences:{KEY:{required, discount}}} */
+/** 수정완료: 조건 저장. payload = {minAge, maxAge, maxIncomeSingle, maxIncomeCouple, maxAsset, maxExclusiveArea, maxLoanRatioPercent, maxLoanAmount,
+ * preferences:{KEY:{required, discount, overrideMaxListingDeposit, overrideMaxIncomeSingle, overrideMaxIncomeCouple, overrideMaxLoanAmount, overrideMaxLoanRatioPercent}},
+ * rateTable: [[4행 x 3열 연 금리(%)]] 또는 null(아직 실제 금리표 없음 - 기준금리 API 값을 대신 사용)} */
 async function saveLoan(type, payload) {
   const res = await adminLoansFetch(`${ADMIN_LOANS_API_BASE}/${encodeURIComponent(type)}`, {
     method: "PUT",
