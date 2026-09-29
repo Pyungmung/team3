@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -34,7 +35,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (token != null && jwtTokenProvider.validateToken(token)) {
             AuthenticatedUser principal = new AuthenticatedUser(jwtTokenProvider.getUserId(token), jwtTokenProvider.getEmail(token));
-            var authentication = new UsernamePasswordAuthenticationToken(principal, null, List.of());
+            // 권한(ROLE_USER / ROLE_ADMIN)은 로그인 때 DB role로 서명해 넣은 클레임에서 읽는다 (/api/admin/** 보호용)
+            var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + jwtTokenProvider.getRole(token)));
+            var authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 

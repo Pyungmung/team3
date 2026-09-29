@@ -34,7 +34,7 @@
     if (accessToken && refreshToken) {
       CustomHouseAuthApi.saveTokens({ accessToken, refreshToken });
       statusEl.textContent = "로그인 성공! 홈으로 이동합니다...";
-      setTimeout(() => (window.location.href = "../index.html"), 500);
+      setTimeout(() => (window.location.href = "../../../index.html"), 500);
     } else {
       statusEl.textContent = "로그인에 실패했습니다. 다시 시도해주세요.";
       statusEl.classList.add("text-red-500");

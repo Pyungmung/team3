@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
-ROOT = Path(__file__).resolve().parent / "src"
+ROOT = Path(__file__).resolve().parent  # 2026-09-29: 홈페이지(index.html)가 src/ 밖으로 옮겨져서 frontend/ 전체를 루트로 서빙한다
 
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):

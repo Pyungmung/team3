@@ -76,7 +76,7 @@ public class AuthService {
             throw new CustomException(ErrorCode.INVALID_TOKEN, "이미 폐기되었거나 일치하지 않는 리프레시 토큰입니다.");
         }
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail());
+        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
         return TokenResponse.bearer(newAccessToken, refreshToken);
     }
 
@@ -99,8 +99,8 @@ public class AuthService {
     /** 로그인/OAuth2 성공 공통: Access/Refresh 토큰 발급 후 Refresh Token을 사용자 레코드에 저장(대조용). */
     @Transactional
     public TokenResponse issueTokens(User user) {
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getEmail());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId(), user.getEmail(), user.getRole());
         user.setRefreshToken(refreshToken);
         return TokenResponse.bearer(accessToken, refreshToken);
     }

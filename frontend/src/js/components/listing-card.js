@@ -89,20 +89,45 @@
           <div class="text-sm font-bold text-gray-700 mt-0.5 whitespace-nowrap">보증금 ${fmtMoney(r.listing_deposit)}</div>
         `;
 
-    // 실질 주거비 = 월세 + 관리비 (교통비는 뺐다). 보증금전환 실질거주비 = 월세 + 관리비 + 보증금 기회비용(보증금 x 연 전환율% / 12, 전환율=한국부동산원 수도권 전월세 전환율)
+    // 실질 주거비 = 월세 + 관리비 (교통비는 뺐다). 전세는 월세가 없어서, 매물 보증금 중 지금 가진 보증금으로
+    // 못 채우는 부족분에 이자를 적용한 대출이자를 관리비에 더해 실제 부담을 보여준다(2026-09-29). 금리는 아래
+    // 보증금액 전환 이자기회비용과 같은 값(전환율=한국부동산원 수도권 전월세 전환율 API) - 원금만 다르다(부족분 vs 보증금 전체).
+    const realCostSub = r.loan_interest > 0
+      ? `관리비 + 부족분(대출금액) ${fmtNum(r.deposit_shortfall)}만 대출이자 ${fmtNum(r.loan_interest)}만 (연 ${fmtRate(rate)}%)`
+      : isJeonse ? "관리비 (대출 없이 충분)" : "월세 + 관리비";
+    const realCostTitle = r.loan_interest > 0
+      ? `관리비 + 부족분(매물 보증금 - 현재 보증금) ${fmtNum(r.deposit_shortfall)}만 x 연 ${fmtRate(rate)}% / 12`
+      : isJeonse ? "관리비 (보유 보증금으로 충분해 대출이자 없음)" : "월세 + 관리비";
     const costBoxes = `
       <div class="cost-boxes">
-        <div class="cost-box" title="월세 + 관리비">
+        <div class="cost-box" title="${realCostTitle}">
           <div class="lbl">실질 주거비</div>
           <div class="val">${fmtNum(r.real_housing_cost)}만원/월</div>
-          <div class="sub">월세 + 관리비</div>
+          <div class="sub">${realCostSub}</div>
         </div>
         <div class="cost-box conv" title="월세 + 관리비 + 보증금 기회비용(보증금 x 연 ${fmtRate(rate)}% / 12)">
-          <div class="lbl">보증금전환 실질거주비</div>
+          <div class="lbl">보증금액 전환 이자기회비용</div>
           <div class="val">${fmtNum(r.deposit_converted_cost)}만원/월</div>
           <div class="sub">월세 + 관리비 + 보증금 이자 ${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(rate)}%)</div>
         </div>
       </div>`;
+
+    // 관리자 화면에서 저장한 대출 조건을 통과한 대출 (AI 엔진이 매물마다 판별) - "[대출이름] 실질주거비"를 다른 비용 박스와 같은 모양으로 보여준다.
+    // 2026-09-29: 실제 대출별 금리표가 아직 없어 공통 임시 기본금리(3%)에서 우대금리만 반영한 참고용 값이다.
+    const loanBoxes = (r.eligible_loans || [])
+      .map(
+        (l) => `
+          <div class="cost-box loan" title="입력하신 조건이 이 대출의 자격 조건을 충족해요. 금리는 임시 기본금리(3%)에서 우대금리만 반영한 참고용이며, 실제 금리·한도·신청 가능 여부는 금융기관 심사로 확정돼요.">
+            <div class="lbl">${esc(l.name)} 실질주거비</div>
+            <div class="val">${fmtNum(l.effective_cost)}만원/월</div>
+            <div class="sub">${
+              l.loan_principal > 0
+                ? `월세 + 관리비 + 부족분 ${fmtNum(l.loan_principal)}만 대출이자 ${fmtNum(l.monthly_interest)}만 (연 ${fmtRate(l.rate_percent)}%, 임시금리)`
+                : "보유 보증금으로 충분해 대출이 필요 없어요 (이자 0원)"
+            }</div>
+          </div>`
+      )
+      .join("");
 
     const facts = [
       r.exclusive_area ? `${r.property_type === "단독다가구" ? "연면적" : "전용"} ${r.exclusive_area}㎡` : "",
@@ -140,6 +165,7 @@
       ${r.move_in_date ? `<div class="text-xs text-gray-400 mb-1">이사가능일 ${esc(r.move_in_date)}</div>` : ""}
       <div class="text-xs text-gray-500 mt-2">${costBreakdown}</div>
       ${costBoxes}
+      ${loanBoxes}
       ${r.description ? `<details class="listing-details"><summary>📝 상세 설명</summary><div class="body">${esc(r.description)}</div></details>` : ""}
       ${renderBroker(r.broker)}
       ${renderReference(r.reference_transaction)}`;
