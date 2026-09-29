@@ -6,7 +6,7 @@ docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실�
 붙는 "참고 실거래"(reference_transaction)로만 내려준다.
 
 처리 흐름 (통근시간/정책/순위는 calculator·policy_matcher·data_analysis를 그대로 재사용):
-1. 직장 좌표, 소득 기준 적정 월세 (수도권 RIR = docs/RIR.csv, 파일을 못 읽으면 기본값 20%)
+1. 직장 좌표, 소득 기준 적정 월세 (수도권 RIR = 관리자 수정 > 기준소득관리에 저장된 값 우선, 없으면 docs/RIR.csv, 그것도 없으면 기본값 20%)
 2. 자치구 대표좌표 기준 1차 통근권 필터 (이동수단별 버퍼, REGION_PREFILTER_BUFFER_MIN_BY_MODE)
 3. 통근권 자치구의 CSV 매물 -> 계약가능만, 선호 유형, 보증금 한도 이하, 희망 월세 이하, 이사희망시기 필터.
    보증금 한도 = 희망 보증금(전세액)이 있으면 그 값, 없으면 현재 보유 보증금. 한도를 넘는 매물은 추천하지 않는다
@@ -81,6 +81,62 @@ def _clean_nan(record: dict) -> dict:
         if isinstance(value, float) and value != value:
             record[key] = None
     return record
+
+
+def _resolve_rir(request, effective_monthly_income: float) -> tuple[float, float, dict]:
+    """수도권 RIR(%)·적정 월세 상한·리포트용 rir_fields(연도/출처/전국/소득수준별)를 계산한다.
+    우선순위: 1) 관리자 수정 > 기준소득관리에 저장된 값(request.income_standard) 2) docs/RIR.csv(rir_stats, 레거시 폴백)
+    3) 둘 다 없으면 DEFAULT_RIR_PERCENT(20%, 전국/소득수준별 표시 없이 헤드라인만)."""
+    income_standard = getattr(request, "income_standard", None)
+    if income_standard and income_standard.rir_metro_percent is not None:
+        rir = income_standard.rir_metro_percent
+        affordable_rent = round(effective_monthly_income * rir / 100, 1)
+        by_income = [
+            (key, label, percent)
+            for key, label, percent in (
+                ("low", "하위(1-4분위)", income_standard.rir_low_percent),
+                ("mid", "중위(5-8분위)", income_standard.rir_mid_percent),
+                ("high", "상위(9-10분위)", income_standard.rir_high_percent),
+            )
+            if percent is not None
+        ]
+        overall = income_standard.rir_overall_percent
+        rir_fields = {
+            "rir_year": income_standard.rir_year,
+            "rir_source": income_standard.rir_source or "",
+            "rir_monthly_income": round(effective_monthly_income, 1),
+            "rir_metro_affordable_rent": affordable_rent,
+            "rir_overall_percent": overall,
+            "rir_overall_affordable_rent": round(effective_monthly_income * overall / 100, 1) if overall is not None else None,
+            "rir_by_income": [
+                {"key": key, "label": label, "rir_percent": percent, "affordable_rent": round(effective_monthly_income * percent / 100, 1)}
+                for key, label, percent in by_income
+            ],
+        }
+        return rir, affordable_rent, rir_fields
+
+    rir_data = rir_stats.get_rir_stats()
+    if rir_data:
+        rir = rir_data.metro_percent
+        affordable_rent = round(effective_monthly_income * rir / 100, 1)
+        overall = rir_data.overall_percent
+        rir_fields = {
+            "rir_year": rir_data.year,
+            "rir_source": rir_data.source,
+            "rir_monthly_income": round(effective_monthly_income, 1),
+            "rir_metro_affordable_rent": affordable_rent,
+            "rir_overall_percent": overall,
+            "rir_overall_affordable_rent": round(effective_monthly_income * overall / 100, 1) if overall is not None else None,
+            "rir_by_income": [
+                {"key": lv.key, "label": lv.label, "rir_percent": lv.rir_percent,
+                 "affordable_rent": round(effective_monthly_income * lv.rir_percent / 100, 1)}
+                for lv in rir_data.income_levels
+            ],
+        }
+        return rir, affordable_rent, rir_fields
+
+    rir = rir_stats.DEFAULT_RIR_PERCENT
+    return rir, round(effective_monthly_income * rir / 100, 1), {}
 
 
 def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_rate_percent: float, current_deposit: int) -> dict:
@@ -182,32 +238,9 @@ def run_listing_diagnosis(request) -> dict:
     work_lat, work_lon = _resolve_work_coords(request)
 
     effective_monthly_income = request.effective_monthly_income
-    # 기본값: RIR 통계 파일(docs/RIR.csv)을 못 읽었을 때만 쓰는 소득의 20% (rir_stats.DEFAULT_RIR_PERCENT, 2026-09-28: 30% -> 20%)
-    rir = rir_stats.DEFAULT_RIR_PERCENT
-    affordable_rent = round(effective_monthly_income * rir / 100, 1)
-
-    # 소득 대비 주택임대료 비율(RIR): docs/RIR.csv(국토교통부 주거실태조사)의 수도권 값을 리포트의 주거비 비율로 쓰고, 소득수준별
-    # (하위/중위/상위) 비율마다 "내 월소득 x 비율"로 적정 월세를 따로 계산해 내려준다. 파일이 없으면 위 기본값(20%)을 그대로 쓴다.
-    rir_data = rir_stats.get_rir_stats()
-    rir_fields = {}
-    if rir_data:
-        rir = rir_data.metro_percent
-        # 적정 월세 상한도 수도권 RIR 기준으로 계산한다 (통계 파일이 있을 때. 없으면 위 기본값 20% 기준)
-        affordable_rent = round(effective_monthly_income * rir_data.metro_percent / 100, 1)
-        rir_fields = {
-            "rir_year": rir_data.year,
-            "rir_source": rir_data.source,
-            "rir_monthly_income": round(effective_monthly_income, 1),
-            "rir_metro_affordable_rent": round(effective_monthly_income * rir_data.metro_percent / 100, 1),
-            "rir_overall_percent": rir_data.overall_percent,
-            "rir_by_income": [
-                {
-                    "key": lv.key, "label": lv.label, "rir_percent": lv.rir_percent,
-                    "affordable_rent": round(effective_monthly_income * lv.rir_percent / 100, 1),
-                }
-                for lv in rir_data.income_levels
-            ],
-        }
+    # 소득 대비 주택임대료 비율(RIR): 관리자 수정 > 기준소득관리에 저장된 값이 우선이고, 없으면 docs/RIR.csv(레거시 폴백),
+    # 그것도 없으면 소득의 20%(DEFAULT_RIR_PERCENT) 기본값이다 - _resolve_rir 참고.
+    rir, affordable_rent, rir_fields = _resolve_rir(request, effective_monthly_income)
 
     # 보증금을 월 비용으로 환산하는 이율: 한국부동산원 수도권 전월세 전환율(종합주택) 최신 월 값 (12시간 캐시, 조회 실패 시 대체값)
     deposit_rate = reb_conversion_rate.get_metro_conversion_rate()
@@ -279,8 +312,9 @@ def run_listing_diagnosis(request) -> dict:
         )
         for r in kept:  # 교통비가 없으니 통근시간이 정확해져도 비용은 그대로다 - 매물 상세 정보만 붙인다
             _attach_details(r, listing_by_id[r["listing_id"]])
-            # 관리자 화면에서 저장한 대출 조건으로 이 매물에 신청 가능한 대출을 판별한다 (저장된 대출이 없으면 빈 목록)
-            r["eligible_loans"] = loan_matcher.match_eligible_loans(request, r)
+            # 관리자 화면에서 저장한 대출 조건으로 이 매물에 신청 가능한 대출을 판별한다 (저장된 대출이 없으면 빈 목록).
+            # 대출금리표가 없는 대출의 기본금리는 이 매물 계산에 쓴 것과 같은 기준금리 API 값(deposit_rate)을 그대로 쓴다.
+            r["eligible_loans"] = loan_matcher.match_eligible_loans(request, r, deposit_rate.rate_percent)
         kept.sort(key=lambda r: (r[RANK_COST_KEY], r["listing_id"]))
         return kept
 

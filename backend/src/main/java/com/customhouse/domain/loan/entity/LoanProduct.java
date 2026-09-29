@@ -70,6 +70,13 @@ public class LoanProduct extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String preferences;
 
+    /** 대출금리표 JSON: [[행0(연소득 ~2천만원 이하) 3칸], [행1(2천~4천)], [행2(4천~6천)], [행3(6천~7.5천)]] -
+     * 행은 부부합산 연소득 구간(4개, RateTableService.INCOME_BRACKETS_MANWON 순서 고정), 열은 임차보증금 구간
+     * (3개, DEPOSIT_BRACKETS_MANWON 고정) 순서다. null이면 이 대출은 아직 실제 금리표가 없어 임시 고정금리
+     * (loan_matcher.DEFAULT_BASE_RATE_PERCENT)를 쓴다. */
+    @Column(columnDefinition = "TEXT")
+    private String rateTable;
+
     public static LoanProduct of(LoanType type) {
         LoanProduct p = new LoanProduct();
         p.loanType = type.name();
@@ -78,7 +85,7 @@ public class LoanProduct extends BaseTimeEntity {
 
     public void update(Integer minAge, Integer maxAge, Integer maxIncomeSingle, Integer maxIncomeCouple,
                        Integer maxAsset, Integer maxListingDeposit, Double maxExclusiveArea,
-                       Double maxLoanRatioPercent, Integer maxLoanAmount, String preferences) {
+                       Double maxLoanRatioPercent, Integer maxLoanAmount, String preferences, String rateTable) {
         this.minAge = minAge;
         this.maxAge = maxAge;
         this.maxIncomeSingle = maxIncomeSingle;
@@ -89,5 +96,6 @@ public class LoanProduct extends BaseTimeEntity {
         this.maxLoanRatioPercent = maxLoanRatioPercent;
         this.maxLoanAmount = maxLoanAmount;
         this.preferences = preferences;
+        this.rateTable = rateTable;
     }
 }

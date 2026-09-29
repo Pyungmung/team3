@@ -39,6 +39,11 @@ public class LoanProductService {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final TypeReference<Map<String, LoanPreference>> PREFERENCES_TYPE = new TypeReference<>() {
     };
+    private static final TypeReference<List<List<Double>>> RATE_TABLE_TYPE = new TypeReference<>() {
+    };
+    /** 대출금리표 크기: 부부합산 연소득 4구간(행) x 임차보증금 3구간(열) - loan_matcher.py의 구간 정의와 짝을 맞춰야 한다. */
+    private static final int RATE_TABLE_ROWS = 4;
+    private static final int RATE_TABLE_COLS = 3;
 
     private final LoanProductRepository loanProductRepository;
     private final LoanReferenceLinkRepository loanReferenceLinkRepository;
@@ -74,7 +79,8 @@ public class LoanProductService {
         LoanProduct product = loanProductRepository.findByLoanType(type.name()).orElseGet(() -> LoanProduct.of(type));
         product.update(request.minAge(), request.maxAge(), request.maxIncomeSingle(), request.maxIncomeCouple(),
                 request.maxAsset(), request.maxListingDeposit(), request.maxExclusiveArea(),
-                request.maxLoanRatioPercent(), request.maxLoanAmount(), serialize(request.preferences()));
+                request.maxLoanRatioPercent(), request.maxLoanAmount(), serialize(request.preferences()),
+                serializeRateTable(request.rateTable()));
         LoanProduct saved = loanProductRepository.save(product);
         String url = loanReferenceLinkRepository.findByLoanType(type.name()).map(LoanReferenceLink::getReferenceUrl).orElse(null);
         return toResponse(type, saved, url);
@@ -127,6 +133,22 @@ public class LoanProductService {
                 }
             }
         }
+        if (request.rateTable() != null) {
+            List<List<Double>> table = request.rateTable();
+            if (table.size() != RATE_TABLE_ROWS) {
+                throw new CustomException(ErrorCode.VALIDATION_ERROR, "대출금리표는 연소득 구간 4행이어야 합니다.");
+            }
+            for (List<Double> row : table) {
+                if (row == null || row.size() != RATE_TABLE_COLS) {
+                    throw new CustomException(ErrorCode.VALIDATION_ERROR, "대출금리표는 임차보증금 구간 3열이어야 합니다.");
+                }
+                for (Double rate : row) {
+                    if (rate == null || rate < 0 || rate > 15) {
+                        throw new CustomException(ErrorCode.VALIDATION_ERROR, "대출금리는 0~15% 사이로 입력해주세요.");
+                    }
+                }
+            }
+        }
     }
 
     /** 우대사항 전체를 정해진 순서로 모두 채워 JSON으로 저장한다 (클라이언트가 보낸 다른 값은 저장하지 않는다). */
@@ -145,7 +167,9 @@ public class LoanProductService {
             LoanPreference p = source == null ? null : source.get(key.name());
             result.put(key.name(), p == null
                     ? LoanPreference.EMPTY
-                    : new LoanPreference(p.required(), p.discount() == null ? 0.0 : p.discount()));
+                    : new LoanPreference(p.required(), p.discount() == null ? 0.0 : p.discount(),
+                            p.overrideMaxListingDeposit(), p.overrideMaxIncomeSingle(),
+                            p.overrideMaxIncomeCouple(), p.overrideMaxLoanAmount(), p.overrideMaxLoanRatioPercent()));
         }
         return result;
     }
@@ -162,14 +186,39 @@ public class LoanProductService {
         }
     }
 
+    /** null이면 그대로 null(아직 금리표 없음 - 임시 고정금리 사용), 있으면 JSON으로 직렬화한다. */
+    private static String serializeRateTable(List<List<Double>> rateTable) {
+        if (rateTable == null) {
+            return null;
+        }
+        try {
+            return JSON.writeValueAsString(rateTable);
+        } catch (JacksonException e) {
+            throw new CustomException(ErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    private static List<List<Double>> deserializeRateTable(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return JSON.readValue(json, RATE_TABLE_TYPE);
+        } catch (JacksonException e) {
+            log.warn("저장된 대출금리표 JSON을 읽지 못해 임시 고정금리로 대체합니다: {}", e.getOriginalMessage());
+            return null;
+        }
+    }
+
     private static LoanProductResponse toResponse(LoanType type, LoanProduct p, String referenceUrl) {
         return new LoanProductResponse(type.name(), type.getLabel(), type.getLeaseType(), true, p.getMinAge(), p.getMaxAge(),
                 p.getMaxIncomeSingle(), p.getMaxIncomeCouple(), p.getMaxAsset(), p.getMaxListingDeposit(), p.getMaxExclusiveArea(),
-                p.getMaxLoanRatioPercent(), p.getMaxLoanAmount(), deserialize(p.getPreferences()), p.getUpdatedAt(), referenceUrl);
+                p.getMaxLoanRatioPercent(), p.getMaxLoanAmount(), deserialize(p.getPreferences()), deserializeRateTable(p.getRateTable()),
+                p.getUpdatedAt(), referenceUrl);
     }
 
     private static LoanProductResponse emptyResponse(LoanType type, String referenceUrl) {
         return new LoanProductResponse(type.name(), type.getLabel(), type.getLeaseType(), false, null, null, null, null, null, null, null,
-                null, null, normalize(null), null, referenceUrl);
+                null, null, normalize(null), null, null, referenceUrl);
     }
 }
