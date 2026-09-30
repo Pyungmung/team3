@@ -330,7 +330,13 @@ def run_diagnosis(request) -> dict:
 
     market_loan_rate_monthly = MARKET_LOAN_RATE_ANNUAL_PERCENT / 12 / 100
 
+    # 2026-09-30: 후보 전체(많으면 수만 건)마다 아래 26개 필드짜리 dict를 바로 만들지 않는다 -
+    # listing_recommender.py와 같은 이유로 Render 무료 인스턴스 512MB 한도에서 실제 OOM이 났다
+    # (DATA_GO_KR_API_KEY로 실거래 조회가 켜지면서 후보 수가 커진 뒤 발견). 순위 계산에 필요한
+    # real_housing_cost만 먼저 담은 가벼운 레코드로 랭킹하고, top_n으로 추려진 뒤에만(_expand)
+    # 나머지 필드를 채운다. candidate_context가 그 복원에 필요한 값을 보관한다.
     results = []
+    candidate_context: dict[int, tuple] = {}
     seen_buildings: set[tuple] = set()
 
     # 선호 주택 유형: 일부 유형만 선택했으면 그 유형의 매물만 추천한다. 비어 있거나 4종을 다 골랐거나
@@ -445,42 +451,19 @@ def run_diagnosis(request) -> dict:
                 and building["deposit"] / building["monthly_rent"] >= SEMI_JEONSE_RATIO_THRESHOLD
             )
 
-            results.append(
-                {
-                    "region": region.name,
-                    "property_type": building["property_type"],
-                    "building_name": building["building_name"],
-                    "dong": building["dong"],
-                    # 아래 4개는 최종 추천 목록으로 추려진 뒤 resolve_addresses()가 "address"/
-                    # "building_name"을 채우거나 보완하는 데 쓰는 중간 필드다 (원본 후보 전체에
-                    # 대해 미리 하지 않는 이유는 api_collector.fetch_candidate_buildings 주의사항 참고).
-                    "unnamed": building["unnamed"],
-                    "road_address": building["road_address"],
-                    "jibun_address": building["jibun_address"],
-                    "jibun_search_keyword": building["jibun_search_keyword"],
-                    "lat": None,  # resolve_coordinates()가 지오코딩 성공 시 채운다 (실패/미설정이면 None 유지)
-                    "lon": None,
-                    "exclusive_area": building["exclusive_area"],
-                    "floor": building["floor"],
-                    "deal_date": building["deal_date"],
-                    "lease_type": building["lease_type"],  # "전세" | "월세"
-                    "is_semi_jeonse": is_semi_jeonse,  # 월세인데 보증금이 커서 반전세 성격인 매물
-                    "commute_minutes": commute,
-                    "commute_source": commute_source,  # 보통 카카오 API 실측, API가 막히면 ESTIMATE_SOURCE_LABEL(비상용 추정)
-                    "listing_deposit": building["deposit"],       # 그 매물의 실제 보증금 (실거래가 원본)
-                    "listing_monthly_rent": building["monthly_rent"],  # 그 매물의 실제 월세 (실거래가 원본, 보증금 전환 적용 전)
-                    "rent": rent,
-                    "maintenance_fee": maintenance_fee,
-                    "loan_interest": loan_interest,
-                    "transportation_cost": transportation_cost,
-                    "government_support": government_support,
-                    "real_housing_cost": real_housing_cost,
-                    "baseline_cost": baseline_cost,
-                    "monthly_savings": monthly_savings,
-                    "matched_policies": matched_policies,
-                    "data_source": data_source,
-                }
+            cand_id = len(candidate_context)
+            candidate_context[cand_id] = (
+                building, region.name, commute, commute_source, transportation_cost,
+                matched_policies, data_source, rent, maintenance_fee, loan_interest,
+                government_support, real_housing_cost, baseline_cost, is_semi_jeonse,
             )
+            results.append({
+                "id": cand_id,
+                "region": region.name,
+                "lease_type": building["lease_type"],  # "전세" | "월세" - 아래서 lease_type별로 나누는 데만 쓰인다
+                "real_housing_cost": real_housing_cost,
+                "monthly_savings": monthly_savings,
+            })
 
     # data_analysis.py(pandas)에서 절감액이 있는 매물만 골라 실질 주거비 오름차순으로 상위 N개 선별.
     # 전세/월세는 실질 주거비의 구성이 달라(전세는 월세=0) 한 목록에 섞으면 비교가 이상해지므로
@@ -508,6 +491,53 @@ def run_diagnosis(request) -> dict:
     # (전세는 예전에 이 필터 때문에 추천이 항상 0건이었다).
     wolse_recommendations = data_analysis.rank_by_real_cost(wolse_results, top_n=TOP_N, require_savings=False)
     jeonse_recommendations = data_analysis.rank_by_real_cost(jeonse_results, top_n=TOP_N, require_savings=False)
+
+    # 랭킹이 끝나 top_n(최대 TOP_N x 2)으로 추려진 뒤에야 candidate_context에서 나머지 필드를 채운다
+    # (results.append() 자리의 주석 참고 - 후보 전체에 미리 만들지 않는 이유).
+    def _expand(ranked: list[dict]) -> list[dict]:
+        out = []
+        for r in ranked:
+            (building, region_name, commute, commute_source, transportation_cost, matched_policies,
+             data_source, rent, maintenance_fee, loan_interest, government_support, real_housing_cost,
+             baseline_cost, is_semi_jeonse) = candidate_context[r["id"]]
+            out.append({
+                "region": region_name,
+                "property_type": building["property_type"],
+                "building_name": building["building_name"],
+                "dong": building["dong"],
+                # 아래 4개는 최종 추천 목록으로 추려진 뒤 resolve_addresses()가 "address"/
+                # "building_name"을 채우거나 보완하는 데 쓰는 중간 필드다 (원본 후보 전체에
+                # 대해 미리 하지 않는 이유는 api_collector.fetch_candidate_buildings 주의사항 참고).
+                "unnamed": building["unnamed"],
+                "road_address": building["road_address"],
+                "jibun_address": building["jibun_address"],
+                "jibun_search_keyword": building["jibun_search_keyword"],
+                "lat": None,  # resolve_coordinates()가 지오코딩 성공 시 채운다 (실패/미설정이면 None 유지)
+                "lon": None,
+                "exclusive_area": building["exclusive_area"],
+                "floor": building["floor"],
+                "deal_date": building["deal_date"],
+                "lease_type": building["lease_type"],  # "전세" | "월세"
+                "is_semi_jeonse": is_semi_jeonse,  # 월세인데 보증금이 커서 반전세 성격인 매물
+                "commute_minutes": commute,
+                "commute_source": commute_source,  # 보통 카카오 API 실측, API가 막히면 ESTIMATE_SOURCE_LABEL(비상용 추정)
+                "listing_deposit": building["deposit"],       # 그 매물의 실제 보증금 (실거래가 원본)
+                "listing_monthly_rent": building["monthly_rent"],  # 그 매물의 실제 월세 (실거래가 원본, 보증금 전환 적용 전)
+                "rent": rent,
+                "maintenance_fee": maintenance_fee,
+                "loan_interest": loan_interest,
+                "transportation_cost": transportation_cost,
+                "government_support": government_support,
+                "real_housing_cost": real_housing_cost,
+                "baseline_cost": baseline_cost,
+                "monthly_savings": r["monthly_savings"],
+                "matched_policies": matched_policies,
+                "data_source": data_source,
+            })
+        return out
+
+    wolse_recommendations = _expand(wolse_recommendations)
+    jeonse_recommendations = _expand(jeonse_recommendations)
 
     # 주소(juso_api.py) 변환은 여기, 즉 예산 필터링·정렬·top_n까지 끝난 "최종 추천 목록"에만
     # 한다 - 원본 후보 전체(지역당 최대 수천 건)에 대해 하면 통근범위가 넓은 진단 1건이 juso.go.kr에
