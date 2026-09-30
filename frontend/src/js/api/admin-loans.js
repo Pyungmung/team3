@@ -2,7 +2,7 @@
  * [담당: 송귀성] API 통신 - 관리자 수정 > 전세자금대출 조건
  * 연동 대상 백엔드: domain/loan (AdminLoanController, /api/admin/loans) - 관리자(ADMIN) JWT만 접근 가능
  */
-const ADMIN_LOANS_API_BASE = "http://localhost:8080/api/admin/loans";
+const ADMIN_LOANS_API_BASE = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api/admin/loans`;
 
 /** Authorization 헤더를 자동으로 붙이고, 401이면 refreshToken으로 한 번 재시도한다. (watchlist.js와 동일한 패턴) */
 async function adminLoansFetch(url, options = {}) {

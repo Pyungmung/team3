@@ -12,7 +12,7 @@
 
   <script>
     const CUSTOMER_SUPPORT_EMAIL = "rnltjd747@gmail.com";
-    const SUPPORT_API_BASE = "http://localhost:8080/api/support";
+    const SUPPORT_API_BASE = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api/support`;
 
     // 직장 위치 주소검색(카카오 Geocoder)용 SDK. 키가 없으면 불러오지 않고 아래 스크립트가 드롭다운 UI로 폴백한다.
     if (window.CUSTOMHOUSE_CONFIG?.KAKAO_MAP_APP_KEY) {

@@ -2,7 +2,7 @@
  * [담당: 양혜승] API 통신 - 마이페이지 (조건 설정)
  * 연동 대상 백엔드: domain/mypage (담당: 황진구) - /api/mypage/condition (JWT 인증 필요)
  */
-const MYPAGE_API_BASE = "http://localhost:8080/api/mypage";
+const MYPAGE_API_BASE = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api/mypage`;
 
 /** Authorization 헤더를 자동으로 붙이고, 401이면 refreshToken으로 한 번 재시도한다. */
 async function mypageFetch(url, options = {}) {

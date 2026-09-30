@@ -2,7 +2,7 @@
  * [담당: 양혜승] API 통신 - 마이페이지 회원정보 (조회/수정/비밀번호 변경/알림 설정)
  * 연동 대상 백엔드: domain/user (담당: 허겸) - /api/users/me/** (JWT 인증 필요), domain/mypage - 알림 수신 여부
  */
-const USER_API_BASE = "http://localhost:8080/api/users";
+const USER_API_BASE = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api/users`;
 const USER_NICKNAME_CACHE_KEY = "customhouse:nicknameCache"; // header.js와 같은 키 (헤더 닉네임 캐시)
 
 /** Authorization 헤더를 붙이고 401이면 refreshToken으로 한 번 재시도한다. 실패 시 status/code가 담긴 Error를 던진다. */
