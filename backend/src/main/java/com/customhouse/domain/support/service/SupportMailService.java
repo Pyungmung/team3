@@ -3,37 +3,27 @@ package com.customhouse.domain.support.service;
 import com.customhouse.domain.listing.dto.ListingReportRequest;
 import com.customhouse.domain.support.dto.InquiryRequest;
 import com.customhouse.domain.support.dto.PolicyCorrectionRequest;
-import com.customhouse.global.error.CustomException;
-import com.customhouse.global.error.ErrorCode;
+import com.customhouse.global.mail.MailClient;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
 /**
  * [담당: 미정] 고객센터 - 이메일 문의를 관리자 메일함(support.receiver-email)으로 전달한다.
- * 실제 발송에는 backend/.env의 MAIL_USERNAME/MAIL_APP_PASSWORD(Gmail 앱 비밀번호)가 필요하다.
- * 값이 비어 있으면 발송 시 MAIL_SEND_FAILED 예외가 발생한다 (.env.example 참고).
+ * 실제 발송은 global/mail/MailClient(SendGrid HTTP API)가 한다 - backend/.env의
+ * SENDGRID_API_KEY/SENDGRID_FROM_EMAIL이 필요하다. 값이 비어 있으면 발송 시 MAIL_SEND_FAILED
+ * 예외가 발생한다 (.env.example 참고).
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SupportMailService {
 
-    private final JavaMailSender mailSender;
+    private final MailClient mailClient;
 
     @Value("${support.receiver-email}")
     private String receiverEmail;
-
-    // Gmail은 From 헤더가 없거나 인증 계정과 다르면 조용히 발신을 거부/드롭한다 (에러 없이 안 옴).
-    // 그래서 From을 SMTP 인증 계정(spring.mail.username)으로 명시한다.
-    @Value("${spring.mail.username}")
-    private String senderEmail;
 
     /** 정정 유형 코드 -> 메일에 쓰는 한글 문구 (제목에 클라이언트 문구가 그대로 들어가지 않게 서버가 정한다). */
     private static final Map<String, String> CORRECTION_TYPE_LABELS = Map.of(
@@ -64,12 +54,8 @@ public class SupportMailService {
         String typeLabel = CORRECTION_TYPE_LABELS.getOrDefault(request.correctionType(), "기타");
         String policyName = oneLine(request.policyName(), 60);
 
-        SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setFrom(senderEmail);
-        mail.setTo(receiverEmail);
-        mail.setReplyTo(request.email());
-        mail.setSubject("[맞집 정책정보 정정신고] " + typeLabel + (policyName.isEmpty() ? "" : " - " + policyName));
-        mail.setText("""
+        String subject = "[맞집 정책정보 정정신고] " + typeLabel + (policyName.isEmpty() ? "" : " - " + policyName);
+        String text = """
                 신고자: %s <%s>
                 정정 유형: %s
 
@@ -86,14 +72,9 @@ public class SupportMailService {
                 oneLine(request.name(), 50), request.email(), typeLabel,
                 oneLine(request.policyId(), 40), policyName, oneLine(request.policyAgency(), 100),
                 oneLine(request.policyRegion(), 30), oneLine(request.currentDescription(), 500),
-                request.message()));
+                request.message());
 
-        try {
-            mailSender.send(mail);
-        } catch (MailException e) {
-            log.error("정책정보 정정신고 메일 발송 실패 (신고자: {})", request.email(), e);
-            throw new CustomException(ErrorCode.MAIL_SEND_FAILED);
-        }
+        mailClient.send(receiverEmail, subject, text, request.email());
     }
 
     /**
@@ -104,12 +85,8 @@ public class SupportMailService {
                                   ListingReportRequest request, long totalReports) {
         String typeLabel = LISTING_REPORT_TYPE_LABELS.getOrDefault(request.reportType(), "기타");
 
-        SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setFrom(senderEmail);
-        mail.setTo(receiverEmail);
-        mail.setReplyTo(replyToEmail);
-        mail.setSubject("[맞집 허위매물 신고] " + typeLabel + " - " + oneLine(listingId, 40));
-        mail.setText("""
+        String subject = "[맞집 허위매물 신고] " + typeLabel + " - " + oneLine(listingId, 40);
+        String text = """
                 신고자: %s <%s>
                 신고 유형: %s
                 이 매물의 누적 신고: %d건
@@ -127,33 +104,19 @@ public class SupportMailService {
                 oneLine(request.leaseType(), 10),
                 request.deposit() == null ? "-" : request.deposit(),
                 request.monthlyRent() == null ? "-" : request.monthlyRent(),
-                request.message()));
+                request.message());
 
-        try {
-            mailSender.send(mail);
-        } catch (MailException e) {
-            log.error("허위매물 신고 메일 발송 실패 (매물: {}, 신고자: {})", listingId, replyToEmail, e);
-            throw new CustomException(ErrorCode.MAIL_SEND_FAILED);
-        }
+        mailClient.send(receiverEmail, subject, text, replyToEmail);
     }
 
     public void sendInquiry(InquiryRequest request) {
-        SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setFrom(senderEmail);
-        mail.setTo(receiverEmail);
-        mail.setReplyTo(request.email());
-        mail.setSubject("[맞집 고객센터 문의] " + request.name());
-        mail.setText("""
+        String subject = "[맞집 고객센터 문의] " + request.name();
+        String text = """
                 문의자: %s <%s>
 
                 %s
-                """.formatted(request.name(), request.email(), request.message()));
+                """.formatted(request.name(), request.email(), request.message());
 
-        try {
-            mailSender.send(mail);
-        } catch (MailException e) {
-            log.error("고객센터 문의 메일 발송 실패 (문의자: {})", request.email(), e);
-            throw new CustomException(ErrorCode.MAIL_SEND_FAILED);
-        }
+        mailClient.send(receiverEmail, subject, text, request.email());
     }
 }

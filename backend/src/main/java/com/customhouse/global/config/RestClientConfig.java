@@ -34,4 +34,12 @@ public class RestClientConfig {
                 .requestFactory(requestFactory)
                 .build();
     }
+
+    /** [담당: 허겸] SendGrid HTTP API(이메일 발송)용 RestClient. global/mail/MailClient.java 참고. */
+    @Bean
+    public RestClient sendgridRestClient() {
+        return RestClient.builder()
+                .baseUrl("https://api.sendgrid.com")
+                .build();
+    }
 }
