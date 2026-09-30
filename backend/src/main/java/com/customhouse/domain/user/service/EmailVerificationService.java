@@ -5,12 +5,8 @@ import com.customhouse.domain.user.repository.EmailVerificationRepository;
 import com.customhouse.domain.user.repository.UserRepository;
 import com.customhouse.global.error.CustomException;
 import com.customhouse.global.error.ErrorCode;
+import com.customhouse.global.mail.MailClient;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * [담당: 허겸] 회원 도메인 - 이메일 인증번호 발송/확인 (회원가입 이메일 인증, 비밀번호 재설정 공용)
- * SupportMailService와 같은 방식(JavaMailSender + SimpleMailMessage)으로 메일을 보낸다.
+ * SupportMailService와 같은 방식(global/mail/MailClient, SendGrid HTTP API)으로 메일을 보낸다.
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailVerificationService {
@@ -33,10 +28,7 @@ public class EmailVerificationService {
 
     private final EmailVerificationRepository emailVerificationRepository;
     private final UserRepository userRepository;
-    private final JavaMailSender mailSender;
-
-    @Value("${spring.mail.username}")
-    private String senderEmail;
+    private final MailClient mailClient;
 
     @Transactional
     public void sendSignupCode(String email) {
@@ -66,18 +58,8 @@ public class EmailVerificationService {
                         .build()
         );
 
-        SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setFrom(senderEmail);
-        mail.setTo(email);
-        mail.setSubject(subject);
-        mail.setText("인증번호는 [%s] 입니다.\n%d분 안에 입력해주세요.".formatted(code, CODE_TTL_MINUTES));
-
-        try {
-            mailSender.send(mail);
-        } catch (MailException e) {
-            log.error("이메일 인증번호 발송 실패 (이메일: {}, 용도: {})", email, purpose, e);
-            throw new CustomException(ErrorCode.MAIL_SEND_FAILED);
-        }
+        String text = "인증번호는 [%s] 입니다.\n%d분 안에 입력해주세요.".formatted(code, CODE_TTL_MINUTES);
+        mailClient.send(email, subject, text, null);
     }
 
     /** 인증번호를 확인하고, 맞으면 verified 처리한다. 비밀번호 재설정은 이 호출 직후 바로 비밀번호를 반영한다. */
