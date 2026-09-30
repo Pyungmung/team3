@@ -3,7 +3,7 @@
  * 연동 대상 백엔드: domain/incomestandard (AdminIncomeStandardController, /api/admin/income-standard) - 관리자(ADMIN) JWT만 접근 가능
  * admin-loans.js와 같은 fetch/401 재시도/에러 변환 패턴을 이 파일에서 그대로 다시 구현한다 (헬퍼가 짧아 공용 모듈로 분리하는 것보다 중복이 낫다고 판단).
  */
-const ADMIN_INCOME_STANDARD_API_BASE = "http://localhost:8080/api/admin/income-standard";
+const ADMIN_INCOME_STANDARD_API_BASE = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api/admin/income-standard`;
 
 /** Authorization 헤더를 자동으로 붙이고, 401이면 refreshToken으로 한 번 재시도한다. (admin-loans.js와 동일한 패턴) */
 async function adminIncomeStandardFetch(url, options = {}) {

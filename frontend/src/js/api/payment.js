@@ -2,7 +2,7 @@
  * [담당: 양혜승] API 통신 - 토스페이먼츠 결제 연동
  * 연동 대상 백엔드: domain/payment (담당: 황진구) - /api/payments/** (JWT 인증 필요)
  */
-const PAYMENT_API_BASE = "http://localhost:8080/api/payments";
+const PAYMENT_API_BASE = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api/payments`;
 
 /** Authorization 헤더를 자동으로 붙이고, 401이면 refreshToken으로 한 번 재시도한다. (mypage.js와 동일한 패턴) */
 async function paymentFetch(url, options = {}) {

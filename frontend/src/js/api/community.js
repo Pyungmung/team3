@@ -4,7 +4,7 @@
  * 조회(GET)는 비로그인도 가능하고, 로그인 상태면 토큰을 함께 보내 내 글/좋아요/스크랩/투표 여부를 받는다.
  * 쓰기 API는 로그인이 필요하다 (토큰이 없으면 요청 없이 UNAUTHORIZED 에러).
  */
-const COMMUNITY_API_ROOT = "http://localhost:8080/api";
+const COMMUNITY_API_ROOT = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api`;
 
 const COMMUNITY_CATEGORIES = [
   { key: "HOUSING", label: "집 구하기 고민", desc: "매물 비교, 계약 전 고민을 나눠요" },

@@ -3,7 +3,7 @@
  * 연동 대상 백엔드: domain/user (담당: 허겸) - /api/auth/**
  * CLAUDE.md 컨벤션: JWT는 로그인 시 발급 → localStorage 저장 → Authorization 헤더로 전송.
  */
-const AUTH_API_BASE = "http://localhost:8080/api/auth";
+const AUTH_API_BASE = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api/auth`;
 const ACCESS_TOKEN_KEY = "customhouse:accessToken";
 const REFRESH_TOKEN_KEY = "customhouse:refreshToken";
 
@@ -118,7 +118,7 @@ function loginWithNaver() {
   // 백엔드 SecurityConfig가 등록한 네이버 OAuth2 로그인 진입점으로 이동.
   // 로그인 성공 시 backend/src/main/resources/application.yml의 oauth2.success-redirect-url(oauth-callback.html)로
   // accessToken/refreshToken을 쿼리 파라미터에 담아 되돌려준다.
-  window.location.href = "http://localhost:8080/oauth2/authorization/naver";
+  window.location.href = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/oauth2/authorization/naver`;
 }
 
 function saveTokens({ accessToken, refreshToken }) {

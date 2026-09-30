@@ -7,7 +7,7 @@
  */
 const HEADER_ACCESS_TOKEN_KEY = "customhouse:accessToken";
 const HEADER_NICKNAME_CACHE_KEY = "customhouse:nicknameCache";
-const HEADER_USER_ME_URL = "http://localhost:8080/api/users/me";
+const HEADER_USER_ME_URL = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api/users/me`;
 
 function renderHeader(activeMenu = "") {
   const el = document.getElementById("app-header");
