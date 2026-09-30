@@ -139,6 +139,21 @@ def _resolve_rir(request, effective_monthly_income: float) -> tuple[float, float
     return rir, round(effective_monthly_income * rir / 100, 1), {}
 
 
+def _rank_cost(listing: dict, deposit_rate_percent: float) -> float:
+    """_to_result()의 deposit_converted_cost(순위 기준값, RANK_COST_KEY)만 떼어낸 가벼운 버전.
+    후보 전체(자치구 통근권 안 매물 전부, 많으면 수만 건)에 매번 _to_result()의 나머지 20여 개
+    필드(브로커, 참고 실거래, 통근시간 재계산용 좌표 등)까지 만들면 순위에서 떨어질 후보에도
+    똑같이 메모리를 쓰게 된다(2026-09-30: Render 무료 인스턴스 512MB 한도로 실제 OOM 발생 확인).
+    juso_api/kakao_geocode의 "최종 목록에만" 원칙과 같은 이유로, 순위를 매기는 이 값만 먼저
+    계산해 두고 _to_result()는 랭킹이 끝나 top_n으로 추려진 뒤에만 부른다(run_listing_diagnosis
+    참고)."""
+    rent = listing["monthly_rent"] or 0
+    deposit = listing["deposit"] or 0
+    maintenance_fee = listing["maintenance_fee"] or 0
+    deposit_opportunity_cost = round(deposit * deposit_rate_percent / 100 / 12, 1)
+    return round(rent + maintenance_fee + deposit_opportunity_cost, 1)
+
+
 def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_rate_percent: float, current_deposit: int) -> dict:
     rent = listing["monthly_rent"] or 0
     deposit = listing["deposit"] or 0
@@ -296,13 +311,33 @@ def run_listing_diagnosis(request) -> dict:
                 continue
 
             total_candidates += 1
-            result = _to_result(listing, region_commute, commute_source, deposit_rate.rate_percent, request.deposit)
-            listing_by_id[listing["listing_id"]] = listing
-            (wolse_results if listing["lease_type"] == "월세" else jeonse_results).append(result)
+            listing_id = listing["listing_id"]
+            listing_by_id[listing_id] = listing
+            # 순위 산출에 필요한 값만 담은 가벼운 레코드 (전체 필드는 top_n으로 추려진 뒤 _expand에서 채운다).
+            lightweight = {
+                "listing_id": listing_id,
+                "region": listing["region"],
+                RANK_COST_KEY: _rank_cost(listing, deposit_rate.rate_percent),
+                "monthly_savings": 0,  # rank_by_real_cost의 동점자 2차 기준. 여기선 항상 0(_to_result와 동일).
+                "commute_minutes": region_commute,
+                "commute_source": commute_source,
+            }
+            (wolse_results if listing["lease_type"] == "월세" else jeonse_results).append(lightweight)
 
     # 월세/전세 각각 보증금전환 실질거주비 낮은 순 상위 N (절감 기준이 없으니 require_savings=False)
     wolse = data_analysis.rank_by_real_cost(wolse_results, top_n=TOP_N, require_savings=False, cost_key=RANK_COST_KEY)
     jeonse = data_analysis.rank_by_real_cost(jeonse_results, top_n=TOP_N, require_savings=False, cost_key=RANK_COST_KEY)
+
+    # 랭킹이 끝나 top_n(최대 TOP_N x 2)으로 추려진 뒤에야 _to_result()로 나머지 필드(브로커/좌표 등)를 채운다.
+    def _expand(ranked: list[dict]) -> list[dict]:
+        return [
+            _to_result(listing_by_id[r["listing_id"]], r["commute_minutes"], r["commute_source"],
+                       deposit_rate.rate_percent, request.deposit)
+            for r in ranked
+        ]
+
+    wolse = _expand(wolse)
+    jeonse = _expand(jeonse)
 
     # 최종 목록만 매물 자신의 좌표로 통근시간을 정확히 다시 계산 (CSV에 좌표가 있으므로 지오코딩은 없다)
     def _refine(recommendations: list[dict]) -> list[dict]:
