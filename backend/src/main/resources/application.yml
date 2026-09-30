@@ -71,9 +71,11 @@ admin:
   email: ${ADMIN_EMAIL:admin@admin.com}
   password: ${ADMIN_PASSWORD:}
 
-# 로그인 성공 후 JWT를 담아 되돌려보낼 프론트엔드 콜백 페이지
+# 로그인 성공 후 JWT를 담아 되돌려보낼 프론트엔드 콜백 페이지.
+# frontend/serve.py가 frontend/ 전체를 루트로 서빙하므로 실제 파일 경로(frontend/src/pages/...)와
+# 맞추려면 /src/가 붙어야 한다. 배포 환경은 OAUTH2_SUCCESS_REDIRECT_URL로 프론트 배포 주소를 넣는다.
 oauth2:
-  success-redirect-url: http://localhost:3000/pages/auth/oauth-callback.html
+  success-redirect-url: ${OAUTH2_SUCCESS_REDIRECT_URL:http://localhost:3000/src/pages/auth/oauth-callback.html}
 
 # [담당: 황진구] 토스페이먼츠 연동 (안심 매물 리포트 단건 결제 / 맞집 프리미엄 월 구독)
 # 기본값은 토스페이먼츠 공식 샘플(tosspayments/tosspayments-sample)에 공개된 테스트 키입니다.
