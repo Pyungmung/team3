@@ -2,9 +2,10 @@
  * [담당: 양혜승] API 통신 - 관심 매물(WatchList) & 알림
  * 연동 대상 백엔드: domain/watchlist, domain/notification (담당: 김시연) - JWT 인증 필요
  */
-const WATCHLIST_API_BASE = "http://localhost:8080/api/watchlist";
-const NOTIFICATION_API_BASE = "http://localhost:8080/api/notifications";
-const LISTING_API_BASE = "http://localhost:8080/api/listings";
+const WATCHLIST_ORIGIN = ["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com";
+const WATCHLIST_API_BASE = `${WATCHLIST_ORIGIN}/api/watchlist`;
+const NOTIFICATION_API_BASE = `${WATCHLIST_ORIGIN}/api/notifications`;
+const LISTING_API_BASE = `${WATCHLIST_ORIGIN}/api/listings`;
 
 /** Authorization 헤더를 자동으로 붙이고, 401이면 refreshToken으로 한 번 재시도한다. (mypage.js와 동일한 패턴) */
 async function watchlistFetch(url, options = {}) {

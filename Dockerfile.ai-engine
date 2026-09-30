@@ -1,0 +1,21 @@
+# Render 배포용 Dockerfile (AI 엔진 FastAPI, customhouse-ai/).
+# backend(Spring Boot)와 frontend(정적 HTML/JS)는 별도 배포 대상이라 여기 포함하지 않는다.
+# backend/Dockerfile(루트의 Dockerfile)과 짝을 이루는 파일 - 빌드 컨텍스트는 이 파일과 마찬가지로 저장소 루트다.
+
+FROM python:3.13-slim
+WORKDIR /app
+
+# 프로젝트 파일 복사 (customhouse-ai 모듈만 - .dockerignore로 .env/.venv 등도 차단됨)
+COPY customhouse-ai/ .
+
+# 더미 매물 CSV(docs/samples/dummyhouses)는 저장소 루트 docs/ 밑에 있어 customhouse-ai/ 밖이다.
+# 로컬 실행은 app/core/config.py가 상대 경로(parents[3])로 저장소 루트의 docs/를 그대로 찾지만,
+# 이 이미지는 customhouse-ai/만 복사해 그 상위 경로가 없다 - 그래서 따로 복사하고, Render 환경변수
+# DUMMY_HOUSES_DIR=/app/docs/samples/dummyhouses 로 config.py가 이 경로를 보게 해야 한다.
+COPY docs/samples/dummyhouses ./docs/samples/dummyhouses
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Render는 PORT 환경변수로 실제 포트를 지정해 준다 (미지정 시 로컬 기본값 8000).
+EXPOSE 8000
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

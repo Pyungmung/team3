@@ -1,7 +1,9 @@
-# Dockerfile이 backend/만 COPY하지만, .dockerignore가 없으면 로컬에서 빌드할 때
-# 이 폴더 전체(.venv 등)를 빌드 컨텍스트로 다 읽어 보낸다.
-# backend/.env(실제 비밀키)가 로컬에 있을 경우 이미지에 같이 구워지는 걸 막는 게 핵심이다.
+# Dockerfile(백엔드)과 Dockerfile.ai-engine(AI엔진)이 이 저장소 루트를 빌드 컨텍스트로 같이 쓴다.
+# .dockerignore가 없으면 로컬에서 빌드할 때 이 폴더 전체(.venv 등)를 빌드 컨텍스트로 다 읽어 보낸다.
+# backend/.env·customhouse-ai/.env(실제 비밀키)가 로컬에 있을 경우 이미지에 같이 구워지는 걸 막는 게 핵심이다.
 # (Render는 git 클론본으로 빌드하므로 .env 자체가 없지만, 로컬 docker build 대비 안전장치)
+# 주의: 두 Dockerfile이 이 파일을 공유하므로, 한쪽 이미지에만 필요한 폴더(backend/ 또는 customhouse-ai/)를
+# 통째로 무시하면 안 된다 - 그 폴더가 COPY 대상인 다른 이미지의 빌드가 깨진다. 대신 용량이 큰 하위 폴더만 콕 집어 무시한다.
 
 .git
 
@@ -9,14 +11,19 @@
 backend/.env
 backend/target
 
-# 프론트엔드 - 이 이미지(백엔드)와 무관
+# AI 엔진 - 실제 비밀키/가상환경은 이미지에 포함 금지 (.venv는 특히 용량이 크다)
+customhouse-ai/.env
+customhouse-ai/.venv
+customhouse-ai/tests
+
+# 프론트엔드 - 백엔드/AI엔진 이미지 어느 쪽에도 필요 없음
 frontend/
 
-# AI 엔진 - 이 이미지(백엔드)와 무관, .venv는 특히 용량이 크다
-customhouse-ai/
-
-# 기타
-docs/
+# 기타 - docs/는 통째로 무시하지 않는다: AI엔진 이미지가 docs/samples/dummyhouses(더미 매물 CSV)를
+# 써야 해서(Dockerfile.ai-engine 참고). 대신 이미지에 불필요한 하위 항목만 개별적으로 제외한다.
+docs/DATABASE.md
+docs/DB구조도.html
+docs/db-export
 **/__pycache__/
 **/*.class
 **/node_modules/

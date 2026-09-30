@@ -4,7 +4,7 @@
  * POST /api/recommendation/diagnosis (국토부 실거래가 기준 리포트) 와
  * POST /api/recommendation/diagnosis/listings (더미 매물 기반 추천 리포트, 2026-09-28) 를 호출한다.
  */
-const RECOMMENDATION_API_BASE = "http://localhost:8080/api";
+const RECOMMENDATION_API_BASE = `${["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com"}/api`;
 
 /**
  * 사용자 주거 조건을 서버로 보내 진단 결과를 받아온다.
