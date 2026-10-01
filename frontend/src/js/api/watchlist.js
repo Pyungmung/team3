@@ -139,6 +139,66 @@ async function removeListingFavorite(listingId) {
 }
 
 /**
+ * 회원이 매물을 직접 등록한다 (로그인 필요). 주소는 검색어 그대로 보내고, 자치구·좌표는 서버(AI 엔진)가 채운다.
+ * @param {{addressKeyword:string, propertyType:string, leaseType:string, deposit:number, monthlyRent:number, exclusiveArea:number, buildingName?:string, unitLabel?:string, floor?:string, rooms?:number, bathrooms?:number, builtYear?:number, maintenanceFee?:number, maintenanceFeeItems?:string, parking?:string, elevator?:boolean, moveInDate?:string, description?:string, jeonseLoanAvailable?:boolean, photoUrl?:string}} payload
+ * @returns {Promise<{listingId:string, region:string}>}
+ */
+async function registerListing(payload) {
+  const res = await watchlistFetch(LISTING_API_BASE, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return listingUnwrap(res, "매물을 등록하지 못했어요. 잠시 후 다시 시도해주세요.");
+}
+
+/**
+ * 매물 등록 폼의 대표 사진 1장을 업로드하고 접근 가능한 URL을 받는다 (로그인 필요).
+ * 서버는 "/uploads/listings/xxx.jpg"처럼 자기 origin 기준 상대경로만 돌려주므로, 카드가 어디서
+ * 렌더링되든(같은 WATCHLIST_ORIGIN을 모르는 다른 페이지라도) 그대로 쓸 수 있게 절대경로로 만들어 돌려준다.
+ */
+async function uploadListingPhoto(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await watchlistFetch(`${LISTING_API_BASE}/photos`, { method: "POST", body: formData });
+  const data = await listingUnwrap(res, "사진을 업로드하지 못했어요. 잠시 후 다시 시도해주세요.");
+  return `${WATCHLIST_ORIGIN}${data.photoUrl}`;
+}
+
+/**
+ * 등록한 매물을 삭제한다 (등록한 본인 또는 관리자만 가능 - 서버가 최종 판단). region은 더미 매물처럼
+ * 소유권 기록이 없는 매물을 관리자가 지울 때 어느 자치구 CSV인지 알려주는 용도 - 내가 등록한 매물을
+ * 지울 때는 서버가 소유권 기록에서 자치구를 알아내므로 안 넘겨도 된다.
+ */
+async function deleteListing(listingId, region) {
+  const query = region ? `?region=${encodeURIComponent(region)}` : "";
+  const res = await watchlistFetch(`${LISTING_API_BASE}/${encodeURIComponent(listingId)}${query}`, { method: "DELETE" });
+  return listingUnwrap(res, "매물을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.");
+}
+
+/** 내가 등록한 매물 전부 (진단 조건과 무관 - 마이페이지 "등록한 매물 관리" 탭용, 로그인 필요). */
+async function getMyListings() {
+  const res = await watchlistFetch(`${LISTING_API_BASE}/mine`);
+  return (await listingUnwrap(res, "등록한 매물을 불러오지 못했어요.")) || [];
+}
+
+/** 매물 1건의 원본 정보 (수정 폼 프리필용). "/api/listings/**"가 로그인 필요라 이 조회도 로그인 필요. */
+async function getListing(listingId) {
+  const res = await watchlistFetch(`${LISTING_API_BASE}/${encodeURIComponent(listingId)}`);
+  return listingUnwrap(res, "매물 정보를 불러오지 못했어요.");
+}
+
+/** 등록한 매물을 수정한다 (등록한 본인만 가능 - 관리자도 예외 없음). payload는 registerListing과 동일. */
+async function updateListing(listingId, payload) {
+  const res = await watchlistFetch(`${LISTING_API_BASE}/${encodeURIComponent(listingId)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return listingUnwrap(res, "매물을 수정하지 못했어요. 잠시 후 다시 시도해주세요.");
+}
+
+/**
  * 허위매물 신고 (로그인 필요, 회원당 매물 1번). 성공하면 이 매물의 신고 현황 {count, flagged}를 돌려준다.
  * @param {string} listingId
  * @param {{reportType:"FAKE_PRICE"|"ALREADY_SOLD"|"WRONG_INFO"|"PHOTO_MISMATCH"|"OTHER", message:string, contactEmail?:string, address?:string, leaseType?:string, deposit?:number, monthlyRent?:number}} payload
@@ -163,6 +223,21 @@ async function getListingReportStatuses(listingIds) {
   return (await listingUnwrap(res, "신고 현황을 불러오지 못했어요.")) || {};
 }
 
+/** 매물 카드의 "실거래 참고"를 펼칠 때 그 매물의 최근 국토부 실거래를 실시간 조회한다. 로그인 없이 조회된다. */
+async function getListingReference(listingId) {
+  const res = await fetch(`${LISTING_API_BASE}/${encodeURIComponent(listingId)}/reference`);
+  return (await listingUnwrap(res, "실거래 정보를 불러오지 못했어요.")) || { scope: "none", transactions: [] };
+}
+
+/** 추천 응답의 "통근 약 ~분"은 직선거리 추정치다. 화면에 보이는 카드에 대해서만 이 API로 그 매물 하나의
+ * 정확한 카카오 API 통근시간을 불러와 표시를 갱신한다(listing-card.js의 wireCommuteAutoLoad). 로그인 없이 조회된다. */
+async function getListingCommute(listingId, workLat, workLon, transportType) {
+  const params = new URLSearchParams({ workLat, workLon });
+  if (transportType) params.set("transportType", transportType);
+  const res = await fetch(`${LISTING_API_BASE}/${encodeURIComponent(listingId)}/commute?${params}`);
+  return listingUnwrap(res, "통근시간을 불러오지 못했어요.");
+}
+
 window.CustomHouseWatchlistApi = {
   getWatchlist,
   addToWatchlist,
@@ -178,4 +253,12 @@ window.CustomHouseWatchlistApi = {
   removeListingFavorite,
   reportListing,
   getListingReportStatuses,
+  getListingReference,
+  getListingCommute,
+  registerListing,
+  deleteListing,
+  uploadListingPhoto,
+  getMyListings,
+  getListing,
+  updateListing,
 };

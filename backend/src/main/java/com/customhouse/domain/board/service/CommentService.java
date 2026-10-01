@@ -7,6 +7,7 @@ import com.customhouse.domain.board.entity.Comment;
 import com.customhouse.domain.board.entity.Post;
 import com.customhouse.domain.board.repository.CommentRepository;
 import com.customhouse.domain.board.repository.PostRepository;
+import com.customhouse.domain.user.service.AdminGuard;
 import com.customhouse.global.error.CustomException;
 import com.customhouse.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * [담당: 미정 - 커뮤니티 게시판] 댓글/대댓글 작성, SAFETY 답변 채택.
+ * [담당: 미정 - 커뮤니티 게시판] 댓글/대댓글 작성/수정/삭제, SAFETY 답변 채택.
  */
 @Service
 @RequiredArgsConstructor
@@ -25,6 +26,7 @@ public class CommentService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final BoardSupport support;
+    private final AdminGuard adminGuard;
 
     @Transactional
     public PostDetailResponse.CommentResponse create(Long userId, Long postId, CommentCreateRequest req) {
@@ -73,5 +75,37 @@ public class CommentService {
         }
         // 위 UPDATE가 영속성 컨텍스트를 비웠으므로 댓글을 다시 읽어 채택 처리한다
         commentRepository.findById(commentId).orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND)).select();
+    }
+
+    /** 작성자 본인만 수정할 수 있다. */
+    @Transactional
+    public void update(Long userId, Long commentId, String content) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        if (!comment.isWrittenBy(userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN, "본인이 작성한 댓글만 수정할 수 있습니다.");
+        }
+        comment.updateContent(content);
+    }
+
+    /** 작성자 본인이거나 관리자여야 삭제할 수 있다. 최상위 댓글이면 딸린 대댓글도 함께 지운다. */
+    @Transactional
+    public void delete(Long userId, Long commentId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+        if (!comment.isWrittenBy(userId)) {
+            adminGuard.requireAdmin(userId);
+        }
+
+        Long postId = comment.getPost().getId();
+        long removed = 1;
+        if (comment.getParentId() == null) {
+            removed += commentRepository.countByParentId(commentId);
+            commentRepository.deleteByParentId(commentId);
+        }
+        commentRepository.delete(comment);
+        for (int i = 0; i < removed; i++) {
+            postRepository.decreaseCommentCount(postId);
+        }
     }
 }

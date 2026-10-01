@@ -20,6 +20,8 @@ SEMI_JEONSE_RATIO = 100
 
 LISTING_STATUS_AVAILABLE = "계약가능"
 LISTING_STATUS_CONTRACTED = "계약중"
+LISTING_STATUS_DELETED = "삭제됨"  # 회원/관리자가 삭제한 매물 - listing_recommender.py의 기존
+# "계약가능이 아니면 추천 제외" 필터가 이 값도 걸러내므로 추천 로직은 따로 손볼 필요가 없다.
 
 # 자치구 한글명 -> 파일/매물번호에 쓰는 영문명 (dummyhouse_(영문).csv, 예: 서초구 = seocho)
 DISTRICT_ENG = {
@@ -49,6 +51,7 @@ LISTING_FIELDS: list[tuple[str, str, str]] = [
     ("우편번호", "postal_code", "str"),
     ("건축년도", "built_year", "int"),
     ("거래유형", "lease_type", "str"),
+    ("전세대출가능여부", "jeonse_loan_available", "yn"),
     ("반전세여부", "is_semi_jeonse", "yn"),
     ("보증금÷월세_비율", "deposit_rent_ratio", "float"),
     ("반전세판별기준", "semi_jeonse_rule", "str"),

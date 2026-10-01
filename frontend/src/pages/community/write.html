@@ -7,11 +7,32 @@
   <title>맞집 | 글쓰기</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <style>
+    /* 왼쪽 카테고리 탭 (list.html의 .side-card와 같은 마크업/스타일 - 이동 중에도 계속 보이게) */
+    .community-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 28px; align-items: start; max-width: 900px; margin: 0 auto; padding: 40px 16px; }
+    .side-card { background: #fff; border: 1px solid var(--line, #e2e8f0); border-radius: 20px; box-shadow: 0 16px 45px rgba(15, 23, 42, .07); padding: 23px; position: sticky; top: calc(var(--header-h, 96px) + 24px); }
+    .side-head { display: flex; align-items: center; gap: 13px; padding-bottom: 22px; border-bottom: 1px solid #edf1f5; }
+    .side-icon { width: 48px; height: 48px; flex: none; display: grid; place-items: center; border-radius: 14px; background: var(--brand-50); color: var(--brand-600); font-size: 21px; }
+    .side-title { font-size: 16px; font-weight: 850; }
+    .side-note { margin-top: 2px; font-size: 11px; color: #929cab; line-height: 1.5; }
+    .side-nav { display: grid; gap: 6px; margin-top: 18px; }
+    .side-nav a { display: block; width: 100%; text-align: left; padding: 12px 14px; border-radius: 11px; color: #5f6e82; font-size: 14px; font-weight: 750; text-decoration: none; transition: .18s; }
+    .side-nav a:hover { background: #f4f7fb; color: var(--navy, #1B2A4A); }
+    .side-nav a.active { color: #fff; background: var(--navy, #1B2A4A); box-shadow: 0 7px 18px rgba(27, 42, 74, .18); }
+    .write-side-btn { display: block; width: 100%; margin-top: 26px; padding: 12px; border-radius: 11px; background: var(--navy, #1B2A4A); color: #fff; font-size: 13px; font-weight: 850; text-align: center; text-decoration: none; transition: .18s; }
+    .write-side-btn:hover { background: var(--brand-700); transform: translateY(-1px); }
+    @media (max-width: 850px) {
+      .community-grid { display: block; padding: 20px 15px; }
+      .side-card { display: none; }
+    }
+  </style>
 </head>
 <body>
   <div id="app-header"></div>
 
-  <main class="max-w-2xl mx-auto px-4 py-10">
+  <div class="community-grid">
+    <div id="community-sidebar"></div>
+  <main class="max-w-2xl mx-auto px-4 py-10" style="margin:0">
     <div id="guest-view" class="hidden card p-6 text-center">
       <p class="text-sm text-gray-500 mb-4">글을 쓰려면 로그인이 필요해요.</p>
       <a href="../auth/login.html" class="text-sm px-4 py-2 rounded-xl text-white brand-gradient inline-block">로그인하기</a>
@@ -96,13 +117,14 @@
       </div>
     </form>
   </main>
+  </div>
 
   <div id="app-footer"></div>
 
   <script src="../../js/components/header.js?v=20260915b"></script>
   <script src="../../js/components/footer.js?v=20260928c"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/community.js?v=20260921"></script>
+  <script src="../../js/api/community.js?v=20260930a"></script>
   <script>
     renderHeader("community");
     renderFooter();
@@ -111,6 +133,7 @@
     const params = new URLSearchParams(location.search);
     const editId = params.get("id");
     const $ = (id) => document.getElementById(id);
+    document.getElementById("community-sidebar").innerHTML = API.communitySidebarHtml(params.get("category"));
     let carriedPins = []; // 수정 시 기존 IMAGE_PIN은 그대로 이어서 보낸다 (수정 API가 부가정보를 통째로 교체하므로)
 
     if (!CustomHouseAuthApi.isLoggedIn()) {
@@ -130,6 +153,7 @@
         const sec = $("sec-" + c.key);
         if (sec) sec.classList.toggle("hidden", c.key !== cat);
       });
+      API.setCommunitySidebarActive(cat);
     }
 
     function addVoteInput(value = "") {

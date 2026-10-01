@@ -1,7 +1,6 @@
 """
 [담당: 송귀성] 더미 매물 추천 API
-POST /api/v1/diagnosis/listings - 기존 POST /api/v1/diagnosis(국토부 실거래가 기준)와 같은 요청 본문을 받아
-docs/samples/dummyhouses CSV의 더미 매물을 추천한다. 실거래가는 매물별 참고 정보로만 내려간다.
+POST /api/v1/diagnosis/listings - docs/samples/dummyhouses CSV의 더미 매물을 추천한다.
 """
 from fastapi import APIRouter, HTTPException
 

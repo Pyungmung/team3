@@ -2,6 +2,8 @@ package com.customhouse.domain.recommendation.service;
 
 import com.customhouse.domain.incomestandard.dto.IncomeStandardResponse;
 import com.customhouse.domain.incomestandard.service.IncomeStandardService;
+import com.customhouse.domain.listing.dto.ListingRegistrationRequest;
+import com.customhouse.domain.listing.dto.ListingRegistrationResponse;
 import com.customhouse.domain.loan.dto.LoanProductResponse;
 import com.customhouse.domain.loan.service.LoanProductService;
 import com.customhouse.domain.recommendation.dto.AiListingRequest;
@@ -10,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
@@ -18,7 +21,8 @@ import java.util.Map;
 /**
  * [담당: 송귀성] AI 주거비 절약 추천 - Python 엔진(customhouse-ai) 연동 클라이언트
  * "AI API & 주거비 절약 추천 링크 구성 알고리즘" 중 백엔드 ↔ AI 엔진 연결부.
- * customhouse-ai의 POST /api/v1/diagnosis 엔드포인트를 호출한다.
+ * customhouse-ai의 POST /api/v1/diagnosis/listings, GET /api/v1/listings/{listingId}/reference,
+ * GET /api/v1/listings/{listingId}/commute 엔드포인트를 호출한다.
  */
 @Slf4j
 @Component
@@ -28,17 +32,6 @@ public class AiEngineClient {
     private final RestClient aiEngineRestClient;
     private final LoanProductService loanProductService;
     private final IncomeStandardService incomeStandardService;
-
-    /** 국토부 실거래가 기반 추천. 대출 매칭은 이 경로엔 없어 loanProducts는 항상 빈 목록이다 - 기준소득(RIR/중위소득)은 함께 실어 보낸다. */
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> requestDiagnosis(RecommendRequest request) {
-        return aiEngineRestClient.post()
-                .uri("/api/v1/diagnosis")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiListingRequest(request, List.of(), incomeStandard()))
-                .retrieve()
-                .body(Map.class);
-    }
 
     /**
      * 더미 매물(docs/samples/dummyhouses CSV) 기반 추천. 같은 요청 본문을 customhouse-ai의
@@ -54,6 +47,80 @@ public class AiEngineClient {
                 .body(new AiListingRequest(request, savedLoans(), incomeStandard()))
                 .retrieve()
                 .body(Map.class);
+    }
+
+    /**
+     * 매물 카드의 "실거래 참고"를 실시간 조회한다 (customhouse-ai GET /api/v1/listings/{listingId}/reference).
+     * 응답은 {scope: "building"|"neighborhood"|"none", transactions: [...]} 형태 - scope로 프론트가
+     * "이 건물의 실거래"인지 "동 단위 참고"인지 구분해서 보여준다.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> fetchReferenceTransactions(String listingId) {
+        return aiEngineRestClient.get()
+                .uri("/api/v1/listings/{listingId}/reference", listingId)
+                .retrieve()
+                .body(Map.class);
+    }
+
+    /**
+     * 매물 카드에 보이는 "통근 약 ~분"은 추천 응답(requestListingDiagnosis)에선 전부 직선거리 추정치다
+     * (검색/매칭을 가볍게 하려고 2026-10-01부터 그렇게 바뀜). 화면에 "보이는"(스크롤로 로딩된) 카드에
+     * 대해서만 이 메서드로 그 매물 하나의 정확한 카카오 API 통근시간을 그때그때 불러온다.
+     * 응답은 {commute_minutes, commute_source} 형태를 그대로 전달한다.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> fetchListingCommute(String listingId, double workLat, double workLon, String transportType) {
+        return aiEngineRestClient.get()
+                .uri("/api/v1/listings/{listingId}/commute?workLat={workLat}&workLon={workLon}&transportType={transportType}",
+                        listingId, workLat, workLon, transportType)
+                .retrieve()
+                .body(Map.class);
+    }
+
+    /** 회원이 입력한 매물을 AI 엔진이 주소를 해석해 그 자치구 CSV에 등록하게 한다. */
+    public ListingRegistrationResponse registerListing(ListingRegistrationRequest request) {
+        return aiEngineRestClient.post()
+                .uri("/api/v1/listings/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(ListingRegistrationResponse.class);
+    }
+
+    /**
+     * 매물 1건의 원본 정보를 그대로 가져온다(통근시간/실질주거비 같은 진단 계산값 없음) - 마이페이지
+     * "등록한 매물 관리" 탭과 매물 수정 폼 프리필용. 없으면(이미 다른 경로로 지워졌거나 잘못된 번호) null.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getListing(String listingId) {
+        try {
+            return aiEngineRestClient.get()
+                    .uri("/api/v1/listings/{listingId}", listingId)
+                    .retrieve()
+                    .body(Map.class);
+        } catch (HttpClientErrorException.NotFound e) {
+            return null;
+        }
+    }
+
+    /** 매물을 수정한다. register와 같은 요청 바디 - 주소도 다시 해석되어 좌표/법정동/지번이 갱신된다. */
+    public ListingRegistrationResponse updateListing(String listingId, ListingRegistrationRequest request) {
+        return aiEngineRestClient.put()
+                .uri("/api/v1/listings/{listingId}", listingId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(ListingRegistrationResponse.class);
+    }
+
+    /** 매물을 삭제 상태로 바꾼다(물리 삭제가 아니라 추천에서 제외되는 상태로 CSV 행을 갱신). */
+    public void markListingDeleted(String listingId, String region) {
+        aiEngineRestClient.put()
+                .uri("/api/v1/listings/{listingId}/status", listingId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("region", region, "status", "삭제됨"))
+                .retrieve()
+                .toBodilessEntity();
     }
 
     /** 대출 조건을 읽지 못해도 추천 자체는 계속한다 (대출 표시만 빠진다). */

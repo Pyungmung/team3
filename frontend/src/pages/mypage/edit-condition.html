@@ -684,6 +684,20 @@
       .actions { justify-content:stretch; }
       .actions button,.save-area button { width:100%; }
     }
+
+    /* 등록한 매물 관리 탭 */
+    .mylist-card { display:flex; gap:14px; padding:16px; border:1px solid var(--line,#e7edf4); border-radius:12px; margin-bottom:12px; }
+    .mylist-photo { width:88px; height:72px; border-radius:8px; object-fit:cover; background:#f1f5f9; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:#94a3b8; }
+    .mylist-body { flex:1; min-width:0; }
+    .mylist-title { font-weight:700; color:#1e293b; }
+    .mylist-sub { font-size:13px; color:#64748b; margin-top:2px; }
+    .mylist-status { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; background:#eef2ff; color:var(--navy); }
+    .mylist-status.deleted { background:#fee2e2; color:#991b1b; }
+    .mylist-actions { display:flex; gap:6px; margin-top:10px; }
+    .mylist-btn { font-size:12px; font-weight:600; padding:6px 12px; border-radius:999px; border:1px solid var(--line,#e7edf4); background:#fff; color:#475569; cursor:pointer; text-decoration:none; }
+    .mylist-btn:hover { border-color:var(--navy); color:var(--navy); }
+    .mylist-btn.danger:hover { border-color:#dc2626; color:#dc2626; }
+    .mylist-empty { text-align:center; color:#94a3b8; padding:40px 0; font-size:14px; }
   </style>
 </head>
 
@@ -703,6 +717,7 @@
   <div class="mobile-tabs">
     <button type="button" class="mobile-tab active" data-tab="profile">내 정보</button>
     <button type="button" class="mobile-tab" data-tab="housing">주거 조건</button>
+    <button type="button" class="mobile-tab" data-tab="my-listings">등록한 매물 관리</button>
     <button type="button" class="mobile-tab" data-tab="notification">알림 설정</button>
     <button type="button" class="mobile-tab" data-tab="support">고객센터</button>
     <button type="button" class="mobile-tab" data-tab="terms">약관</button>
@@ -722,6 +737,7 @@
       <nav class="side-nav">
         <button type="button" class="side-tab active" data-tab="profile">내 정보</button>
         <button type="button" class="side-tab" data-tab="housing">주거 조건</button>
+        <button type="button" class="side-tab" data-tab="my-listings">등록한 매물 관리</button>
         <button type="button" class="side-tab" data-tab="notification">알림 설정</button>
         <button type="button" class="side-tab" data-tab="support">고객센터</button>
         <button type="button" class="side-tab" data-tab="terms">약관 및 정책</button>
@@ -836,6 +852,14 @@
             <button type="button" id="delete-account-confirm-btn" class="danger-btn">정말 탈퇴합니다</button>
           </div>
         </div>
+      </section>
+
+      <!-- 등록한 매물 관리: condition-form과 무관한 독립 기능이라 폼 밖에 둔다 -->
+      <section class="content-card tab-section" data-section="my-listings">
+        <div class="section-eyebrow">MY LISTINGS</div>
+        <h2 class="section-title">등록한 매물 관리</h2>
+        <p class="section-sub">진단 조건과 관계없이 내가 등록한 매물을 항상 확인하고 수정·삭제할 수 있어요.</p>
+        <div id="my-listings-box"><p class="mylist-empty">불러오는 중...</p></div>
       </section>
 
       <!-- 알림 설정 / 고객센터 / 약관 / 주거 조건 (알림 수신 여부와 모든 주거조건은 condition-form 안에 있어야 함께 저장된다) -->
@@ -1525,11 +1549,79 @@
 <script src="../../js/api/auth.js?v=20260916a"></script>
 <script src="../../js/api/mypage.js?v=20260916a"></script>
 <script src="../../js/api/user.js?v=20260921a"></script>
+<script src="../../js/api/watchlist.js?v=20261001b"></script>
 <script src="../../js/utils/address-match-util.js?v=20260916a"></script>
 
 <script>
   renderHeader("mypage");
   renderFooter();
+
+  // ---------- 등록한 매물 관리 ----------
+  (function setupMyListings() {
+    const box = document.getElementById("my-listings-box");
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    }
+
+    function cardHtml(r) {
+      const price = r.lease_type === "전세"
+        ? `전세 ${(r.deposit || 0).toLocaleString()}만원`
+        : `보증금 ${(r.deposit || 0).toLocaleString()}만원 / 월세 ${r.monthly_rent || 0}만원`;
+      const isDeleted = r.listing_status === "삭제됨";
+      const photo = r.photo && r.photo !== "PHOTO_PLACEHOLDER"
+        ? `<img class="mylist-photo" src="${esc(r.photo)}" alt="" />`
+        : `<div class="mylist-photo">사진 없음</div>`;
+      return `
+        <div class="mylist-card" data-listing-id="${esc(r.listing_id)}" data-region="${esc(r.region)}">
+          ${photo}
+          <div class="mylist-body">
+            <div class="mylist-title">${esc(r.building_name || r.road_address)} <span class="mylist-status${isDeleted ? " deleted" : ""}">${esc(r.listing_status)}</span></div>
+            <div class="mylist-sub">${esc(r.property_type)} · ${price} · ${esc(r.exclusive_area)}㎡</div>
+            <div class="mylist-sub">${esc(r.road_address)}</div>
+            <div class="mylist-sub">등록일 ${esc(r.registered_date)} · 매물번호 ${esc(r.listing_id)}</div>
+            <div class="mylist-actions">
+              <a class="mylist-btn" href="../diagnosis/listing-register.html?id=${encodeURIComponent(r.listing_id)}">✏️ 수정</a>
+              <button type="button" class="mylist-btn danger" data-del="${esc(r.listing_id)}">🗑 삭제</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    async function loadMyListings() {
+      if (!(window.CustomHouseAuthApi && CustomHouseAuthApi.isLoggedIn())) {
+        box.innerHTML = `<p class="mylist-empty">로그인하면 등록한 매물을 볼 수 있어요.</p>`;
+        return;
+      }
+      try {
+        const listings = await CustomHouseWatchlistApi.getMyListings();
+        if (!listings.length) {
+          box.innerHTML = `<p class="mylist-empty">아직 등록한 매물이 없어요. <a href="../diagnosis/listing-register.html">매물을 등록</a>해보세요.</p>`;
+          return;
+        }
+        box.innerHTML = listings.map(cardHtml).join("");
+        box.querySelectorAll("[data-del]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            if (!confirm("정말 이 매물을 삭제할까요?")) return;
+            btn.disabled = true;
+            btn.textContent = "삭제하는 중...";
+            try {
+              await CustomHouseWatchlistApi.deleteListing(btn.dataset.del);
+              await loadMyListings();
+            } catch (err) {
+              alert(err.message || "매물을 삭제하지 못했어요.");
+              btn.disabled = false;
+              btn.textContent = "🗑 삭제";
+            }
+          });
+        });
+      } catch (err) {
+        box.innerHTML = `<p class="mylist-empty">${esc(err.message || "등록한 매물을 불러오지 못했어요.")}</p>`;
+      }
+    }
+
+    loadMyListings();
+  })();
 
   const form = document.getElementById("condition-form");
   const msg = document.getElementById("form-msg");

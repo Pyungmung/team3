@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<!-- [담당: 송귀성] 매물 등록 - 전용 페이지 (2026-10-01, 기존 report-listings.html의 작은 팝업을 대체)
+     더미 매물(docs/samples/dummyhouses)과 카드에서 이질감이 없도록, 더미 매물이 가진 속성을 전부
+     입력받는다. 주소는 다음 우편번호 검색 + 카카오 지오코딩으로 확정하고, 지도에 핀을 찍어 확인시킨다.
+     사진은 대표 1장만 업로드(ListingPhotoController)한다. -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 매물 등록</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+  <script src="../../js/config.js?v=20260915d"></script>
+  <script>
+    // 주소 검색(카카오 지오코딩)용 SDK. 키 없으면 안 불러오고, 아래 스크립트가 주소 입력만 받고
+    // 핀 확인 단계는 건너뛴다(input-form.html의 직장 위치 검색과 같은 패턴).
+    if (window.CUSTOMHOUSE_CONFIG && window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY) {
+      const kakaoSdkScript = document.createElement("script");
+      kakaoSdkScript.src =
+        "https://dapi.kakao.com/v2/maps/sdk.js?appkey=" +
+        window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY +
+        "&libraries=services&autoload=false";
+      document.head.appendChild(kakaoSdkScript);
+    }
+  </script>
+  <!-- 주소 검색(우편번호) 팝업 - 다음(카카오) 공개 서비스, 별도 키 불필요 -->
+  <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+
+  <style>
+    body { background: #f6f8fb !important; }
+    .reg-shell { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+    .reg-card { background: #fff; border: 1px solid #e7edf4; border-radius: 16px; padding: 28px 24px; }
+    .reg-title { font-size: 22px; font-weight: 700; color: var(--brand-600); margin: 0 0 4px; }
+    .reg-sub { color: #64748b; font-size: 14px; margin: 0 0 24px; }
+    .reg-section { border-top: 1px solid #eef1f6; padding-top: 18px; margin-top: 18px; }
+    .reg-section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+    .reg-section h2 { font-size: 15px; font-weight: 700; color: #334155; margin: 0 0 12px; }
+    .reg-field { display: block; margin-bottom: 14px; }
+    .reg-field > span { display: block; font-size: 13px; color: #475569; margin-bottom: 4px; }
+    .reg-field input[type="text"], .reg-field input[type="number"], .reg-field input[type="date"],
+    .reg-field select, .reg-field textarea {
+      width: 100%; padding: 9px 12px; border: 1px solid #d7dee8; border-radius: 8px; font-size: 14px; box-sizing: border-box;
+    }
+    .reg-field textarea { min-height: 80px; resize: vertical; }
+    .reg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .reg-address-row { display: flex; gap: 8px; }
+    .reg-address-row input { flex: 1; background: #f8fafc; }
+    .reg-btn-outline {
+      white-space: nowrap; padding: 0 16px; border-radius: 8px; border: 1px solid var(--brand-600);
+      color: var(--brand-600); background: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .reg-btn-outline:hover { background: var(--brand-600); color: #fff; }
+    #reg-map { width: 100%; height: 220px; margin-top: 10px; border-radius: 10px; border: 1px solid #e7edf4; display: none; }
+    .reg-map-note { font-size: 12px; color: #64748b; margin-top: 6px; }
+    .reg-checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #334155; }
+    .reg-photo-preview { display: none; width: 160px; height: 120px; object-fit: cover; border-radius: 10px; margin-top: 10px; border: 1px solid #e7edf4; }
+    .reg-photo-status { font-size: 12px; color: #64748b; margin-top: 6px; }
+    .reg-error { background: #fef2f2; color: #b91c1c; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 18px; }
+    .reg-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+    .reg-cancel { padding: 11px 20px; border-radius: 999px; font-size: 14px; color: #475569; text-decoration: none; }
+    .reg-submit {
+      padding: 11px 24px; border-radius: 999px; font-size: 14px; font-weight: 700; color: #fff;
+      background: var(--brand-600); border: none; cursor: pointer;
+    }
+    .reg-submit:disabled { opacity: 0.6; cursor: default; }
+    .reg-done { text-align: center; padding: 20px 0; }
+    .reg-done .ico { font-size: 40px; margin-bottom: 10px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+
+<body>
+  <div id="app-header"></div>
+
+  <main class="reg-shell">
+    <div class="reg-card">
+      <h1 class="reg-title" id="reg-title">＋ 매물 등록</h1>
+      <p class="reg-sub" id="reg-sub">더미 매물과 똑같은 정보를 입력할수록 추천 결과에서 더 정확하게 보여요. 등록한 매물은 언제든 삭제할 수 있어요.</p>
+
+      <div id="login-required" class="hidden">
+        <p class="text-gray-500 mb-4">로그인한 회원만 매물을 등록할 수 있어요.</p>
+        <a href="../auth/login.html" class="reg-submit" style="display:inline-block;text-decoration:none">로그인하러 가기</a>
+      </div>
+
+      <form id="reg-form">
+        <section class="reg-section">
+          <h2>위치</h2>
+          <label class="reg-field">
+            <span>주소 (도로명)</span>
+            <div class="reg-address-row">
+              <input type="text" id="reg-address" readonly placeholder="주소 검색 버튼을 눌러 입력해주세요" />
+              <button type="button" class="reg-btn-outline" id="reg-address-search-btn">주소 검색</button>
+            </div>
+          </label>
+          <div id="reg-postcode-wrap" class="hidden" style="margin-top:10px; border:1px solid #d7dee8; border-radius:10px; overflow:hidden;">
+            <div style="display:flex; justify-content:flex-end; background:#f8fafc; padding:4px 8px;">
+              <button type="button" id="reg-postcode-close" style="border:none; background:none; cursor:pointer; font-size:13px; color:#64748b;">✕ 닫기</button>
+            </div>
+            <div id="reg-postcode-embed" style="width:100%; height:360px;"></div>
+          </div>
+          <div id="reg-map"></div>
+          <p class="reg-map-note hidden" id="reg-map-note"></p>
+        </section>
+
+        <section class="reg-section">
+          <h2>기본 정보</h2>
+          <div class="reg-row">
+            <label class="reg-field">
+              <span>매물유형</span>
+              <select id="reg-property-type">
+                <option value="아파트">아파트</option>
+                <option value="오피스텔">오피스텔</option>
+                <option value="연립다세대">연립·다세대</option>
+                <option value="단독다가구">단독·다가구</option>
+              </select>
+            </label>
+            <label class="reg-field">
+              <span>거래유형</span>
+              <select id="reg-lease-type">
+                <option value="월세">월세</option>
+                <option value="전세">전세</option>
+              </select>
+            </label>
+          </div>
+          <div class="reg-row">
+            <label class="reg-field"><span>보증금 (만원)</span><input type="number" id="reg-deposit" min="0" placeholder="예: 5000" /></label>
+            <label class="reg-field"><span>월세 (만원, 전세면 0)</span><input type="number" id="reg-monthly-rent" min="0" value="0" /></label>
+          </div>
+          <div class="reg-row">
+            <label class="reg-field"><span>전용면적 (㎡)</span><input type="number" id="reg-area" min="1" step="0.1" placeholder="예: 25.5" /></label>
+            <label class="reg-field"><span>건축년도</span><input type="number" id="reg-built-year" min="1950" max="2026" placeholder="예: 2015" /></label>
+          </div>
+          <div class="reg-row">
+            <label class="reg-field"><span>건물명 (선택)</span><input type="text" id="reg-building-name" maxlength="100" /></label>
+            <label class="reg-field"><span>동/호수 또는 단독층수 (선택)</span><input type="text" id="reg-unit-label" maxlength="50" placeholder="예: 101동 203호" /></label>
+          </div>
+          <label class="reg-field"><span>층</span><input type="text" id="reg-floor" maxlength="10" placeholder="예: 5" /></label>
+        </section>
+
+        <section class="reg-section">
+          <h2>편의시설</h2>
+          <div class="reg-row">
+            <label class="reg-field"><span>방 수</span><input type="number" id="reg-rooms" min="0" placeholder="예: 2" /></label>
+            <label class="reg-field"><span>욕실 수</span><input type="number" id="reg-bathrooms" min="0" placeholder="예: 1" /></label>
+          </div>
+          <div class="reg-row">
+            <label class="reg-field">
+              <span>엘리베이터</span>
+              <select id="reg-elevator">
+                <option value="">선택 안 함</option>
+                <option value="true">있음</option>
+                <option value="false">없음</option>
+              </select>
+            </label>
+            <label class="reg-field">
+              <span>주차 가능여부</span>
+              <select id="reg-parking">
+                <option value="">선택 안 함</option>
+                <option value="가능">가능</option>
+                <option value="불가능">불가능</option>
+                <option value="협의 가능">협의 가능</option>
+              </select>
+            </label>
+          </div>
+          <div class="reg-row">
+            <label class="reg-field"><span>이사가능일</span><input type="date" id="reg-move-in-date" /></label>
+            <label class="reg-field"><span>관리비 (만원)</span><input type="number" id="reg-maintenance-fee" min="0" value="0" /></label>
+          </div>
+          <label class="reg-field"><span>관리비 포함 항목 (선택)</span><input type="text" id="reg-maintenance-fee-items" maxlength="100" placeholder="예: 수도, 인터넷 (없으면 비워두세요)" /></label>
+          <label class="reg-field reg-checkbox-row">
+            <input type="checkbox" id="reg-jeonse-loan-available" checked style="width:16px;height:16px" />
+            <span style="margin:0">전세자금대출 가능한 매물이에요</span>
+          </label>
+        </section>
+
+        <section class="reg-section">
+          <h2>사진</h2>
+          <label class="reg-field">
+            <span>내부 사진 (대표 1장, 선택)</span>
+            <input type="file" id="reg-photo-input" accept="image/jpeg,image/png,image/webp" />
+          </label>
+          <img id="reg-photo-preview" class="reg-photo-preview" alt="업로드한 내부 사진 미리보기" />
+          <p class="reg-photo-status" id="reg-photo-status"></p>
+        </section>
+
+        <section class="reg-section">
+          <h2>상세 설명</h2>
+          <label class="reg-field"><textarea id="reg-description" maxlength="1000" placeholder="매물에 대해 자유롭게 설명해주세요 (선택)"></textarea></label>
+        </section>
+
+        <div class="reg-error hidden" id="reg-error" role="alert"></div>
+        <div class="reg-actions">
+          <a href="report-listings.html" class="reg-cancel">취소</a>
+          <button type="submit" class="reg-submit" id="reg-submit">등록하기</button>
+        </div>
+      </form>
+
+      <div id="reg-done" class="reg-done hidden">
+        <div class="ico">✅</div>
+        <p><b id="reg-done-msg"></b></p>
+        <div class="reg-actions" style="justify-content:center" id="reg-done-actions"></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20260915b"></script>
+  <script src="../../js/components/footer.js?v=20260928c"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/api/watchlist.js?v=20261001b"></script>
+
+  <script>
+    renderHeader("diagnosis");
+    renderFooter();
+
+    const el = (id) => document.getElementById(id);
+
+    // ---------- 수정 모드: ?id=매물번호로 열리면 기존 값을 불러와 채운다 ----------
+    const editingListingId = new URLSearchParams(location.search).get("id");
+
+    // ---------- 로그인 가드: 비로그인이면 폼 자체를 숨기고 로그인 유도만 보여준다 ----------
+    if (!(window.CustomHouseAuthApi && CustomHouseAuthApi.isLoggedIn())) {
+      el("login-required").classList.remove("hidden");
+      el("reg-form").classList.add("hidden");
+    } else if (editingListingId) {
+      el("reg-title").textContent = "매물 수정";
+      el("reg-sub").textContent = "바꾸고 싶은 항목만 고쳐서 저장하세요.";
+      el("reg-submit").textContent = "수정하기";
+      (async () => {
+        try {
+          const existing = await CustomHouseWatchlistApi.getListing(editingListingId);
+          fillFormFromListing(existing);
+        } catch (err) {
+          setError(err.message || "매물 정보를 불러오지 못했어요.");
+          el("reg-form").classList.add("hidden");
+        }
+      })();
+    }
+
+    function fillFormFromListing(r) {
+      confirmedAddress = r.road_address || r.jibun_address || "";
+      el("reg-address").value = confirmedAddress;
+      el("reg-property-type").value = r.property_type || "아파트";
+      el("reg-lease-type").value = r.lease_type || "월세";
+      el("reg-deposit").value = r.deposit ?? "";
+      el("reg-monthly-rent").value = r.monthly_rent ?? 0;
+      el("reg-area").value = r.exclusive_area ?? "";
+      el("reg-built-year").value = r.built_year ?? "";
+      el("reg-building-name").value = r.building_name || "";
+      el("reg-unit-label").value = r.unit_label || "";
+      el("reg-floor").value = r.floor || "";
+      el("reg-rooms").value = r.rooms ?? "";
+      el("reg-bathrooms").value = r.bathrooms ?? "";
+      el("reg-elevator").value = r.elevator === true ? "true" : r.elevator === false ? "false" : "";
+      el("reg-parking").value = r.parking || "";
+      el("reg-move-in-date").value = r.move_in_date || "";
+      el("reg-maintenance-fee").value = r.maintenance_fee ?? 0;
+      el("reg-maintenance-fee-items").value = r.maintenance_fee_items || "";
+      el("reg-jeonse-loan-available").checked = r.jeonse_loan_available !== false;
+      el("reg-description").value = r.description || "";
+      if (r.photo && r.photo !== "PHOTO_PLACEHOLDER") {
+        uploadedPhotoUrl = r.photo;
+        el("reg-photo-preview").src = r.photo;
+        el("reg-photo-preview").classList.remove("hidden");
+        el("reg-photo-status").textContent = "기존 사진 (바꾸려면 새로 선택하세요)";
+      }
+      // 핀 표시는 카카오 SDK 로딩을 기다려야 해서 맨 마지막에 - 혹시 실패해도(SDK 없음 등) 이미 위에서
+      // 입력칸은 전부 채워진 뒤라 수정 자체는 문제없다.
+      if (r.lat && r.lon) {
+        waitForKakaoServices(50, (ready) => {
+          if (ready) showPinOnMap(r.lat, r.lon, confirmedAddress);
+        });
+      }
+    }
+
+    // ---------- 주소 검색: 다음 우편번호 팝업 -> 도로명주소 확정 -> 카카오 지오코딩 -> 지도에 핀 ----------
+    let confirmedAddress = "";
+    let map = null;
+    let marker = null;
+
+    function waitForKakaoServices(retriesLeft, cb) {
+      if (window.kakao && window.kakao.maps) {
+        window.kakao.maps.load(() => cb(true));
+      } else if (retriesLeft > 0) {
+        setTimeout(() => waitForKakaoServices(retriesLeft - 1, cb), 100);
+      } else {
+        cb(false);
+      }
+    }
+
+    function showPinOnMap(lat, lon, address) {
+      const mapEl = el("reg-map");
+      mapEl.style.display = "block";
+      const center = new kakao.maps.LatLng(lat, lon);
+      if (!map) {
+        map = new kakao.maps.Map(mapEl, { center, level: 3 });
+        marker = new kakao.maps.Marker({ position: center, map });
+      } else {
+        map.setCenter(center);
+        marker.setPosition(center);
+      }
+      const noteEl = el("reg-map-note");
+      noteEl.textContent = `📍 ${address} — 이 위치가 맞는지 확인해주세요.`;
+      noteEl.classList.remove("hidden");
+    }
+
+    function waitForDaumPostcode(retriesLeft, cb) {
+      if (window.daum && window.daum.Postcode) {
+        cb(true);
+      } else if (retriesLeft > 0) {
+        setTimeout(() => waitForDaumPostcode(retriesLeft - 1, cb), 100);
+      } else {
+        cb(false);
+      }
+    }
+
+    function onAddressComplete(data) {
+      const address = data.roadAddress || data.jibunAddress;
+      confirmedAddress = address;
+      el("reg-address").value = address;
+      el("reg-postcode-wrap").classList.add("hidden");
+      el("reg-postcode-embed").innerHTML = "";
+
+      const kakaoKey = window.CUSTOMHOUSE_CONFIG && window.CUSTOMHOUSE_CONFIG.KAKAO_MAP_APP_KEY;
+      if (!kakaoKey) return; // 카카오 키 없으면 핀 확인은 건너뛰고 주소 텍스트만 쓴다
+      waitForKakaoServices(50, (ready) => {
+        if (!ready) {
+          el("reg-map-note").textContent = "지도를 불러오지 못했어요 (주소는 정상 입력됐어요).";
+          el("reg-map-note").classList.remove("hidden");
+          return;
+        }
+        new kakao.maps.services.Geocoder().addressSearch(address, (result, status) => {
+          if (status === kakao.maps.services.Status.OK && result.length) {
+            showPinOnMap(parseFloat(result[0].y), parseFloat(result[0].x), address);
+          } else {
+            el("reg-map-note").textContent = "이 주소의 좌표를 찾지 못해 지도에는 못 띄웠어요 (주소는 정상 입력됐어요).";
+            el("reg-map-note").classList.remove("hidden");
+          }
+        });
+      });
+    }
+
+    // 팝업(.open())은 브라우저/확장프로그램의 팝업 차단에 걸리면 아무 반응 없이 조용히 실패한다
+    // (2026-10-01 실측 - 클릭이 진짜 사용자 클릭이어도 막혔다) - 그래서 페이지 안에 바로 끼워넣는
+    // embed() 방식을 쓴다. 매번 새 인스턴스를 만들어야 한다(다음 우편번호 서비스 권장 사용법).
+    el("reg-address-search-btn").addEventListener("click", () => {
+      waitForDaumPostcode(30, (daumReady) => {
+        if (!daumReady) {
+          setError("주소 검색 기능을 불러오지 못했어요. 새로고침 후 다시 시도해주세요.");
+          return;
+        }
+        el("reg-postcode-embed").innerHTML = "";
+        el("reg-postcode-wrap").classList.remove("hidden");
+        new daum.Postcode({
+          oncomplete: onAddressComplete,
+          width: "100%",
+          height: "100%",
+        }).embed(el("reg-postcode-embed"));
+      });
+    });
+
+    el("reg-postcode-close").addEventListener("click", () => {
+      el("reg-postcode-wrap").classList.add("hidden");
+      el("reg-postcode-embed").innerHTML = "";
+    });
+
+    // ---------- 사진 업로드: 파일 선택 즉시 서버에 올리고 URL을 기억해둔다 ----------
+    let uploadedPhotoUrl = null;
+    el("reg-photo-input").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const statusEl = el("reg-photo-status");
+      statusEl.textContent = "업로드하는 중...";
+      try {
+        uploadedPhotoUrl = await CustomHouseWatchlistApi.uploadListingPhoto(file);
+        el("reg-photo-preview").src = uploadedPhotoUrl;
+        el("reg-photo-preview").classList.remove("hidden");
+        statusEl.textContent = "업로드 완료";
+      } catch (err) {
+        uploadedPhotoUrl = null;
+        statusEl.textContent = err.message || "사진을 업로드하지 못했어요.";
+      }
+    });
+
+    // ---------- 등록 제출 ----------
+    function setError(text) {
+      const box = el("reg-error");
+      box.textContent = text || "";
+      box.classList.toggle("hidden", !text);
+    }
+
+    el("reg-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const addressKeyword = confirmedAddress || el("reg-address").value.trim();
+      const propertyType = el("reg-property-type").value;
+      const leaseType = el("reg-lease-type").value;
+      const deposit = Number(el("reg-deposit").value);
+      const monthlyRent = Number(el("reg-monthly-rent").value || 0);
+      const exclusiveArea = Number(el("reg-area").value);
+
+      if (!addressKeyword) return setError("주소 검색으로 주소를 입력해주세요.");
+      if (!deposit || deposit <= 0) return setError("보증금을 입력해주세요.");
+      if (!exclusiveArea || exclusiveArea <= 0) return setError("전용면적을 입력해주세요.");
+      setError("");
+
+      const elevatorValue = el("reg-elevator").value;
+      const roomsValue = el("reg-rooms").value;
+      const bathroomsValue = el("reg-bathrooms").value;
+      const builtYearValue = el("reg-built-year").value;
+
+      const payload = {
+        addressKeyword, propertyType, leaseType, deposit, monthlyRent, exclusiveArea,
+        buildingName: el("reg-building-name").value.trim(),
+        unitLabel: el("reg-unit-label").value.trim(),
+        floor: el("reg-floor").value.trim(),
+        rooms: roomsValue === "" ? null : Number(roomsValue),
+        bathrooms: bathroomsValue === "" ? null : Number(bathroomsValue),
+        builtYear: builtYearValue === "" ? null : Number(builtYearValue),
+        maintenanceFee: Number(el("reg-maintenance-fee").value || 0),
+        maintenanceFeeItems: el("reg-maintenance-fee-items").value.trim(),
+        parking: el("reg-parking").value,
+        elevator: elevatorValue === "" ? null : elevatorValue === "true",
+        moveInDate: el("reg-move-in-date").value,
+        description: el("reg-description").value.trim(),
+        jeonseLoanAvailable: el("reg-jeonse-loan-available").checked,
+        photoUrl: uploadedPhotoUrl,
+      };
+
+      const submitBtn = el("reg-submit");
+      submitBtn.disabled = true;
+      submitBtn.textContent = editingListingId ? "수정하는 중..." : "등록하는 중...";
+      try {
+        const result = editingListingId
+          ? await CustomHouseWatchlistApi.updateListing(editingListingId, payload)
+          : await CustomHouseWatchlistApi.registerListing(payload);
+        el("reg-form").classList.add("hidden");
+        el("reg-done-msg").textContent = editingListingId
+          ? `매물이 수정되었어요. (매물번호 ${result.listingId})`
+          : `매물이 등록되었어요. (매물번호 ${result.listingId})`;
+        // report-listings.html은 진단 결과를 localStorage에 캐시해뒀다가 조건이 안 바뀌면 그대로 보여준다
+        // (?justRegistered=1이 강제로 한 번 다시 불러오게 한다) - 수정 직후에도 똑같이 캐시가 수정 전
+        // 값 그대로라, 같은 쿼리로 다시 불러오게 한다.
+        el("reg-done-actions").innerHTML = editingListingId
+          ? `<a href="report-listings.html?justRegistered=1" class="reg-submit" style="text-decoration:none;display:inline-block">추천 리포트에서 바로 확인</a>
+             <a href="../mypage/edit-condition.html#my-listings" class="reg-cancel" style="display:inline-block">등록한 매물 관리로 돌아가기</a>`
+          : `<a href="report-listings.html?justRegistered=1" class="reg-submit" style="text-decoration:none;display:inline-block">목록으로 돌아가 다시 조회</a>`;
+        el("reg-done").classList.remove("hidden");
+      } catch (err) {
+        setError(err.message || (editingListingId ? "매물을 수정하지 못했어요. 잠시 후 다시 시도해주세요." : "매물을 등록하지 못했어요. 잠시 후 다시 시도해주세요."));
+        submitBtn.disabled = false;
+        submitBtn.textContent = editingListingId ? "수정하기" : "등록하기";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -55,21 +55,11 @@ class BuildingRecommendation(BaseModel):
     data_source: str = "샘플 데이터"  # "국토부 실거래가 (2024.8 거래)" 또는 "샘플 데이터"
 
 
-class DiagnosisResponse(BaseModel):
-    affordable_rent: int          # 만원, 소득의 30% 기준 적정 월세 상한
-    rent_to_income_ratio: float   # RIR(%) 참고용
-    wolse_recommendations: list[BuildingRecommendation]   # 월세 매물 추천 (실거래 월세 기준 저렴한 순, 보증금 조정 계산 없음)
-    jeonse_recommendations: list[BuildingRecommendation]  # 전세 매물 추천 (월세=0, 실질 주거비는 대출이자 중심)
-    used_distance_estimate: bool = False  # 통근시간 중 하나라도 비상용 직선거리 추정을 썼으면 True
-    # (카카오 API가 완전히 막혔을 때만 - calculator.py의 ESTIMATE_SOURCE_LABEL 참고). 프론트가
-    # 화면 한구석에 "API 실측 기반"/"일부 직선거리 추정 사용됨" 표시하는 데 쓴다.
-    disclaimer: str = "본 결과는 샘플 데이터 기반 추정치이며, 실제 시세·정책 자격과 다를 수 있습니다."
-
 
 # ---------------------------------------------------------------------------------------------
 # 더미 매물 추천 (POST /api/v1/diagnosis/listings) - 2026-09-28
 # 추천 매물은 docs/samples/dummyhouses/*.csv(더미 매물)이고, 국토부 실거래가는 매물마다 붙는 "참고"
-# 정보(reference_transaction)다. 기존 실거래가 기준 리포트(DiagnosisResponse)는 그대로 둔다.
+# 정보(reference_transaction)다.
 # ---------------------------------------------------------------------------------------------
 class BrokerInfo(BaseModel):
     """공인중개사 정보 (CSV의 공인중개사_* 컬럼)."""
@@ -83,8 +73,9 @@ class BrokerInfo(BaseModel):
 
 
 class ReferenceTransaction(BaseModel):
-    """이 매물 건물(지번)에서 실제로 있었던 국토부 전월세 실거래 1건 - 화면에는 "이전 실거래 내역"처럼
-    보조로만 보여준다 (CSV의 참고_국토부_* 컬럼)."""
+    """이 매물 건물(법정동+지번)에서 실제로 있었던 국토부 전월세 실거래 1건 - 화면에서 매물 카드를
+    펼칠 때 GET /api/v1/listings/{listing_id}/reference로 실시간 조회해 "이전 실거래 내역"처럼
+    보조로만 보여준다 (app/api/v1/listing_reference.py 참고)."""
 
     contract_date: str = ""        # 계약일 YYYY-MM-DD
     contract_type: str = ""        # 신규/갱신
@@ -98,6 +89,26 @@ class ReferenceTransaction(BaseModel):
     area: float | None = None
     floor: str = ""
     jibun: str = ""
+
+
+class ReferenceTransactionsResponse(BaseModel):
+    """GET /api/v1/listings/{listing_id}/reference 응답. scope="building"이면 이 매물과 같은
+    법정동+지번(이 건물)의 실거래, "neighborhood"면 지번을 알 수 없는 매물유형(단독·다가구 등
+    - 국토교통부 API가 지번 자체를 안 줌)이라 같은 법정동의 다른 실거래를 동 단위 참고로 대신
+    보여준 것, "none"이면 둘 다 못 찾은 것 - 프론트가 이 값으로 안내 문구를 다르게 보여준다."""
+
+    scope: str = "none"  # "building" | "neighborhood" | "none"
+    transactions: list[ReferenceTransaction] = []
+
+
+class ListingCommuteResponse(BaseModel):
+    """GET /api/v1/listings/{listing_id}/commute 응답. 추천 목록(listing_recommender.py)의
+    commute_minutes는 검색/매칭을 가볍게 하려고 전부 직선거리 추정치다 - 화면에 보이는 카드에
+    대해서만(app/api/v1/listing_commute.py) 이 API로 그 매물 하나의 카카오 API 기준 정확한
+    통근시간을 불러와 표시를 갱신한다."""
+
+    commute_minutes: int
+    commute_source: str
 
 
 class EligibleLoan(BaseModel):
@@ -136,7 +147,7 @@ class ListingRecommendation(BuildingRecommendation):
     deposit_converted_cost: float = 0    # 만원/월 = 월세 + 관리비 + 보증금 기회비용 (보증금전환 실질거주비)
 
     listing_id: str = ""             # 매물등록번호 (예: SEOCHO-202609-0001)
-    listing_status: str = ""         # 계약가능/계약중 (추천에는 계약가능만 나온다)
+    listing_status: str = ""         # 계약가능/계약중/삭제됨 (추천에는 계약가능만 나온다)
     registered_date: str = ""
     photo: str = ""                  # 내부사진. 지금은 PHOTO_PLACEHOLDER, 나중에 이미지 경로/URL
     unit_label: str = ""             # 동/호수 또는 단독·층수
@@ -147,14 +158,54 @@ class ListingRecommendation(BuildingRecommendation):
     bathrooms: int | None = None
     built_year: int | None = None
     move_in_date: str = ""           # 이사가능일
+    jeonse_loan_available: bool = True  # 전세대출 가능여부(매물 등록 시 체크하는 고정 속성 - 조회 시
+    # 사용자 조건으로 동적 계산되는 eligible_loans(loan_matcher)와는 별개). 더미 매물은 전부 True.
     description: str = ""            # 상세설명
     broker: BrokerInfo = BrokerInfo()
     road_address: str = ""
     jibun_address: str = ""
     postal_code: str = ""
     address_source: str = ""         # 주소출처 (단독다가구는 같은 동의 실제 도로명주소를 빌려 옴)
-    reference_transaction: ReferenceTransaction | None = None
     eligible_loans: list[EligibleLoan] = Field(default_factory=list)  # 조건을 통과한 대출 (loan_matcher.match_eligible_loans)
+
+
+class ListingDetailResponse(BaseModel):
+    """매물 1건의 원본 정보 그대로 (GET /api/v1/listings/{listing_id}). ListingRecommendation과 달리
+    진단 요청 맥락(통근시간/실질주거비 등 계산값)이 전혀 없다 - 마이페이지 "등록한 매물 관리" 탭과
+    매물 수정 폼이 쓴다. listing_repository.get_listing()의 반환값 중 ref_*(국토부/행안부 참고
+    실거래 시딩값 - 소유자에게 보여줄 필요 없음)만 뺀 나머지 전부."""
+
+    listing_id: str
+    listing_status: str
+    registered_date: str
+    region: str
+    dong: str
+    building_name: str
+    property_type: str
+    road_address: str
+    jibun_address: str
+    unit_label: str
+    floor: str
+    lat: float | None = None
+    lon: float | None = None
+    postal_code: str
+    built_year: int | None = None
+    lease_type: str
+    jeonse_loan_available: bool = True
+    is_semi_jeonse: bool = False
+    deposit: int | None = None
+    monthly_rent: int | None = None
+    maintenance_fee: int | None = None
+    maintenance_fee_items: str
+    exclusive_area: float | None = None
+    rooms: int | None = None
+    bathrooms: int | None = None
+    parking: str
+    elevator: bool | None = None
+    move_in_date: str
+    photo: str
+    description: str
+    address_source: str
 
 
 class RirIncomeLevel(BaseModel):

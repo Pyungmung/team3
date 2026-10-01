@@ -64,8 +64,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/mypage/**").authenticated()
                         .requestMatchers("/api/payments/**").authenticated()
                         .requestMatchers("/api/watchlist/**").authenticated()
-                        // 추천 매물 허위매물 신고: 신고 수 조회(카드에 "허위매물 주의" 표시용)는 공개, 신고는 로그인 필요
+                        // 추천 매물 허위매물 신고: 신고 수 조회(카드에 "허위매물 주의" 표시용)와 실거래 참고 조회는
+                        // 공개, 신고는 로그인 필요
                         .requestMatchers(HttpMethod.POST, "/api/listings/reports/counts").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/listings/*/reference").permitAll()
+                        // 매물 카드에 보이는 통근시간을 카카오 API 기준 정확한 값으로 갱신하는 조회도 공개 (listing_commute.py 참고)
+                        .requestMatchers(HttpMethod.GET, "/api/listings/*/commute").permitAll()
                         .requestMatchers("/api/listings/**").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()
                         // 관리자 전용 (상단 "관리자 수정" 탭). 토큰 없으면 401, 일반 회원이면 403
