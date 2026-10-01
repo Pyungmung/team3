@@ -15,6 +15,7 @@ import com.customhouse.domain.board.repository.PostMetaRepository;
 import com.customhouse.domain.board.repository.PostRepository;
 import com.customhouse.domain.board.repository.PostScrapRepository;
 import com.customhouse.domain.board.repository.VoteRecordRepository;
+import com.customhouse.domain.user.service.AdminGuard;
 import com.customhouse.global.error.CustomException;
 import com.customhouse.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class PostService {
     private final PostLikeRepository postLikeRepository;
     private final PostScrapRepository postScrapRepository;
     private final BoardSupport support;
+    private final AdminGuard adminGuard;
 
     @Transactional
     public Long create(Long userId, PostCreateRequest req) {
@@ -99,7 +101,7 @@ public class PostService {
     @Transactional
     public void delete(Long userId, Long postId) {
         Post post = getPost(postId);
-        requireWriter(post, userId);
+        requireWriterOrAdmin(post, userId);
         voteRecordRepository.deleteByPostId(postId);
         postLikeRepository.deleteByPostId(postId);
         postScrapRepository.deleteByPostId(postId);
@@ -246,7 +248,14 @@ public class PostService {
 
     private void requireWriter(Post post, Long userId) {
         if (!post.isWrittenBy(userId)) {
-            throw new CustomException(ErrorCode.FORBIDDEN, "본인이 작성한 글만 수정/삭제할 수 있습니다.");
+            throw new CustomException(ErrorCode.FORBIDDEN, "본인이 작성한 글만 수정할 수 있습니다.");
+        }
+    }
+
+    /** 삭제는 작성자 본인이거나 관리자여야 한다 (수정은 작성자만 - requireWriter 참고). */
+    private void requireWriterOrAdmin(Post post, Long userId) {
+        if (!post.isWrittenBy(userId)) {
+            adminGuard.requireAdmin(userId);
         }
     }
 }

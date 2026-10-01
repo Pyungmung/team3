@@ -8,7 +8,7 @@
 """
 import csv
 import logging
-import re
+import random
 import threading
 from pathlib import Path
 
@@ -74,10 +74,15 @@ def get_listing(listing_id: str) -> dict | None:
 
 
 def next_listing_id(region: str) -> str:
-    """해당 자치구의 다음 매물등록번호 (기존 최대 일련번호 + 1)."""
-    pattern = re.compile(rf"^{schema.listing_id_prefix(region)}-\d{{6}}-(\d+)$")
-    seqs = [int(m.group(1)) for x in load_district(region) if (m := pattern.match(x["listing_id"]))]
-    return schema.new_listing_id(region, max(seqs, default=0) + 1)
+    """해당 자치구의 새 매물등록번호. 더미 매물(일련번호 순차 증가)과 구분되도록, 회원이 등록하는
+    매물은 이번 달 안에서 쓰이지 않은 4자리를 무작위로 뽑는다(최대 50회 재시도 - 한 달에 9999건
+    등록될 일은 없으니 사실상 항상 1~2번 안에 정해진다). 형식은 기존과 동일(listing_schema.new_listing_id)."""
+    existing = {x["listing_id"] for x in load_district(region)}
+    for _ in range(50):
+        candidate = schema.new_listing_id(region, random.randint(0, 9999))
+        if candidate not in existing:
+            return candidate
+    raise RuntimeError(f"{region} 매물번호를 50회 시도에도 생성하지 못했습니다(이번 달 번호가 거의 다 찼습니다).")
 
 
 def append_listing(region: str, listing: dict) -> dict:
@@ -94,6 +99,7 @@ def append_listing(region: str, listing: dict) -> dict:
             )
         listing.setdefault("listing_status", schema.LISTING_STATUS_AVAILABLE)
         listing.setdefault("photo", schema.PHOTO_PLACEHOLDER)
+        listing.setdefault("jeonse_loan_available", True)
         row = schema.listing_to_row(listing)
 
         try:
@@ -111,3 +117,59 @@ def append_listing(region: str, listing: dict) -> dict:
             ) from e
         _cache.pop(region, None)
     return row
+
+
+def update_listing(region: str, listing_id: str, updates: dict) -> dict | None:
+    """매물 1건에 updates만 머지하고(건드리지 않은 필드·broker_*·ref_*·registered_date·listing_status는
+    그대로 보존) CSV 전체를 다시 쓴다. 매물을 찾으면 머지된 행(내부 dict)을, 없으면 None을 돌려준다.
+    update_listing_status와 같은 전체 재작성 패턴 - 매물 수정(PUT /api/v1/listings/{listing_id})이 쓴다."""
+    path = csv_path(region)
+    updates = {**updates, "is_semi_jeonse": schema.is_semi_jeonse(updates.get("deposit") or 0, updates.get("monthly_rent") or 0)}
+    with _lock:
+        listings = load_district(region)
+        target = next((x for x in listings if x["listing_id"] == listing_id), None)
+        if target is None:
+            return None
+
+        merged = {**target, **updates}
+        rows = [schema.listing_to_row(merged if x is target else x) for x in listings]
+        try:
+            with path.open("w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=schema.LISTING_COLUMNS)
+                writer.writeheader()
+                writer.writerows(rows)
+        except PermissionError as e:
+            raise ListingFileLockedError(
+                f"{path.name} 파일을 다른 프로그램(엑셀 등)에서 열고 있어 저장할 수 없습니다. 파일을 닫고 다시 시도해 주세요."
+            ) from e
+        _cache.pop(region, None)
+    return merged
+
+
+def update_listing_status(region: str, listing_id: str, new_status: str) -> bool:
+    """매물 1건의 상태(listing_status)만 바꿔 CSV 전체를 다시 쓴다. 매물을 찾으면 True, 없으면 False.
+    "삭제"는 물리적으로 행을 지우는 대신 이 함수로 상태를 LISTING_STATUS_DELETED로 바꾼다 - 이미
+    listing_recommender.py의 "계약가능이 아니면 추천 제외" 필터가 이 상태도 걸러내므로 추천 로직은
+    손댈 필요가 없다(listing_recommender.py:300-301 참고)."""
+    path = csv_path(region)
+    with _lock:
+        listings = load_district(region)
+        target = next((x for x in listings if x["listing_id"] == listing_id), None)
+        if target is None:
+            return False
+
+        rows = [
+            schema.listing_to_row({**x, "listing_status": new_status} if x is target else x)
+            for x in listings
+        ]
+        try:
+            with path.open("w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=schema.LISTING_COLUMNS)
+                writer.writeheader()
+                writer.writerows(rows)
+        except PermissionError as e:
+            raise ListingFileLockedError(
+                f"{path.name} 파일을 다른 프로그램(엑셀 등)에서 열고 있어 저장할 수 없습니다. 파일을 닫고 다시 시도해 주세요."
+            ) from e
+        _cache.pop(region, None)
+    return True

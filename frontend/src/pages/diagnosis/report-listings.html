@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <!-- [담당: 양혜승] AI 주거비 절약 진단 - 추천 매물 리포트 (더미 매물 CSV 기반, 2026-09-28)
      추천 매물은 docs/samples/dummyhouses 의 더미 매물이고, 국토부 실거래가는 매물마다 "실거래 참고"로만 보여준다.
-     기존 국토부 실거래가 기준 리포트(report-result.html)는 그대로 두고, 이 페이지 하단 탭에서 같은 조건으로 불러온다.
-     레이아웃은 report-result.html과 같다: 좌측 2단(진단 리포트/정책 추천) · 가운데 큰 지도 · 우측 탭(월세/전세). -->
+     레이아웃: 좌측 2단(진단 리포트/정책 추천) · 가운데 큰 지도 · 우측 탭(월세/전세). -->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -157,6 +156,14 @@
     .requery-msg { font-size: 13px; color: #94a3b8; }
     .requery-msg.error { color: #dc2626; font-weight: 700; }
 
+    /* 매물 등록 버튼 - 왼쪽 주택 유형 필터 칩과 크기를 맞춘다 */
+    .register-listing-btn {
+      display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px;
+      border: 1.5px solid var(--brand-600, #1B2A4A); background: #fff; color: var(--brand-600, #1B2A4A);
+      font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s;
+    }
+    .register-listing-btn:hover { background: var(--brand-600, #1B2A4A); color: #fff; }
+
     .building-name-link {
       background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
       text-decoration: underline; text-underline-offset: 2px; text-decoration-color: #cbd5e1;
@@ -177,18 +184,6 @@
     }
     #commute-source-badge.estimate { color: #b45309; border-color: #fde68a; background: #fffbeb; }
 
-    /* 하단 고정 탭 바: 추천 매물 리포트(현재) <-> 실거래가 기준 리포트(기존) */
-    .source-tabbar {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; height: 52px; display: flex;
-      background: #fff; border-top: 1px solid #e2e8f0; box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
-    }
-    .source-tab {
-      flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
-      font-size: 14px; font-weight: 800; color: #94a3b8; border-top: 3px solid transparent;
-    }
-    .source-tab.active { color: var(--brand-600, #1B2A4A); border-top-color: var(--brand-600, #1B2A4A); cursor: default; }
-    .source-tab:not(.active):hover { color: #64748b; background: #f8fafc; }
-    .source-tab:disabled { opacity: .6; cursor: progress; }
   </style>
 </head>
 <body>
@@ -218,7 +213,7 @@
         <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="단독다가구" /><span>단독·다가구</span></label>
         <span id="requery-msg" class="requery-msg"></span>
       </div>
-          <a href="input-form.html" class="text-sm underline text-gray-500 whitespace-nowrap">조건 다시 입력하기</a>
+          <button type="button" id="register-listing-btn" class="register-listing-btn">＋ 매물 등록</button>
         </div>
       </div>
 
@@ -357,19 +352,13 @@
     </form>
   </div>
 
-  <!-- 하단 탭 바: 추천 매물 리포트(현재) / 실거래가 기준 리포트(기존 report-result.html 보존) -->
-  <nav class="source-tabbar hidden" id="source-tabbar" aria-label="리포트 종류">
-    <button type="button" class="source-tab active" aria-current="page">🏠 추천 매물 리포트</button>
-    <button type="button" class="source-tab" id="legacy-report-tab">📊 실거래가 기준 리포트 (기존)</button>
-  </nav>
-
   <div class="rl-toast hidden" id="rl-toast" role="status" aria-live="polite"></div>
 
   <script src="../../js/components/header.js?v=20260915b"></script>
-  <script src="../../js/components/listing-card.js?v=20260928b"></script>
+  <script src="../../js/components/listing-card.js?v=20261001a"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/watchlist.js?v=20260928a"></script>
-  <script src="../../js/api/recommendation.js?v=20260928a"></script>
+  <script src="../../js/api/watchlist.js?v=20261001b"></script>
+  <script src="../../js/api/recommendation.js?v=20260930a"></script>
   <script src="../../js/utils/chart-util.js?v=20260915d"></script>
   <script src="../../js/utils/map-util.js?v=20260928a"></script>
   <script src="../../js/utils/map-cluster-util.js?v=20260928a"></script>
@@ -379,26 +368,29 @@
     // 카드 본문 렌더링과 금액/이스케이프 도구는 마이페이지 관심 매물과 같이 쓰는 js/components/listing-card.js에 있다.
     const { esc, fmtMoney, fmtNum, fmtRate, PHOTO_PLACEHOLDER } = CustomHouseListingCard;
 
-    // localStorage 사용 이유: report-result.html 참고 (탭이 바뀌거나 세션이 끊겨도 유지되어야 함).
+    // localStorage 사용 이유: 탭이 바뀌거나 세션이 끊겨도 결과가 유지되어야 함.
     const raw = localStorage.getItem("customhouse:lastListingDiagnosis");
 
-    // 이 결과를 받을 때 쓴 조건. 기존 실거래가 리포트에서 주택 유형 등을 바꿔 다시 조회하면 공용 조건(lastDiagnosisCondition)만
+    // 이 결과를 받을 때 쓴 조건. 주택 유형 필터를 바꿔 다시 조회하면 공용 조건(lastDiagnosisCondition)만
     // 바뀌고 이 결과는 옛 조건 그대로라, 둘이 다르면 현재 조건으로 다시 받아온다 (체크박스와 목록이 어긋나 보이지 않게).
     const currentConditionText = localStorage.getItem("customhouse:lastDiagnosisCondition");
     const listingConditionText = localStorage.getItem("customhouse:lastListingDiagnosisCondition");
-    const isStale = !!raw && !!currentConditionText && currentConditionText !== listingConditionText;
+    // listing-register.html에서 매물 등록을 마치고 돌아올 때 ?justRegistered=1을 붙인다 - 조건은
+    // 안 바뀌었어도 방금 등록한 매물이 결과에 반영되게 강제로 한 번 더 조회한다.
+    const justRegistered = new URLSearchParams(location.search).get("justRegistered") === "1";
+    const isStale = !!raw && !!currentConditionText && (currentConditionText !== listingConditionText || justRegistered);
 
     if (!raw) {
       document.getElementById("empty-state").classList.remove("hidden");
     } else if (isStale) {
       const stateEl = document.getElementById("empty-state");
-      stateEl.innerHTML = '<p class="text-gray-500">조건이 바뀌어 추천 매물을 다시 불러오는 중이에요... (최대 1분)</p>';
+      stateEl.innerHTML = `<p class="text-gray-500">${justRegistered ? "등록한 매물을 반영해 다시 불러오는 중이에요" : "조건이 바뀌어 추천 매물을 다시 불러오는 중이에요"}... (최대 1분)</p>`;
       stateEl.classList.remove("hidden");
       CustomHouseRecommendationApi.requestListingDiagnosis(JSON.parse(currentConditionText))
         .then((result) => {
           localStorage.setItem("customhouse:lastListingDiagnosis", JSON.stringify(result));
           localStorage.setItem("customhouse:lastListingDiagnosisCondition", currentConditionText);
-          location.reload();
+          location.href = location.pathname; // ?justRegistered=1 쿼리를 떼어내며 새로고침(무한 재조회 방지)
         })
         .catch((err) => {
           stateEl.innerHTML = `<p class="text-red-600 mb-4">${esc(err.message || "추천 매물을 불러오지 못했어요.")}</p>
@@ -407,17 +399,15 @@
     } else {
       const data = JSON.parse(raw);
       document.getElementById("result-content").classList.remove("hidden");
-      document.getElementById("source-tabbar").classList.remove("hidden");
 
-      // 화면 전체를 꽉 채우는 레이아웃: 헤더/상단 바를 뺀 남는 세로 공간(하단 탭 바 52px 제외)을 3열이 모두 쓴다.
-      const TABBAR_H = 52;
+      // 화면 전체를 꽉 채우는 레이아웃: 헤더/상단 바를 뺀 남는 세로 공간을 3열이 모두 쓴다.
       const layoutEl = document.querySelector(".report-layout");
       function fitLayout() {
         if (window.innerWidth <= 1100) {
           layoutEl.style.height = ""; // 좁은 화면은 세로로 쌓고 페이지가 스크롤된다
         } else {
           const top = layoutEl.getBoundingClientRect().top + window.scrollY;
-          layoutEl.style.height = Math.max(480, window.innerHeight - top - TABBAR_H) + "px";
+          layoutEl.style.height = Math.max(480, window.innerHeight - top) + "px";
         }
         if (window.CustomHouseClusterMapUtil) CustomHouseClusterMapUtil.relayout(); // 지도 크기가 바뀌면 카카오 지도에 알려줘야 한다
       }
@@ -441,6 +431,9 @@
       const reportStatuses = {}; // listingId -> {count, flagged}
       const myReported = new Set(); // 이 화면에서 내가 방금 신고한 매물번호 (버튼을 "신고 완료"로 바꾼다)
       const isLoggedIn = () => !!(window.CustomHouseAuthApi && CustomHouseAuthApi.isLoggedIn());
+      // 수정/삭제 버튼 노출: 수정은 내가 등록한 매물만, 삭제는 내가 등록한 매물 + 관리자는 더미 포함 전체.
+      const myListingIds = new Set();
+      const isAdminUser = isLoggedIn() && window.getLoggedInRole && getLoggedInRole() === "ADMIN";
 
       let toastTimer = null;
       function showToast(text) {
@@ -476,6 +469,15 @@
         btn.textContent = on ? "♥" : "♡";
       }
 
+      /** 수정은 내가 등록한 매물에만, 삭제는 내가 등록한 매물이거나 관리자면(더미 포함) 보여준다. */
+      function paintOwnershipState(li) {
+        const mine = myListingIds.has(li.dataset.listingId);
+        const editBtn = li.querySelector(".edit-listing-btn");
+        if (editBtn) editBtn.classList.toggle("hidden", !mine);
+        const delBtn = li.querySelector(".delete-listing-btn");
+        if (delBtn) delBtn.classList.toggle("hidden", !(mine || isAdminUser));
+      }
+
       const paintAllCards = (paint) => document.querySelectorAll("#wolse-list > li, #jeonse-list > li").forEach(paint);
 
       /** 새로 그려진 카드들의 신고 현황을 서버에서 받아와 표시한다 (실패해도 카드는 그대로 쓸 수 있다). */
@@ -496,6 +498,16 @@
             paintAllCards(paintFavoriteState);
           })
           .catch(() => {});
+      }
+      if (isLoggedIn()) {
+        CustomHouseWatchlistApi.getMyListings()
+          .then((listings) => {
+            listings.forEach((r) => myListingIds.add(r.listing_id));
+            paintAllCards(paintOwnershipState);
+          })
+          .catch(() => {
+            if (isAdminUser) paintAllCards(paintOwnershipState); // 조회가 실패해도 관리자 삭제 버튼은 보이게
+          });
       }
 
       const savedCondition = localStorage.getItem("customhouse:lastDiagnosisCondition");
@@ -613,7 +625,6 @@
           localStorage.setItem("customhouse:lastListingDiagnosis", JSON.stringify(result));
           localStorage.setItem("customhouse:lastListingDiagnosisCondition", JSON.stringify(newCondition));
           localStorage.setItem("customhouse:lastDiagnosisCondition", JSON.stringify(newCondition));
-          localStorage.removeItem("customhouse:lastDiagnosis"); // 조건이 바뀌었으니 예전 실거래가 리포트 결과는 무효
           location.reload();
         } catch (err) {
           setRequeryMsg(err.message || "다시 조회하는 중 오류가 발생했어요.", true);
@@ -639,28 +650,6 @@
         });
       });
 
-      // ---------- 하단 탭: 기존 "실거래가 기준 리포트"로 이동 ----------
-      // 저장해 둔 같은 조건으로 기존 API(국토부 실거래가 기준)를 호출해 결과를 저장한 뒤 report-result.html을 연다.
-      // 콜드 상태에서는 외부 API 때문에 최대 1분가량 걸릴 수 있다.
-      const legacyTab = document.getElementById("legacy-report-tab");
-      legacyTab.addEventListener("click", async () => {
-        if (!condition) {
-          alert("조건 정보가 없어 기존 리포트를 불러올 수 없어요. 처음부터 진단해주세요.");
-          return;
-        }
-        legacyTab.disabled = true;
-        legacyTab.textContent = "⏳ 실거래가 기준 리포트 불러오는 중... (최대 1분)";
-        try {
-          const result = await CustomHouseRecommendationApi.requestDiagnosis(condition);
-          localStorage.setItem("customhouse:lastDiagnosis", JSON.stringify(result));
-          location.href = "report-result.html";
-        } catch (err) {
-          alert(err.message || "실거래가 기준 리포트를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
-          legacyTab.disabled = false;
-          legacyTab.textContent = "📊 실거래가 기준 리포트 (기존)";
-        }
-      });
-
       // 매물 카드 1개: 본문(사진~실거래 참고)은 공용 렌더러가 그리고, 관심(하트)/신고 버튼과 "허위매물 주의" 표시만 이 페이지에서 붙인다.
       // 관심 매물로 담을 때는 이 카드의 매물 정보를 통째로 저장해 마이페이지에서 같은 카드로 다시 그린다 (toggleFavorite 참고).
       function renderListingCard(r, idx) {
@@ -672,8 +661,14 @@
           ${CustomHouseListingCard.renderBody(r, { idx, conversionRate: data.deposit_conversion_rate })}
           <div class="listing-foot">
             <div class="listing-no">매물번호 ${esc(r.listing_id)}</div>
-            <button type="button" class="report-btn card-action" data-listing-id="${esc(r.listing_id)}"
-              title="가격·계약 여부·정보가 실제와 다른 매물이면 신고해주세요">🚩 허위매물 신고</button>
+            <div style="display:flex;gap:4px;align-items:center">
+              <a class="report-btn card-action edit-listing-btn hidden" href="listing-register.html?id=${encodeURIComponent(r.listing_id)}"
+                title="내가 등록한 매물만 수정할 수 있어요">✏️ 수정</a>
+              <button type="button" class="report-btn card-action delete-listing-btn hidden" data-listing-id="${esc(r.listing_id)}" data-region="${esc(r.region)}"
+                title="본인이 등록한 매물이거나 관리자만 삭제할 수 있어요">🗑 삭제</button>
+              <button type="button" class="report-btn card-action" data-listing-id="${esc(r.listing_id)}"
+                title="가격·계약 여부·정보가 실제와 다른 매물이면 신고해주세요">🚩 허위매물 신고</button>
+            </div>
           </div>
         </li>`;
       }
@@ -725,6 +720,8 @@
           listEl.insertAdjacentHTML("beforeend", batch.map((r, i) => renderListingCard(r, rendered + i)).join(""));
           rendered += batch.length;
           hydrateReportStatuses(batch);
+          CustomHouseListingCard.wireReferenceAutoLoad(listEl);
+          CustomHouseListingCard.wireCommuteAutoLoad(listEl, condition?.workLat, condition?.workLon, condition?.transportType);
         }
         function loadAll() {
           while (rendered < items.length) loadMore();
@@ -802,7 +799,7 @@
       }
 
       // ---------- 허위매물 신고 / 로그인 안내: 같은 팝업 틀(#pc-modal)을 쓰고 안쪽 내용만 바꾼다 ----------
-      // pcMode: "policy"(정책정보 정정신고) | "listing"(허위매물 신고) | "login"(로그인 안내)
+      // pcMode: "policy"(정책정보 정정신고) | "listing"(허위매물 신고) | "login"(로그인 안내) | "register"(매물 등록)
       let pcMode = "policy";
       let pcTarget = null; // 신고 대상 매물 (listing 모드)
 
@@ -888,6 +885,13 @@
         pcOpen(opener);
         pcEl("pc-type").focus();
       }
+
+      // ---------- 매물 등록: 로그인한 회원 누구나. 전용 페이지(listing-register.html)로 분리되어
+      // 있다 - 사진 업로드·주소 지도 핀 확인·편의시설 전체 입력까지 작은 팝업에 담기 어려워서다.
+      document.getElementById("register-listing-btn").addEventListener("click", (e) => {
+        if (!isLoggedIn()) return openLoginNotice("매물 등록", e.currentTarget);
+        location.href = "listing-register.html";
+      });
 
       // 로그인하지 않은 상태에서 신고/관심 버튼을 누르면: 로그인 안내 (로그인은 새 탭에서 하고, 이 화면에서 다시 누르면 된다)
       function openLoginNotice(actionLabel, opener) {
@@ -1104,9 +1108,24 @@
         }
       }
 
+      async function handleDeleteListing(btn) {
+        if (!confirm("이 매물을 삭제할까요? 되돌릴 수 없어요.")) return;
+        btn.disabled = true;
+        try {
+          await CustomHouseWatchlistApi.deleteListing(btn.dataset.listingId, btn.dataset.region);
+          btn.closest("li[data-idx]")?.remove();
+          showToast("매물을 삭제했어요.");
+        } catch (err) {
+          showToast(err.message || "본인이 등록한 매물이거나 관리자만 삭제할 수 있어요.");
+          btn.disabled = false;
+        }
+      }
+
       function handleCardActionClick(e) {
         const fav = e.target.closest(".fav-btn");
         if (fav) return toggleFavorite(fav);
+        const del = e.target.closest(".delete-listing-btn");
+        if (del) return handleDeleteListing(del);
         const rep = e.target.closest(".report-btn");
         if (rep) {
           const r = listingOfCard(rep.closest("li[data-idx]"));

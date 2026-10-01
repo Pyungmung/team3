@@ -198,13 +198,13 @@ function renderRecommendedRegionsMap(containerId, recommendations, onMarkerClick
     return;
   }
 
-  // 지도를 담는 #map-container가 카드 높이를 100%로 채우도록 되어 있으므로(report-result.html의
+  // 지도를 담는 #map-container가 카드 높이를 100%로 채우도록 되어 있으므로(report-listings.html의
   // .report-map-card 참고), 이 안쪽 div도 고정 높이 대신 100%로 채워야 실제로 꽉 차 보인다.
   const mapElId = `${containerId}-kakao-map`;
   el.innerHTML = `<div id="${mapElId}" style="width:100%;height:100%;border-radius:12px;"></div>`;
   const mapEl = document.getElementById(mapElId);
 
-  // report-result.html의 <head>에서 SDK를 autoload=false로 비동기 삽입하므로,
+  // report-listings.html의 <head>에서 SDK를 autoload=false로 비동기 삽입하므로,
   // window.kakao가 아직 없을 수 있어 준비될 때까지 짧게 폴링한다.
   (function waitForKakaoSdk(retriesLeft) {
     if (window.kakao && window.kakao.maps) {

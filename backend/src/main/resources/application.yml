@@ -10,6 +10,12 @@ spring:
     # KEY=value 형태를 properties로 읽어와 ${DB_PASSWORD} 등의 플레이스홀더에 자동 주입한다. 파일이 없어도 정상 동작.
     import: optional:file:.env[.properties]
 
+  # [담당: 송귀성] 매물 등록 사진 업로드 - ListingPhotoController. 대표 사진 1장, 5MB 제한.
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
   # [담당: 허겸] 네이버 OAuth2 로그인
   # 실제 client-id/secret은 backend/.env에 설정(네이버 개발자센터에서 앱 등록 후 발급).
   # 값이 없으면 더미 값으로 기동은 되지만, 실제 네이버 로그인은 해당 앱을 등록해야 동작한다.
@@ -54,6 +60,11 @@ support:
 # [담당: 송귀성] Python AI 엔진(customhouse-ai, FastAPI) 주소
 ai-engine:
   base-url: http://localhost:8000
+
+# [담당: 송귀성] 매물 등록 사진 업로드 저장 위치(로컬 디스크). WebMvcConfig가 /uploads/**로 정적 서빙한다.
+# 알려진 제약: 로컬 디스크 저장이라 Render 같은 배포 환경은 재배포 시 유실될 수 있다(지금 범위 밖).
+upload:
+  dir: ${UPLOAD_DIR:uploads}
 
 # [담당: 허겸] JWT 설정. JWT_SECRET은 backend/.env에 실제 값 설정 권장(기본값은 로컬 개발용 임시 키).
 jwt:
