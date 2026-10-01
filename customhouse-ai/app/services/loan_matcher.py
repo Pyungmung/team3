@@ -7,9 +7,12 @@
 부족분(매물 보증금 - 보유 보증금)이 이 한도(둘 다 있으면 더 낮은 쪽)를 넘으면, 대출로도 그 매물을 감당할 수
 없으므로 "신청 가능"에서 뺀다 - _loan_amount_ok/_max_loan_available 참고.
 
-2026-09-30: 신혼부부/다자녀가구처럼 일부 우대사항은 매물 보증금 제한/연소득/최대 대출금액/최대 대출금 비율한도를
-공통 조건과 다른(보통 더 관대한) 자체 한도로 심사한다. 관리자가 그 우대사항 행에 재반영 값을 입력해두면, 사용자가 그
-우대사항에 해당할 때 공통 조건 대신 그 값으로 자격을 판별한다(공란이면 공통 조건 그대로) - _effective_limit 참고.
+2026-09-30: 신혼부부/다자녀가구처럼 일부 우대사항은 매물 보증금 제한/연소득/최대 대출금액/최대 대출금 비율한도/
+전용면적을 공통 조건과 다른(항상 더 관대한 쪽으로만 - 여러 우대사항이 겹치면 더 큰 값이 이긴다) 자체 한도로
+심사한다. 관리자가 그 우대사항 행에 재반영 값을 입력해두면, 사용자가 그 우대사항에 해당할 때 공통 조건 대신 그
+값으로 자격을 판별한다(공란이면 공통 조건 그대로) - _effective_limit 참고. "더 관대한 쪽이 이긴다"는 방향이
+고정이라, 청년전용 버팀목 전세대출처럼 특정 나이 미만에서 한도를 "좁혀야" 하는 경우는 반대로 공통 조건 자체를
+그 좁은 기준값으로 두고, "만 25세 이상" 우대사항이 재반영으로 넓혀주는 식으로 설계한다(2026-10-01).
 
 2026-09-30: 관리자가 대출별 실제 금리표(부부합산 연소득 4구간 x 임차보증금 3구간, 정부 고시 표 그대로)를
 입력해두면 기본금리를 그 표에서 찾아 쓴다(RATE_TABLE_INCOME_BRACKETS_MANWON/RATE_TABLE_DEPOSIT_BRACKETS_MANWON,
@@ -46,20 +49,37 @@ RATE_TABLE_DEPOSIT_BRACKETS_MANWON = [5000, 10000, None]
 # 관리자 화면의 우대사항 코드 -> 요청의 preferential_statuses 코드. 이름이 같으면 생략한다.
 # (관리자 화면은 NEAR_POOR, 주거조건 입력은 NEAR_POVERTY로 코드가 달라서 여기서 맞춘다)
 _STATUS_CODE_BY_PREFERENCE = {"NEAR_POOR": "NEAR_POVERTY"}
-_SELF_REPORTED_PREFERENCES = ("BASIC_LIVELIHOOD", "NEAR_POOR", "SINGLE_PARENT", "INDEPENDENT_YOUTH", "NEWLYWED", "MULTI_CHILD")
+# DUAL_INCOME(맞벌이부부)/ONE_CHILD(1자녀)/TWO_CHILDREN(2자녀)/MULTI_CHILD(다자녀가구)는 관리자 화면에서
+# "부가 우대사항"으로 시각적으로만 묶여 보일 뿐, 여기서는 다른 자기신고 항목과 완전히 동일하게 독립적으로 판별한다.
+_SELF_REPORTED_PREFERENCES = (
+    "BASIC_LIVELIHOOD", "NEAR_POOR", "SINGLE_PARENT", "INDEPENDENT_YOUTH", "NEWLYWED",
+    "DUAL_INCOME", "ONE_CHILD", "TWO_CHILDREN", "MULTI_CHILD",
+    "DISABLED", "MULTICULTURAL", "ELDERLY_DEPENDENT", "ELDERLY_HOUSEHOLD",
+)
 
 
 def _preference_satisfied(key: str, request) -> bool:
     """사용자가 이 우대사항 조건에 해당하는지 (required 여부와 무관 - 필수 판별과 우대금리 차감이 공용으로 쓴다).
     - 자기신고 항목(기초수급/차상위/한부모/자립준비청년/신혼부부/다자녀): 체크했어야 해당
     - 중소기업 취업청년: 주거조건의 직업 유형이 SME(중소기업)여야 해당
-    - 무주택: 명시적으로 "무주택 아님"이 아니면 해당 (policy_matcher._no_household_ok와 같은 관대한 처리)"""
+    - 무주택: 명시적으로 "무주택 아님"이 아니면 해당 (policy_matcher._no_household_ok와 같은 관대한 처리)
+    - 만 25세 미만/이상(AGE_UNDER_25/AGE_25_OR_OLDER): 둘 다 체크박스가 아니라 진단 폼의 "만 나이"로 자동
+      판별 - 나이/자산처럼 관대하게 처리하지 않고, 나이를 입력 안 했으면(None) 둘 다 해당 없음으로 본다(혜택을
+      주는 조건이라 보수적으로 처리). AGE_25_OR_OLDER가 "미만"이 아니라 "이상"을 조건으로 잡은 이유는
+      _effective_limit의 "여러 우대사항이 해당하면 더 관대한 값이 이긴다" 방향과 맞추기 위해서다 - 청년전용
+      버팀목 전세대출은 공통 조건 자체를 25세 미만 기준값(더 좁은 쪽)으로 두고, 25세 이상이면 이 우대사항
+      재반영으로 넓혀주는 식으로 쓴다(관리자 화면 참고). AGE_UNDER_25는 그 반대쪽(25세 미만 그룹) 전용
+      우대금리/재반영을 따로 주고 싶을 때 쓴다."""
     if key in _SELF_REPORTED_PREFERENCES:
         return _STATUS_CODE_BY_PREFERENCE.get(key, key) in request.preferential_statuses
     if key == "SME_EMPLOYED_YOUTH":
         return request.job_type == "SME"
     if key == "NO_HOME":
         return policy_matcher._no_household_ok({"require_no_household": True}, request.no_householder)
+    if key == "AGE_25_OR_OLDER":
+        return request.age is not None and request.age >= 25
+    if key == "AGE_UNDER_25":
+        return request.age is not None and request.age < 25
     return False  # 관리자 화면에 없는 낯선 코드는 해당 없음으로 본다
 
 
@@ -118,10 +138,13 @@ def _listing_deposit_ok(loan, request, listing: dict) -> bool:
     return limit is None or (listing.get("listing_deposit") or 0) <= limit
 
 
-def _area_ok(loan, listing: dict) -> bool:
-    """전용면적(이하): 면적 정보가 없는 매물(0/None)은 일단 포함."""
+def _area_ok(loan, request, listing: dict) -> bool:
+    """전용면적(이하): 면적 정보가 없는 매물(0/None)은 일단 포함. 청년전용 버팀목 전세대출처럼 공통 조건
+    자체를 더 좁은 기준값으로 두고, 특정 우대사항(예: 만 25세 이상)이 재반영으로 더 넓혀줄 수 있다
+    (_effective_limit, "더 관대한 값이 이긴다" 방향과 일치)."""
+    limit = _effective_limit(loan, request, loan.max_exclusive_area, lambda s: s.override_max_exclusive_area)
     area = listing.get("exclusive_area")
-    return loan.max_exclusive_area is None or not area or area <= loan.max_exclusive_area
+    return limit is None or not area or area <= limit
 
 
 def _required_preferences_ok(loan, request) -> bool:
@@ -162,7 +185,7 @@ def is_eligible(loan, request, listing: dict) -> bool:
         and _income_ok(loan, request)
         and policy_matcher._asset_ok({"max_asset": loan.max_asset}, request.assets)
         and _listing_deposit_ok(loan, request, listing)
-        and _area_ok(loan, listing)
+        and _area_ok(loan, request, listing)
         and _required_preferences_ok(loan, request)
         and _loan_amount_ok(loan, request, listing)
     )
@@ -170,15 +193,17 @@ def is_eligible(loan, request, listing: dict) -> bool:
 
 def _final_rate_percent(loan, request, listing: dict, market_rate_percent: float) -> float:
     """기본금리(대출금리표가 있으면 그 표의 값, 없으면 market_rate_percent - 기준금리 API 값)에서, 사용자가
-    해당하는 우대사항의 우대금리를 모두 뺀 최종 금리(연 %). required 여부와 무관하게 "해당하면" 차감한다
-    (필수 자격 판별과는 별개 계산식). 0% 밑으로는 내려가지 않는다."""
+    해당하는 우대사항 중 "가장 큰 우대금리 차감 하나만" 뺀 최종 금리(연 %) - 여러 우대사항에 해당해도 중복으로
+    합산하지 않는다(2026-10-01, 관리자 요청으로 sum()에서 max()로 변경. 모든 대출 공통). required 여부와
+    무관하게 "해당하면" 차감 후보가 된다(필수 자격 판별과는 별개 계산식). 0% 밑으로는 내려가지 않는다."""
     base_rate = _table_base_rate_percent(loan, request, listing)
     if base_rate is None:
         base_rate = market_rate_percent
-    discount = sum(
-        setting.discount or 0.0
-        for key, setting in loan.preferences.items()
-        if _preference_satisfied(key, request)
+    discount = max(
+        (setting.discount or 0.0
+         for key, setting in loan.preferences.items()
+         if _preference_satisfied(key, request)),
+        default=0.0,
     )
     return round(max(0.0, base_rate - discount), 2)
 

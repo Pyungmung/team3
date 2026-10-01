@@ -93,6 +93,10 @@ public class HousingCondition extends BaseTimeEntity {
 
     private Boolean noHouseholder; // 무주택여부
 
+    // 병역이행기간(개월). 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) - 추후 특정 대출상품에
+    // 연동 예정(12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식).
+    private Integer militaryServiceMonths;
+
     // 우대사항(다중 선택). 예전엔 @ElementCollection(값 컬렉션)이라 자체 기본키가 없는 테이블로 생성됐는데,
     // Aiven 등 관리형 클라우드 MySQL은 `sql_require_primary_key`가 켜져 있어 그런 테이블 생성 자체가
     // 거부됐다(2026-09-22). 그래서 board 도메인의 PostMeta처럼 자체 id를 가진 진짜 엔티티로 바꿨다.

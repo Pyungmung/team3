@@ -68,6 +68,10 @@ public record MypageConditionRequest(
 
         Boolean noHouseholder,
 
+        @Min(value = 0, message = "병역이행기간은 0 이상이어야 합니다.")
+        Integer militaryServiceMonths, // 개월 단위, 선택. 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) -
+        // 추후 특정 대출상품에 연동 예정(12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식)
+
         Set<PreferentialStatus> preferentialStatuses,
 
         boolean notificationEnabled

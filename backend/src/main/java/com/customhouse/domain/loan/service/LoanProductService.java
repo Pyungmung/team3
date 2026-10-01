@@ -169,7 +169,8 @@ public class LoanProductService {
                     ? LoanPreference.EMPTY
                     : new LoanPreference(p.required(), p.discount() == null ? 0.0 : p.discount(),
                             p.overrideMaxListingDeposit(), p.overrideMaxIncomeSingle(),
-                            p.overrideMaxIncomeCouple(), p.overrideMaxLoanAmount(), p.overrideMaxLoanRatioPercent()));
+                            p.overrideMaxIncomeCouple(), p.overrideMaxLoanAmount(), p.overrideMaxLoanRatioPercent(),
+                            p.overrideMaxExclusiveArea()));
         }
         return result;
     }

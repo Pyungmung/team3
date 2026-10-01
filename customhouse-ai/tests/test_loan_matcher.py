@@ -354,7 +354,8 @@ def test_보유_보증금이_매물_보증금보다_많거나_같으면_대출�
         assert result["effective_cost"] == 3  # 이자 없이 월세(0) + 관리비(3)뿐
 
 
-def test_여러_우대금리_차감이_합산되고_0퍼센트_밑으로는_내려가지_않는다():
+def test_여러_우대금리_차감_중_가장_큰_값_하나만_적용되고_0퍼센트_밑으로는_내려가지_않는다():
+    # 2026-10-01: 여러 우대사항에 해당해도 합산하지 않고 가장 큰 차감 하나만 적용한다(모든 대출 공통).
     loans = [loan(preferences={
         "NEWLYWED": {"required": False, "discount": 1.0},
         "NO_HOME": {"required": False, "discount": 1.5},
@@ -362,7 +363,13 @@ def test_여러_우대금리_차감이_합산되고_0퍼센트_밑으로는_내�
     })]
     r = req(loans, preferentialStatuses=["NEWLYWED"], noHouseholder=True, jobType="SME")
     result = loan_matcher.match_eligible_loans(r, JEONSE)[0]
-    assert result["rate_percent"] == 0.0  # 3.0 - (1.0+1.5+1.0) = -0.5 -> 0으로 바닥
+    assert result["rate_percent"] == 1.5  # 3.0 - max(1.0, 1.5, 1.0) = 1.5 (합산 아님)
+
+    # 가장 큰 차감이 기본금리를 넘으면 0으로 바닥
+    loans_big = [loan(preferences={"NO_HOME": {"required": False, "discount": 5.0}})]
+    r_big = req(loans_big, noHouseholder=True)
+    result_big = loan_matcher.match_eligible_loans(r_big, JEONSE)[0]
+    assert result_big["rate_percent"] == 0.0
 
 
 def test_보증금이_다르면_같은_대출이라도_실질주거비가_다르다():

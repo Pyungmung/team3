@@ -11,16 +11,30 @@
 .cost-box.loan { background: #ecfdf5; border-color: #a7f3d0; margin-top: 8px; }
 .cost-box.loan .val { color: #047857; }
 
-/* 매물 사진 자리: 사진 연결 전(PHOTO_PLACEHOLDER)에는 회색 박스 */
+/* 매물 사진 자리: 사진이 있으면 16:10 비율, 사진 연결 전(PHOTO_PLACEHOLDER)에는 글자 높이 정도의 얇은 회색 바 */
 .listing-photo {
-  width: 100%; height: 132px; border-radius: 10px; margin-bottom: 12px; overflow: hidden;
+  width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; margin-bottom: 12px; overflow: hidden;
   background: #f1f5f9; color: #94a3b8; font-size: 12px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
 }
 .listing-photo img { width: 100%; height: 100%; object-fit: cover; }
+.listing-photo.empty { aspect-ratio: auto; height: 16px; }
 
 .listing-details { border-top: 1px solid #f1f5f9; margin-top: 10px; padding-top: 8px; }
 .listing-details summary { cursor: pointer; font-size: 12px; font-weight: 700; color: #475569; }
 .listing-details .body { font-size: 12px; color: #64748b; line-height: 1.6; margin-top: 6px; }
 
 .listing-no { font-size: 10.5px; color: #94a3b8; letter-spacing: 0.01em; }
+
+/* 매물명 아래 태그 줄(유형/전세형·월세형/반전세형/전세대출불가) - 줄바꿈으로 매물명·통근시간과 분리 */
+.badge-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.lease-badge.lease-jeonse { background: #e0f2fe; color: #075985; }
+.lease-badge.lease-wolse { background: #dcfce7; color: #15803d; }
+
+/* 통근 예상시간 - 태그 줄과 분리된 자기 줄, 시인성을 위해 굵고 진한 색으로 강조 */
+.commute-time { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12.5px; font-weight: 700; color: #1d4ed8; }
+/* 통근시간 옆 교통수단(자동차/대중교통/도보) 표시 */
+.commute-time .transport-tag {
+  font-size: 10.5px; font-weight: 700; color: #3730a3; background: #e0e7ff;
+  border-radius: 999px; padding: 1px 7px; line-height: 1.5;
+}

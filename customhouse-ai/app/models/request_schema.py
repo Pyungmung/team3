@@ -30,6 +30,9 @@ class LoanPreferenceSetting(BaseModel):
     override_max_income_couple: int | None = Field(None, alias="overrideMaxIncomeCouple")
     override_max_loan_amount: int | None = Field(None, alias="overrideMaxLoanAmount")
     override_max_loan_ratio_percent: float | None = Field(None, alias="overrideMaxLoanRatioPercent")
+    # 2026-10-01: 전용면적도 재반영할 수 있다 - 청년전용 버팀목 전세대출은 공통 조건 자체를 25세 미만 기준값
+    # (더 좁은 쪽)으로 두고, "만 25세 이상" 우대사항이 이 값으로 넓혀주는 식으로 쓴다.
+    override_max_exclusive_area: float | None = Field(None, alias="overrideMaxExclusiveArea")
 
     class Config:
         populate_by_name = True
@@ -116,6 +119,9 @@ class DiagnosisRequest(BaseModel):
     max_commute_minutes: int = Field(30, ge=10, description="희망 최대 통근시간(분)", alias="maxCommuteMinutes")
     age: int | None = Field(None, ge=0, le=120, description="나이 (정책 자격 판별용)", alias="age")
     no_householder: bool | None = Field(None, description="무주택 세대주 여부 (버팀목 대출 자격 판별용)", alias="noHouseholder")
+    # 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) - 추후 특정 대출상품에 연동 예정
+    # (12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식).
+    military_service_months: int | None = Field(None, ge=0, description="병역이행기간 (개월, 선택). 아직 매칭 로직에 쓰지 않음.", alias="militaryServiceMonths")
     assets: int | None = Field(None, ge=0, description="총자산 (만원, 정책 자격의 자산 기준 판별용)", alias="assets")
     job_type: str | None = Field(
         None, description="직업종류 (GOVERNMENT/SME/MID_SIZED/LARGE_CORP, 선택). 정책의 "
@@ -123,8 +129,9 @@ class DiagnosisRequest(BaseModel):
     )
     preferential_statuses: list[str] = Field(
         default_factory=list,
-        description="우대사항 (BASIC_LIVELIHOOD/NEAR_POVERTY/SINGLE_PARENT/INDEPENDENT_YOUTH/"
-        "NEWLYWED/MULTI_CHILD 중 다중 선택, 선택). 정책의 required_preferential_status 조건 판별용.",
+        description="우대사항 (BASIC_LIVELIHOOD/NEAR_POVERTY/SINGLE_PARENT/INDEPENDENT_YOUTH/NEWLYWED/"
+        "DUAL_INCOME/ONE_CHILD/TWO_CHILDREN/MULTI_CHILD/DISABLED/MULTICULTURAL/ELDERLY_DEPENDENT/"
+        "ELDERLY_HOUSEHOLD 중 다중 선택, 선택). 정책의 required_preferential_status 조건 판별용.",
         alias="preferentialStatuses",
     )
 

@@ -29,6 +29,7 @@ public record MypageConditionResponse(
         Integer netAsset,
         JobType jobType,
         Boolean noHouseholder,
+        Integer militaryServiceMonths,
         Set<PreferentialStatus> preferentialStatuses,
         boolean notificationEnabled
 ) {
@@ -52,6 +53,7 @@ public record MypageConditionResponse(
                 condition.getNetAsset(),
                 condition.getJobType(),
                 condition.getNoHouseholder(),
+                condition.getMilitaryServiceMonths(),
                 condition.getPreferentialStatuses(),
                 condition.isNotificationEnabled()
         );

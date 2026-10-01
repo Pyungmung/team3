@@ -386,6 +386,79 @@
       margin-bottom: 18px;
     }
 
+    /* 신혼부부(기혼자포함) 우대사항 박스 - 신혼부부 체크박스 자체는 항상 또렷하게, 그 아래 딸린
+       맞벌이부부/자녀 수(.gated-item)만 체크 전엔 흐리게 비활성 표시한다. */
+    .sub-pref-group {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fafbfc;
+      transition: background-color .15s, border-color .15s;
+    }
+
+    .sub-pref-group.enabled {
+      border-color: var(--brand-100);
+      background: var(--brand-50);
+    }
+
+    .sub-pref-main-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .sub-pref-main-row .check-card { flex: 1; min-width: 160px; }
+
+    .gated-item { transition: opacity .15s; }
+
+    .sub-pref-group.disabled .gated-item { opacity: .5; }
+
+    .sub-pref-group .check-card:has(input:disabled) { cursor: not-allowed; background: #f1f5f9; }
+
+    /* 자녀 수(1자녀/2자녀/다자녀가구) - 체크박스 셋을 하나로 이어붙인 세그먼트 컨트롤처럼 보이게 묶는다 */
+    .child-count-row { margin-top: 12px; }
+
+    .child-count-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+
+    .child-count-options {
+      display: flex;
+      border: 1px solid #dfe6ee;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .chip-option { flex: 1; position: relative; }
+
+    .chip-option input { position: absolute; opacity: 0; pointer-events: none; }
+
+    .chip-option span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #475569;
+      cursor: pointer;
+      border-right: 1px solid #dfe6ee;
+      transition: .15s;
+    }
+
+    .chip-option:last-child span { border-right: none; }
+
+    .chip-option input:checked + span { background: var(--navy); color: #fff; }
+
+    .chip-option input:disabled + span { cursor: not-allowed; color: #cbd5e1; background: #f8fafc; }
+
+    .chip-option input:not(:disabled) + span:hover { background: #eef2f7; }
+
     /* ===== 모바일 ===== */
     @media (max-width: 700px) {
       .hero-inner { padding: 48px 20px 50px; }
@@ -663,8 +736,11 @@
         <div class="divider"></div>
 
         <!-- 그룹 4: 정부 지원 우대사항 -->
-        <div class="group-title"><span>🎁</span> 정부 주거지원 정책 우대사항
-          <span style="font-weight:400;color:#64748b">(중복 선택 가능)</span>
+        <div class="group-title"><span>🎁</span> 정부 주거지원 정책 우대사항</div>
+        <div style="max-width:320px;margin-bottom:18px">
+          <label class="flabel">군복무기간 (개월)</label>
+          <input type="number" name="militaryServiceMonths" placeholder="예: 18" min="0" class="input" />
+          <div class="hint">지금은 값만 저장해두고, 추후 특정 대출상품 심사에 연동할 예정이에요.</div>
         </div>
         <div class="check-grid">
           <label class="check-card">
@@ -677,20 +753,64 @@
           </label>
           <label class="check-card">
             <input type="checkbox" name="preferentialStatuses" value="SINGLE_PARENT" />
-            한부모가족
+            한부모가구
           </label>
           <label class="check-card">
             <input type="checkbox" name="preferentialStatuses" value="INDEPENDENT_YOUTH" />
             자립준비청년
           </label>
           <label class="check-card">
-            <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" />
-            신혼부부
+            <input type="checkbox" name="preferentialStatuses" value="DISABLED" />
+            장애인
           </label>
           <label class="check-card">
-            <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" />
-            다자녀가구
+            <input type="checkbox" name="preferentialStatuses" value="MULTICULTURAL" />
+            다문화가구
           </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="ELDERLY_DEPENDENT" />
+            노인부양가구
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="ELDERLY_HOUSEHOLD" />
+            고령자가구
+          </label>
+        </div>
+
+        <!-- 신혼부부(기혼자포함) 우대사항 한 박스: 맞벌이부부는 신혼부부 바로 옆에, 1자녀/2자녀/다자녀가구는 자녀 수 선택
+             하나로 묶었다. 맞벌이부부/1자녀/2자녀/다자녀는 여전히 각각 독립적으로 체크/판별되는 별개 우대사항이고,
+             "신혼부부(기혼자포함)"를 체크해야 활성화되는 건 화면 UX일 뿐 백엔드 판별 로직과는 무관하다. -->
+        <div class="group-title" style="margin-top:18px;font-size:15px">
+          <span>💑</span> 신혼부부(기혼자포함) 우대사항
+        </div>
+        <div class="sub-pref-group" data-sub-pref-group>
+          <div class="sub-pref-main-row">
+            <label class="check-card">
+              <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" />
+              신혼부부(기혼자포함)
+            </label>
+            <label class="check-card gated-item">
+              <input type="checkbox" name="preferentialStatuses" value="DUAL_INCOME" data-gated disabled />
+              맞벌이부부
+            </label>
+          </div>
+          <div class="child-count-row gated-item">
+            <span class="child-count-label">자녀 수 <span style="font-weight:400;color:#94a3b8">(하나만 선택)</span></span>
+            <div class="child-count-options">
+              <label class="chip-option">
+                <input type="checkbox" name="preferentialStatuses" value="ONE_CHILD" data-gated data-child-count disabled />
+                <span>1자녀</span>
+              </label>
+              <label class="chip-option">
+                <input type="checkbox" name="preferentialStatuses" value="TWO_CHILDREN" data-gated data-child-count disabled />
+                <span>2자녀</span>
+              </label>
+              <label class="chip-option">
+                <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" data-gated data-child-count disabled />
+                <span>다자녀가구</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -810,6 +930,34 @@
       form.requestSubmit();
     });
 
+    // ---------- 부가 우대사항(맞벌이부부/1자녀/2자녀/다자녀가구): "신혼부부(기혼자포함)" 체크 시에만 활성화되는
+    // 화면 UX일 뿐, 백엔드 자격 판별 로직은 이 넷을 여전히 완전히 독립된 우대사항으로 본다. 1자녀/2자녀/다자녀가구는
+    // 서로 배타적으로 하나만 고를 수 있다. ----------
+    const newlywedBox = form.querySelector('input[name="preferentialStatuses"][value="NEWLYWED"]');
+    const subPrefGroup = document.querySelector("[data-sub-pref-group]");
+    const subPrefBoxes = subPrefGroup.querySelectorAll("[data-gated]"); // NEWLYWED 자신은 게이팅 대상이 아니라 제외
+
+    function syncSubPrefGroup() {
+      const enabled = newlywedBox.checked;
+      subPrefGroup.classList.toggle("enabled", enabled);
+      subPrefGroup.classList.toggle("disabled", !enabled);
+      subPrefBoxes.forEach((cb) => {
+        cb.disabled = !enabled;
+        if (!enabled) cb.checked = false;
+      });
+    }
+    newlywedBox.addEventListener("change", syncSubPrefGroup);
+    syncSubPrefGroup();
+
+    subPrefGroup.querySelectorAll("[data-child-count]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        if (!cb.checked) return;
+        subPrefGroup.querySelectorAll("[data-child-count]").forEach((other) => {
+          if (other !== cb) other.checked = false;
+        });
+      });
+    });
+
     // ---------- 마이페이지에 저장된 프로필 자동 프리필 (로그인 사용자) ----------
     (async () => {
       if (!CustomHouseAuthApi.isLoggedIn()) return;
@@ -848,10 +996,12 @@
       if (condition.netAsset != null) form.assets.value = condition.netAsset;
       if (condition.jobType) form.jobType.value = condition.jobType;
       if (condition.noHouseholder != null) form.noHouseholder.checked = condition.noHouseholder;
+      if (condition.militaryServiceMonths != null) form.militaryServiceMonths.value = condition.militaryServiceMonths;
       (condition.preferentialStatuses || []).forEach((value) => {
         const box = form.querySelector(`input[name="preferentialStatuses"][value="${value}"]`);
         if (box) box.checked = true;
       });
+      syncSubPrefGroup(); // 신혼부부 체크 여부에 맞춰 부가 우대사항 활성화 상태를 다시 맞춘다 (위 루프가 디스에이블된 input도 체크해뒀을 수 있어서)
 
       document.getElementById("prefill-msg").classList.remove("hidden");
     })();
@@ -979,6 +1129,7 @@
         age: fd.get("age") ? Number(fd.get("age")) : null,
         assets: fd.get("assets") ? Number(fd.get("assets")) : null,
         noHouseholder: form.noHouseholder.checked,
+        militaryServiceMonths: fd.get("militaryServiceMonths") ? Number(fd.get("militaryServiceMonths")) : null,
         jobType: fd.get("jobType") || null,
         preferentialStatuses: fd.getAll("preferentialStatuses"),
         moveSchedule: fd.get("moveSchedule"),

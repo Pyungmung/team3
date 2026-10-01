@@ -4,13 +4,14 @@ import java.util.Arrays;
 import java.util.Optional;
 
 /**
- * [담당: 송귀성] 전세자금대출 5종 (관리자 수정 > 전세자금대출 하위탭). 종류는 고정이고 조건만 관리자 화면에서 입력한다.
+ * [담당: 송귀성] 전세자금대출 4종 (관리자 수정 > 전세자금대출 하위탭). 종류는 고정이고 조건만 관리자 화면에서 입력한다.
  * 화면/계산식이 이 코드(name)를 키로 쓰므로 이름을 바꾸지 말 것.
+ * 중소기업 청년 버팀목 전세대출(SME_YOUTH_BEOTIMMOK)은 상품이 없어져 제거됨 - DB(prod MySQL)에 그 이름으로
+ * 저장된 조건 행이 남아있어도 이 enum에 없으니 조회/화면 어디서도 더는 쓰이지 않는다(고아 행, 수동 정리 불필요).
  */
 public enum LoanType {
     GENERAL_BEOTIMMOK("일반 버팀목 전세대출", "전세"),
     YOUTH_BEOTIMMOK("청년전용 버팀목 전세대출", "전세"),
-    SME_YOUTH_BEOTIMMOK("중소기업 청년 버팀목 전세대출", "전세"),
     NEWBORN_BEOTIMMOK("신생아 특례 버팀목대출", "전세"),
     YOUTH_MONTHLY_RENT("청년전용 보증부월세대출", "월세");
 
