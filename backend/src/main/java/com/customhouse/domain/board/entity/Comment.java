@@ -61,4 +61,12 @@ public class Comment extends BaseTimeEntity {
         this.selected = true;
         this.selectedAt = LocalDateTime.now();
     }
+
+    public boolean isWrittenBy(Long userId) {
+        return writerId.equals(userId);
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
 }

@@ -130,8 +130,8 @@ class DiagnosisRequest(BaseModel):
 
     move_schedule: str | None = Field(
         None,
-        description="희망 이사 일정 (IMMEDIATE/WITHIN_3M/WITHIN_6M/EXPLORING). 아직 추천 로직에는 쓰지 않고 "
-        "나중에 데이터로 활용하기 위해 받아만 둔다.",
+        description="희망 이사 일정 (IMMEDIATE/WITHIN_3M/WITHIN_6M/EXPLORING). IMMEDIATE/WITHIN_3M만 "
+        "이사가능일 제한(listing_recommender.MOVE_SCHEDULE_MAX_DAYS)이 있고, 나머지(EXPLORING='미정' 포함)는 무제한.",
         alias="moveSchedule",
     )
     transport_type: str | None = Field(

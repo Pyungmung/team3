@@ -1,6 +1,5 @@
 package com.customhouse.domain.recommendation.service;
 
-import com.customhouse.domain.incomestandard.dto.IncomeStandardResponse;
 import com.customhouse.domain.incomestandard.service.IncomeStandardService;
 import com.customhouse.domain.loan.service.LoanProductService;
 import com.customhouse.domain.recommendation.dto.AiListingRequest;
@@ -72,23 +71,5 @@ class AiEngineClientTest {
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
         verify(spec).body(body.capture());
         assertThat(((AiListingRequest) body.getValue()).incomeStandard()).isNull();
-    }
-
-    @Test
-    void 실거래가_기반_진단도_기준소득_통계를_함께_싣는다() {
-        RestClient rest = mock(RestClient.class);
-        RestClient.RequestBodySpec spec = mockRestClient(rest, Map.of("ok", true));
-        LoanProductService loans = mock(LoanProductService.class);
-        IncomeStandardService incomeStandard = mock(IncomeStandardService.class);
-        IncomeStandardResponse standard = new IncomeStandardResponse(15.8, 18.4, 18.3, 16.2, 19.4, 2024, "국토교통부", 2_564_238L, null);
-        when(incomeStandard.get()).thenReturn(standard);
-
-        new AiEngineClient(rest, loans, incomeStandard).requestDiagnosis(request);
-
-        ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
-        verify(spec).body(body.capture());
-        AiListingRequest sent = (AiListingRequest) body.getValue();
-        assertThat(sent.loanProducts()).isEmpty();  // /api/v1/diagnosis는 대출 매칭이 없어 항상 빈 목록
-        assertThat(sent.incomeStandard()).isEqualTo(standard);
     }
 }

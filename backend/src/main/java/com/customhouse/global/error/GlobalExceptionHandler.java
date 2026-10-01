@@ -8,6 +8,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -49,6 +50,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getStatus())
                 .body(ApiResponse.fail(ErrorCode.VALIDATION_ERROR.name(), "'" + ex.getName() + "' 값이 올바르지 않습니다."));
+    }
+
+    /** 업로드 파일이 application.yml의 max-file-size(5MB)를 넘었을 때 500 대신 400으로 돌려준다. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getStatus())
+                .body(ApiResponse.fail(ErrorCode.VALIDATION_ERROR.name(), "파일 용량이 너무 큽니다 (5MB 이하만 가능해요)."));
     }
 
     @ExceptionHandler(RestClientException.class)

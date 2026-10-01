@@ -33,9 +33,8 @@
     return Number(v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
   }
 
-  // 실거래가는 카드 맨 아래 "실거래 참고"에 이전 실거래 내역처럼 보조로만 보여준다.
-  function renderReference(ref) {
-    if (!ref) return "";
+  // 실거래 참고 1건의 본문 (renderReferencePlaceholder가 만든 <details>를 펼칠 때 wireReferenceLazyLoad가 채운다).
+  function _referenceItemHtml(ref) {
     const isJeonse = (ref.monthly_rent || 0) === 0;
     const price = isJeonse
       ? `전세 ${fmtMoney(ref.deposit)}`
@@ -45,15 +44,90 @@
         ? `<div>종전 계약: 보증금 ${fmtMoney(ref.pre_deposit)} / 월세 ${ref.pre_monthly_rent ?? 0}만원 · 갱신요구권 ${ref.use_rr_right === "Y" ? "사용" : "미사용"}</div>`
         : "";
     return `
-      <details class="listing-details">
-        <summary>📊 실거래 참고 (국토부 · 이 건물의 최근 계약)</summary>
-        <div class="body">
-          <div><b>${esc(ref.contract_date)}</b> ${esc(ref.contract_type)} · ${price}</div>
-          <div>${ref.area ? `${ref.area}㎡` : ""}${ref.floor ? ` · ${esc(ref.floor)}층` : ""}${ref.contract_term ? ` · 계약기간 ${esc(ref.contract_term)}` : ""}</div>
-          ${renewal}
-          <div class="text-gray-400 mt-1">국토교통부 실거래가 기준이며, 이 매물의 가격과는 다를 수 있어요.</div>
+      <div class="pt-1 mt-1 border-t border-gray-100 first:border-0 first:pt-0 first:mt-0">
+        <div><b>${esc(ref.contract_date)}</b> ${esc(ref.contract_type)} · ${price}</div>
+        <div>${ref.area ? `${ref.area}㎡` : ""}${ref.floor ? ` · ${esc(ref.floor)}층` : ""}${ref.contract_term ? ` · 계약기간 ${esc(ref.contract_term)}` : ""}</div>
+        ${renewal}
+      </div>`;
+  }
+
+  // 실거래가는 카드 맨 아래 "실거래 참고"에 이전 실거래 내역처럼 보조로만 보여준다. 더미 CSV 고정값이
+  // 아니라 국토부 API를 실시간 조회하되, 펼쳐야 보이던 것과 달리(2026-10-01) 카드가 뜨자마자 바로
+  // 보이도록 처음부터 펼쳐둔다(open) - wireReferenceAutoLoad가 렌더 직후 바로 채운다.
+  function renderReferencePlaceholder(listingId) {
+    if (!listingId) return "";
+    return `
+      <details class="listing-details" open data-ref-listing-id="${esc(listingId)}">
+        <summary>📊 실거래 참고 (국토부 · 이 건물의 최근 계약, 최근 2년)</summary>
+        <div class="body" data-ref-body>
+          <div class="text-gray-400">불러오는 중…</div>
         </div>
       </details>`;
+  }
+
+  async function _loadReference(el) {
+    const body = el.querySelector("[data-ref-body]");
+    const summary = el.querySelector("summary");
+    try {
+      const result = await CustomHouseWatchlistApi.getListingReference(el.dataset.refListingId);
+      const list = result?.transactions || [];
+      const scope = result?.scope || "none";
+      if (scope === "neighborhood" && summary) {
+        summary.textContent = "📊 실거래 참고 (국토부 · 같은 동 최근 계약, 최근 2년)";
+      }
+      const scopeNote =
+        scope === "neighborhood"
+          ? `<div class="text-gray-400 mt-1">이 매물은 지번 정보가 없는 유형이라, 건물이 아닌 같은 동(법정동) 단위 최근 계약을 참고로 보여드려요.</div>`
+          : `<div class="text-gray-400 mt-1">국토교통부 실거래가 기준이며, 이 매물의 가격과는 다를 수 있어요.</div>`;
+      body.innerHTML = list.length
+        ? list.map(_referenceItemHtml).join("") + scopeNote
+        : `<div class="text-gray-400">최근 2년간 실거래 내역을 찾지 못했어요.</div>`;
+    } catch (e) {
+      body.innerHTML = `<div class="text-gray-400">실거래 정보를 불러오지 못했어요. <button type="button" class="underline" data-ref-retry>다시 시도</button></div>`;
+      body.querySelector("[data-ref-retry]")?.addEventListener("click", () => _loadReference(el), { once: true });
+    }
+  }
+
+  /**
+   * renderBody로 카드를 그린 뒤 호출한다(목록이 스크롤로 나눠 그려져도 매번 호출해도 안전 -
+   * 이미 연결한 요소는 data-ref-wired로 건너뛴다). 펼치기를 기다리지 않고 카드가 그려지는 즉시
+   * 그 매물의 GET /api/listings/{listingId}/reference를 호출해 채운다(2026-10-01, 이전엔 펼칠 때만
+   * 조회했다 - 무한스크롤이 10건씩 끊어 그리는 덕에 한 번에 나가는 호출이 10개로 묶여 있고,
+   * fetch_by_signature(단독다가구 경로)에도 캐시가 생겨 자치구+유형+계약월이 겹치면 호출을
+   * 나눠 써서 감당할 만하다).
+   * @param rootEl 카드들이 들어있는 컨테이너 (예: 목록 <ul>)
+   */
+  function wireReferenceAutoLoad(rootEl) {
+    rootEl.querySelectorAll("details[data-ref-listing-id]:not([data-ref-wired])").forEach((el) => {
+      el.dataset.refWired = "1";
+      _loadReference(el);
+    });
+  }
+
+  // 카드에 보이는 "통근 약 ~분"은 추천 응답의 직선거리 추정치다(검색/매칭을 가볍게 하려고 2026-10-01부터
+  // 전체 후보에 카카오 API를 안 부른다). 화면에 "보이는" 카드에 대해서만(실거래 참고와 같은 패턴 - 무한스크롤이
+  // 10건씩 끊어 그릴 때마다 그 배치만) GET .../commute로 그 매물 하나의 정확한 값을 불러와 갱신한다.
+  async function _loadCommute(el, workLat, workLon, transportType) {
+    try {
+      const result = await CustomHouseWatchlistApi.getListingCommute(el.dataset.commuteListingId, workLat, workLon, transportType);
+      el.textContent = `통근 약 ${result.commute_minutes}분`;
+      el.title = result.commute_source || "카카오 API";
+    } catch (e) {
+      // 실패하면 직선거리 추정치를 그대로 보여준다 (조용히 무시)
+    }
+  }
+
+  /**
+   * renderBody로 카드를 그린 뒤 호출한다(이미 연결한 요소는 data-commute-wired로 건너뛴다).
+   * 직장 좌표가 없으면(마이페이지 관심 매물처럼 통근 기준이 따로 없는 화면) 아무 것도 하지 않는다.
+   * @param rootEl 카드들이 들어있는 컨테이너 (예: 목록 <ul>)
+   */
+  function wireCommuteAutoLoad(rootEl, workLat, workLon, transportType) {
+    if (workLat == null || workLon == null) return;
+    rootEl.querySelectorAll("[data-commute-listing-id]:not([data-commute-wired])").forEach((el) => {
+      el.dataset.commuteWired = "1";
+      _loadCommute(el, workLat, workLon, transportType);
+    });
   }
 
   function renderBroker(b) {
@@ -158,7 +232,8 @@
           ${nameHtml}
           ${r.property_type ? `<span class="text-xs px-2 py-0.5 rounded-full ml-1 bg-gray-100 text-gray-600 whitespace-nowrap inline-block">${esc(r.property_type)}</span>` : ""}
           ${r.is_semi_jeonse ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ml-1" style="background:#fef3c7;color:#92400e" title="보증금 ÷ 월세가 100 이상인 반전세형 매물이에요. 보증금이 부담되면 희망 보증금 조건으로 제외할 수 있어요.">반전세형</span>` : ""}
-          <span class="text-xs text-gray-400 ml-1" title="${esc(r.commute_source || "카카오 API")}">통근 약 ${r.commute_minutes}분</span>
+          ${r.jeonse_loan_available === false ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ml-1" style="background:#fee2e2;color:#991b1b" title="등록자가 이 매물은 전세자금대출이 불가능하다고 표시했어요.">전세대출 불가</span>` : ""}
+          <span class="text-xs text-gray-400 ml-1" data-commute-listing-id="${esc(r.listing_id)}" title="${esc(r.commute_source || "직선거리 추정")}">통근 약 ${r.commute_minutes}분</span>
         </div>
         <div class="text-right">${headerRight}</div>
       </div>
@@ -173,8 +248,8 @@
       ${loanBoxes}
       ${r.description ? `<details class="listing-details"><summary>📝 상세 설명</summary><div class="body">${esc(r.description)}</div></details>` : ""}
       ${renderBroker(r.broker)}
-      ${renderReference(r.reference_transaction)}`;
+      ${renderReferencePlaceholder(r.listing_id)}`;
   }
 
-  window.CustomHouseListingCard = { PHOTO_PLACEHOLDER, esc, fmtMoney, fmtNum, fmtRate, renderBody };
+  window.CustomHouseListingCard = { PHOTO_PLACEHOLDER, esc, fmtMoney, fmtNum, fmtRate, renderBody, wireReferenceAutoLoad, wireCommuteAutoLoad };
 })();

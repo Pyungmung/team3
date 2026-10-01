@@ -24,13 +24,7 @@ public class RecommendationController {
 
     private final AiEngineClient aiEngineClient;
 
-    @PostMapping("/diagnosis")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> diagnose(@Valid @RequestBody RecommendRequest request) {
-        Map<String, Object> result = aiEngineClient.requestDiagnosis(request);
-        return ResponseEntity.ok(ApiResponse.ok("주거비 절약 진단이 완료되었습니다.", result));
-    }
-
-    /** 더미 매물 기반 추천 (기존 /diagnosis는 국토부 실거래가 기준 리포트용으로 그대로 둔다). */
+    /** 더미 매물 기반 추천. */
     @PostMapping("/diagnosis/listings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> diagnoseListings(
             @Valid @RequestBody RecommendRequest request) {

@@ -1,14 +1,17 @@
 """
 [담당: 송귀성] 더미 매물 기반 추천 (POST /api/v1/diagnosis/listings)
 
-기존 calculator.run_diagnosis(국토부 실거래가를 추천 매물로 사용)는 그대로 두고, 같은 입력으로
-docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실거래가는 추천 대상이 아니라 매물마다
-붙는 "참고 실거래"(reference_transaction)로만 내려준다.
+docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실거래가는 추천 대상이 아니라, 카드를
+펼치면 그때 실시간으로 조회하는 "참고 실거래"용이다(app/api/v1/listing_reference.py 참고).
 
-처리 흐름 (통근시간/정책/순위는 calculator·policy_matcher·data_analysis를 그대로 재사용):
+처리 흐름 (정책/순위는 calculator·policy_matcher·data_analysis를 그대로 재사용):
 1. 직장 좌표, 소득 기준 적정 월세 (수도권 RIR = 관리자 수정 > 기준소득관리에 저장된 값 우선, 없으면 docs/RIR.csv, 그것도 없으면 기본값 20%)
-2. 자치구 대표좌표 기준 1차 통근권 필터 (이동수단별 버퍼, REGION_PREFILTER_BUFFER_MIN_BY_MODE)
-3. 통근권 자치구의 CSV 매물 -> 계약가능만, 선호 유형, 보증금 한도 이하, 희망 월세 이하, 이사희망시기 필터.
+2. 자치구 대표좌표 기준 1차 통근권 필터 (버퍼, DEFAULT_REGION_PREFILTER_BUFFER_MIN) - 어느 자치구
+   CSV를 아예 읽을지만 정하는 용도(IO 절약)이고, 매물 하나하나를 거르는 기준은 아니다.
+3. 통근권 자치구의 CSV 매물 -> 계약가능만, 선호 유형, 보증금 한도 이하, 희망 월세 이하, 이사희망시기,
+   그리고 "이 매물 자신의" 좌표 기준 직선거리 추정 통근시간 필터 - 자치구가 넓으면(예: 서초구) 대표좌표
+   하나로만 거를 경우, 직장에서 먼 동네의 싼 매물이 5단계 지역별 비례 배분 몫을 먼저 차지해 정작
+   직장 바로 옆 매물이 순위 경쟁에도 못 들어가는 문제가 있었다(2026-10-01).
    보증금 한도 = 희망 보증금(전세액)이 있으면 그 값, 없으면 현재 보유 보증금. 한도를 넘는 매물은 추천하지 않는다
    (2026-09-28: 예전엔 부족한 보증금을 대출로 채운다고 가정해 이자를 비용에 더했는데, 보증금이 부족한 매물을
    추천하는 게 이상하다는 지적으로 대출이자 계산을 없애고 한도 필터로 바꿨다)
@@ -25,12 +28,17 @@ docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실�
    (교통비 항목은 응답 호환을 위해 남기되 0, 응답에서는 내보내지 않는다)
 5. 월세/전세 따로 **보증금전환 실질거주비** 낮은 순으로 상위 TOP_N (지역별 비례 배분) - 순위 기준은 2026-09-28부터
    실질 주거비가 아니라 보증금전환 실질거주비다 (보증금이 큰 반전세가 월세만 낮다는 이유로 상위를 차지하지 않게)
-6. 최종 목록만 매물 자신의 좌표로 통근시간을 정확히 다시 계산(CSV에 좌표가 이미 있어 주소/좌표 외부 API
-   호출은 없다)해서 희망 통근시간을 넘는 매물을 제외한다
+
+통근시간 표시(2026-10-01, 검색/매칭을 가볍게 하는 쪽으로 전환): 위 1~5단계(검색·필터·랭킹) 전체가
+카카오 API 호출 없이 직선거리 추정(calculator._estimate_commute_minutes_fallback)만으로 돌아간다 -
+후보가 많으면 수만 건이라 매번 카카오 API를 부르면 느리고(예전엔 최종 목록 전체를 다시 불렀다) 호출
+한도도 쉽게 소진된다. 이 응답의 commute_minutes/commute_source는 전부 그 추정치이고, 카카오 API 기준
+정확한 통근시간은 화면에 "보이는" 매물 카드에 대해서만 GET /api/v1/listings/{listing_id}/commute
+(app/api/v1/listing_commute.py)로 그때그때 따로 조회해 표시를 갱신한다 - listing_reference.py의
+"실거래 참고"와 같은 패턴.
 """
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
 from app.services import (
@@ -50,7 +58,7 @@ MOVE_SCHEDULE_MAX_DAYS = {"IMMEDIATE": 30, "WITHIN_3M": 90}
 
 
 def _resolve_work_coords(request) -> tuple[float, float]:
-    """calculator.run_diagnosis와 같은 규칙: 정확한 좌표(work_lat/lon)가 오면 그대로, 아니면 이름으로 조회."""
+    """정확한 좌표(work_lat/lon)가 오면 그대로, 아니면 이름으로 조회."""
     if request.work_lat is not None and request.work_lon is not None:
         return request.work_lat, request.work_lon
     work_locations = calculator._load_work_locations()
@@ -218,6 +226,7 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_
         "bathrooms": listing["bathrooms"],
         "built_year": listing["built_year"],
         "move_in_date": listing["move_in_date"],
+        "jeonse_loan_available": bool(listing.get("jeonse_loan_available", True)),
         "description": listing["description"],
         "road_address": listing["road_address"],
         "jibun_address": listing["jibun_address"],
@@ -227,23 +236,15 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_
 
 
 def _attach_details(record: dict, listing: dict) -> dict:
-    """최종 목록에만 붙이는 중첩 정보 (중개사, 참고 실거래). 후보 전체에 만들면 낭비라 마지막에 한다."""
+    """최종 목록에만 붙이는 중첩 정보 (중개사). 후보 전체에 만들면 낭비라 마지막에 한다.
+    실거래 참고(reference_transaction)는 더 이상 CSV의 고정값을 쓰지 않는다 - 화면에서 카드를
+    펼칠 때 GET /api/v1/listings/{listing_id}/reference로 그때그때 실시간 조회한다
+    (reference_lookup.py 참고)."""
     record["broker"] = {
         "name": listing["broker_name"], "representative": listing["broker_representative"],
         "reg_no": listing["broker_reg_no"], "phone": listing["broker_phone"],
         "address": listing["broker_address"], "comment": listing["broker_comment"],
     }
-    record["reference_transaction"] = (
-        {
-            "contract_date": listing["ref_contract_date"], "contract_type": listing["ref_contract_type"],
-            "contract_term": listing["ref_contract_term"], "use_rr_right": listing["ref_use_rr_right"],
-            "pre_deposit": listing["ref_pre_deposit"], "pre_monthly_rent": listing["ref_pre_monthly_rent"],
-            "deposit": listing["ref_deposit"], "monthly_rent": listing["ref_monthly_rent"],
-            "lease_kind": listing["ref_lease_kind"], "area": listing["ref_area"],
-            "floor": listing["ref_floor"], "jibun": listing["ref_jibun"],
-        }
-        if listing["ref_contract_date"] else None
-    )
     return record
 
 
@@ -263,21 +264,12 @@ def run_listing_diagnosis(request) -> dict:
     # 보증금 한도: 희망 보증금/전세액이 있으면 그 금액, 없으면 현재 보유 보증금. 이를 넘는 매물은 추천하지 않는다.
     deposit_limit = request.desired_deposit if request.desired_deposit is not None else request.deposit
 
-    # 1차: 자치구 대표좌표 기준 통근권 (이동수단별 버퍼로 넉넉하게)
-    with ThreadPoolExecutor(max_workers=16) as pool:
-        commute_results = list(pool.map(
-            lambda r: calculator._commute_minutes(work_lat, work_lon, r.lat, r.lon, request.transport_type), regions
-        ))
-    for region, (minutes, source) in zip(regions, commute_results):
-        if source == calculator.ESTIMATE_SOURCE_LABEL:
-            logger.warning(f"카카오 API 사용 불가로 비상용 직선거리 추정 사용: {region.name} ({minutes}분 추정)")
-    prefilter_buffer = calculator.REGION_PREFILTER_BUFFER_MIN_BY_MODE.get(
-        request.transport_type, calculator.DEFAULT_REGION_PREFILTER_BUFFER_MIN
-    )
+    # 1차: 자치구 대표좌표 기준 통근권 - 어느 자치구 CSV를 읽을지만 정하는 IO 절약용이라 버퍼를 넉넉히 두고,
+    # 카카오 API 호출 없이 직선거리 추정(계산만 하므로 25개 자치구 전부 즉시)으로 거른다(2026-10-01).
     eligible = [
-        (region, minutes, source)
-        for region, (minutes, source) in zip(regions, commute_results)
-        if minutes <= request.max_commute_minutes + prefilter_buffer
+        region for region in regions
+        if calculator._estimate_commute_minutes_fallback(work_lat, work_lon, region.lat, region.lon)
+        <= request.max_commute_minutes + calculator.DEFAULT_REGION_PREFILTER_BUFFER_MIN
     ]
 
     all_types = {"아파트", "오피스텔", "연립다세대", "단독다가구"}
@@ -290,7 +282,7 @@ def run_listing_diagnosis(request) -> dict:
     listing_by_id: dict[str, dict] = {}
     total_candidates = 0
 
-    for region, region_commute, commute_source in eligible:
+    for region in eligible:
         listings = listing_repository.load_district(region.name)
         if not listings:
             continue
@@ -310,6 +302,24 @@ def run_listing_diagnosis(request) -> dict:
             if not _move_in_ok(listing, request.move_schedule, today):
                 continue
 
+            # 2026-10-01: 순위(가격) 단계도 자치구 대표좌표가 아니라 "이 매물 자신의" 직선거리
+            # 추정치로 거른다 - 서초구처럼 넓은 자치구는 대표좌표 하나로만 거르면, 직장에서 먼
+            # 동네의 싼 매물이 "자치구 몫"(rank_by_real_cost의 지역별 비례 배분)을 먼저 차지해버려서,
+            # 정작 직장 바로 옆인데 가격이 살짝 더 비싼 매물이 순위 단계에도 못 들어가고 탈락하는
+            # 문제가 있었다(실사례: 방배동 매물이 서초구 쿼터 안에 못 들어 최종 목록에서 빠짐).
+            # 카카오 API 호출 없이 계산만 하는 직선거리라 후보 전부(2만 건대)에 적용해도 빠르다.
+            # 최종 _refine 단계에서 이 추정치가 아니라 카카오 실제 경로로 다시 한번 정확히 거른다.
+            # 버퍼를 안 두는 이유: 이건 어느 자치구를 통째로 버릴지 정하는 1차 필터(버퍼 필요)와
+            # 달리 "이 매물 하나"의 정확한 좌표 기준이라, 자치구 대표좌표용 버퍼(20분)를 그대로
+            # 쓰면 걸러지는 게 거의 없다(직선거리 추정식 10+거리x2.2 기준 버퍼 20분=13.6km, 서울
+            # 웬만한 구 안에서는 다 통과함 - 2026-10-01 실측). 최종 _refine이 카카오 실제 경로로
+            # 한 번 더 정확히 거르므로, 여기서 추정치가 약간 낙관적이어도 안전하다.
+            estimated_minutes = calculator._estimate_commute_minutes_fallback(
+                work_lat, work_lon, listing["lat"], listing["lon"]
+            )
+            if estimated_minutes > request.max_commute_minutes:
+                continue
+
             total_candidates += 1
             listing_id = listing["listing_id"]
             listing_by_id[listing_id] = listing
@@ -319,8 +329,8 @@ def run_listing_diagnosis(request) -> dict:
                 "region": listing["region"],
                 RANK_COST_KEY: _rank_cost(listing, deposit_rate.rate_percent),
                 "monthly_savings": 0,  # rank_by_real_cost의 동점자 2차 기준. 여기선 항상 0(_to_result와 동일).
-                "commute_minutes": region_commute,
-                "commute_source": commute_source,
+                "commute_minutes": estimated_minutes,
+                "commute_source": calculator.ESTIMATE_SOURCE_LABEL,
             }
             (wolse_results if listing["lease_type"] == "월세" else jeonse_results).append(lightweight)
 
@@ -339,22 +349,21 @@ def run_listing_diagnosis(request) -> dict:
     wolse = _expand(wolse)
     jeonse = _expand(jeonse)
 
-    # 최종 목록만 매물 자신의 좌표로 통근시간을 정확히 다시 계산 (CSV에 좌표가 있으므로 지오코딩은 없다)
-    def _refine(recommendations: list[dict]) -> list[dict]:
+    # 최종 목록(top_n으로 추려진 분량)에만 중첩 정보(브로커/대출)를 붙인다 - 통근시간은 카카오 API를
+    # 다시 부르지 않고 위에서 이미 계산한 직선거리 추정치를 그대로 쓴다(2026-10-01, 검색/매칭을 가볍게
+    # 하는 쪽으로 전환 - 정확한 값은 화면에 보이는 카드만 GET .../commute로 따로 불러온다).
+    def _finalize(recommendations: list[dict]) -> list[dict]:
         recommendations = [_clean_nan(r) for r in recommendations]
-        kept = calculator._recompute_precise_commute(
-            recommendations, work_lat, work_lon, request.transport_type, request.max_commute_minutes
-        )
-        for r in kept:  # 교통비가 없으니 통근시간이 정확해져도 비용은 그대로다 - 매물 상세 정보만 붙인다
+        for r in recommendations:
             _attach_details(r, listing_by_id[r["listing_id"]])
             # 관리자 화면에서 저장한 대출 조건으로 이 매물에 신청 가능한 대출을 판별한다 (저장된 대출이 없으면 빈 목록).
             # 대출금리표가 없는 대출의 기본금리는 이 매물 계산에 쓴 것과 같은 기준금리 API 값(deposit_rate)을 그대로 쓴다.
             r["eligible_loans"] = loan_matcher.match_eligible_loans(request, r, deposit_rate.rate_percent)
-        kept.sort(key=lambda r: (r[RANK_COST_KEY], r["listing_id"]))
-        return kept
+        recommendations.sort(key=lambda r: (r[RANK_COST_KEY], r["listing_id"]))
+        return recommendations
 
-    wolse = _refine(wolse)
-    jeonse = _refine(jeonse)
+    wolse = _finalize(wolse)
+    jeonse = _finalize(jeonse)
 
     # 주거정책 추천: 직장 위치 자치구(work_region) 정책을 기본으로 보여주고, 매물을 클릭하면 그 매물 자치구 정책으로 바꾼다.
     # 지역값이 "서울"인 정책은 어느 자치구든(25개 모두) match_display_policies가 함께 돌려준다. 추천 결과에 나온 자치구와
@@ -365,9 +374,9 @@ def run_listing_diagnosis(request) -> dict:
     wanted = {r["region"] for r in wolse + jeonse} | {work_region}
     policies_by_region = {name: pols for name, pols in policies_by_region.items() if name in wanted}
 
-    used_distance_estimate = any(
-        r["commute_source"] == calculator.ESTIMATE_SOURCE_LABEL for r in wolse + jeonse
-    )
+    # 2026-10-01부터 이 응답의 통근시간은 항상 직선거리 추정치다 (모듈 docstring 참고) - 정확한 값은
+    # 화면에 보이는 카드만 GET .../commute로 따로 불러온다.
+    used_distance_estimate = True
     logger.info(
         f"더미 매물 진단: 후보 {total_candidates}건 -> 월세 {len(wolse)} / 전세 {len(jeonse)} ({time.time() - started:.1f}초)"
     )

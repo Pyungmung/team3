@@ -82,6 +82,8 @@ const deletePost = (id) => communityFetch(`/posts/${id}`, { method: "DELETE", au
 const addComment = (id, content, parentId) =>
   communityFetch(`/posts/${id}/comments`, { method: "POST", body: { content, parentId: parentId || null }, auth: "required" });
 const selectComment = (commentId) => communityFetch(`/comments/${commentId}/select`, { method: "POST", auth: "required" });
+const updateComment = (commentId, content) => communityFetch(`/comments/${commentId}`, { method: "PUT", body: { content }, auth: "required" });
+const deleteComment = (commentId) => communityFetch(`/comments/${commentId}`, { method: "DELETE", auth: "required" });
 const votePost = (id, optionId) => communityFetch(`/posts/${id}/vote`, { method: "POST", body: { optionId }, auth: "required" });
 const toggleLike = (id) => communityFetch(`/posts/${id}/like`, { method: "POST", auth: "required" });
 const toggleScrap = (id) => communityFetch(`/posts/${id}/scrap`, { method: "POST", auth: "required" });
@@ -96,6 +98,36 @@ function esc(value) {
 /** http(s) 주소만 통과시킨다 (javascript: 같은 스킴 차단). 아니면 빈 문자열. */
 function safeUrl(url) {
   return /^https?:\/\//i.test(String(url || "").trim()) ? String(url).trim() : "";
+}
+
+/**
+ * list.html의 왼쪽 카테고리 사이드 카드(.side-card)와 같은 마크업. detail.html/write.html에서도
+ * 이동 중 계속 보이도록 그대로 재사용한다 (list.html은 탭 클릭 시 그 안에서 필터링하지만, 여기서는
+ * 단순 링크로 list.html?tab=키 로 이동한다). activeKey가 없으면 어떤 탭도 강조하지 않는다.
+ */
+function communitySidebarHtml(activeKey) {
+  const TABS = [{ key: "ALL", label: "전체" }, ...COMMUNITY_CATEGORIES, { key: "SCRAPS", label: "내 스크랩" }];
+  return `
+    <aside class="side-card">
+      <div class="side-head">
+        <div class="side-icon">💬</div>
+        <div>
+          <div class="side-title">커뮤니티</div>
+          <div class="side-note">고민을 나누고 함께 답을 찾아요.</div>
+        </div>
+      </div>
+      <nav class="side-nav" id="community-side-nav">
+        ${TABS.map((t) => `<a href="list.html?tab=${t.key}" data-tab-key="${t.key}" class="${t.key === activeKey ? "active" : ""}">${esc(t.label)}</a>`).join("")}
+      </nav>
+      <a href="write.html" class="write-side-btn">+ 글쓰기</a>
+    </aside>`;
+}
+
+/** communitySidebarHtml로 그린 사이드바에서 강조된 탭만 바꾼다 (예: 글쓰기 화면에서 게시판 선택이 바뀔 때). */
+function setCommunitySidebarActive(activeKey) {
+  const nav = document.getElementById("community-side-nav");
+  if (!nav) return;
+  nav.querySelectorAll("[data-tab-key]").forEach((a) => a.classList.toggle("active", a.dataset.tabKey === activeKey));
 }
 
 function categoryLabel(key) {
@@ -122,11 +154,15 @@ window.CustomHouseCommunityApi = {
   deletePost,
   addComment,
   selectComment,
+  updateComment,
+  deleteComment,
   votePost,
   toggleLike,
   toggleScrap,
   esc,
   safeUrl,
+  communitySidebarHtml,
+  setCommunitySidebarActive,
   categoryLabel,
   timeAgo,
   CATEGORIES: COMMUNITY_CATEGORIES,

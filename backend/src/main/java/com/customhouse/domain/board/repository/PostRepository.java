@@ -34,6 +34,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("update Post p set p.commentCount = p.commentCount + 1 where p.id = :id")
     int increaseCommentCount(@Param("id") Long id);
 
+    /** 댓글 삭제 시 호출. 0 밑으로 내려가지 않게 방어한다. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Post p set p.commentCount = p.commentCount - 1 where p.id = :id and p.commentCount > 0")
+    int decreaseCommentCount(@Param("id") Long id);
+
     /** 아직 채택 전인 경우에만 solved=true로 바꾼다. 반환값 0이면 이미 채택됨(동시 채택 방어). */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Post p set p.solved = true where p.id = :id and p.solved = false")

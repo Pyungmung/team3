@@ -12,31 +12,54 @@
     .slider::-webkit-scrollbar { display: none; }
     .slide { flex: 0 0 100%; scroll-snap-align: center; position: relative; }
     .pin { position: absolute; transform: translate(-50%, -50%); }
+
+    /* 왼쪽 카테고리 탭 (list.html의 .side-card와 같은 마크업/스타일 - 이동 중에도 계속 보이게) */
+    .community-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 28px; align-items: start; max-width: 1000px; margin: 0 auto; padding: 40px 16px; }
+    .side-card { background: #fff; border: 1px solid var(--line, #e2e8f0); border-radius: 20px; box-shadow: 0 16px 45px rgba(15, 23, 42, .07); padding: 23px; position: sticky; top: calc(var(--header-h, 96px) + 24px); }
+    .side-head { display: flex; align-items: center; gap: 13px; padding-bottom: 22px; border-bottom: 1px solid #edf1f5; }
+    .side-icon { width: 48px; height: 48px; flex: none; display: grid; place-items: center; border-radius: 14px; background: var(--brand-50); color: var(--brand-600); font-size: 21px; }
+    .side-title { font-size: 16px; font-weight: 850; }
+    .side-note { margin-top: 2px; font-size: 11px; color: #929cab; line-height: 1.5; }
+    .side-nav { display: grid; gap: 6px; margin-top: 18px; }
+    .side-nav a { display: block; width: 100%; text-align: left; padding: 12px 14px; border-radius: 11px; color: #5f6e82; font-size: 14px; font-weight: 750; text-decoration: none; transition: .18s; }
+    .side-nav a:hover { background: #f4f7fb; color: var(--navy, #1B2A4A); }
+    .side-nav a.active { color: #fff; background: var(--navy, #1B2A4A); box-shadow: 0 7px 18px rgba(27, 42, 74, .18); }
+    .write-side-btn { display: block; width: 100%; margin-top: 26px; padding: 12px; border-radius: 11px; background: var(--navy, #1B2A4A); color: #fff; font-size: 13px; font-weight: 850; text-align: center; text-decoration: none; transition: .18s; }
+    .write-side-btn:hover { background: var(--brand-700); transform: translateY(-1px); }
+    @media (max-width: 850px) {
+      .community-grid { display: block; padding: 20px 15px; }
+      .side-card { display: none; }
+    }
   </style>
 </head>
 <body>
   <div id="app-header"></div>
 
-  <main class="max-w-3xl mx-auto px-4 py-10">
-    <a id="back" href="list.html" class="text-sm text-slate-500 hover:text-[var(--brand-600)]">‹ 목록으로</a>
-    <div id="error" class="hidden card p-6 text-center text-sm text-gray-500 mt-4"></div>
-    <div id="loading" class="text-center text-sm text-gray-400 py-16">불러오는 중...</div>
-    <article id="post" class="hidden mt-4 space-y-4"></article>
-  </main>
+  <div class="community-grid">
+    <div id="community-sidebar"></div>
+    <main class="max-w-3xl mx-auto px-4 py-10" style="margin:0">
+      <a id="back" href="list.html" class="text-sm text-slate-500 hover:text-[var(--brand-600)]">‹ 목록으로</a>
+      <div id="error" class="hidden card p-6 text-center text-sm text-gray-500 mt-4"></div>
+      <div id="loading" class="text-center text-sm text-gray-400 py-16">불러오는 중...</div>
+      <article id="post" class="hidden mt-4 space-y-4"></article>
+    </main>
+  </div>
 
   <div id="app-footer"></div>
 
   <script src="../../js/components/header.js?v=20260915b"></script>
   <script src="../../js/components/footer.js?v=20260928c"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/community.js?v=20260921"></script>
+  <script src="../../js/api/community.js?v=20260930a"></script>
   <script>
     renderHeader("community");
     renderFooter();
 
     const API = CustomHouseCommunityApi;
+    document.getElementById("community-sidebar").innerHTML = API.communitySidebarHtml(null);
     const postId = new URLSearchParams(location.search).get("id");
     const loggedIn = CustomHouseAuthApi.isLoggedIn();
+    const isAdmin = loggedIn && typeof getLoggedInRole === "function" && getLoggedInRole() === "ADMIN";
     let post = null;
 
     const META_LABELS = {
@@ -127,17 +150,19 @@
 
     function renderActions() {
       const btn = "text-sm px-4 py-2 rounded-xl border";
+      // 수정은 작성자 본인만, 삭제는 작성자 본인이거나 관리자면 가능하다 (최종 판단은 서버가 한다).
       return `<div class="flex flex-wrap items-center gap-2">
         <button id="like-btn" class="${btn} ${post.liked ? "text-white border-transparent" : "bg-white border-slate-200 text-slate-600"}" style="${post.liked ? "background:var(--brand-600)" : ""}">♥ 좋아요 ${post.likeCount}</button>
         <button id="scrap-btn" class="${btn} ${post.scrapped ? "text-white border-transparent" : "bg-white border-slate-200 text-slate-600"}" style="${post.scrapped ? "background:var(--brand-600)" : ""}">${post.scrapped ? "★ 스크랩됨" : "☆ 스크랩"}</button>
-        ${post.mine ? `<span class="flex-1"></span>
-          <a href="write.html?id=${post.id}" class="${btn} bg-white border-slate-200 text-slate-600">수정</a>
-          <button id="delete-btn" class="${btn} bg-white border-red-200 text-red-500">삭제</button>` : ""}
+        <span class="flex-1"></span>
+        ${post.mine ? `<a href="write.html?id=${post.id}" class="${btn} bg-white border-slate-200 text-slate-600">수정</a>` : ""}
+        ${post.mine || isAdmin ? `<button id="delete-btn" class="${btn} bg-white border-red-200 text-red-500">삭제</button>` : ""}
       </div>`;
     }
 
     function commentHtml(c, isReply) {
       const canAdopt = post.category === "SAFETY" && post.mine && !post.solved && !isReply && !c.mine;
+      // 수정은 작성자 본인만, 삭제는 작성자 본인이거나 관리자면 가능하다 (최종 판단은 서버가 한다).
       return `<li class="${isReply ? "ml-6 mt-2 border-l-2 border-slate-100 pl-3" : "py-4 border-b border-slate-100 last:border-0"}" data-comment="${c.id}">
         <div class="flex items-center gap-1.5 text-xs">
           <span class="font-semibold text-slate-700">${esc(c.writerName)}</span>
@@ -145,14 +170,44 @@
           ${c.selected ? '<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">✓ 채택된 답변</span>' : ""}
           <span class="text-gray-400">${API.timeAgo(c.createdAt)}</span>
         </div>
-        <p class="mt-1 text-sm whitespace-pre-wrap break-words">${esc(c.content)}</p>
+        <p class="mt-1 text-sm whitespace-pre-wrap break-words" data-comment-content>${esc(c.content)}</p>
         <div class="mt-1.5 flex gap-3 text-xs text-gray-400">
           ${isReply ? "" : `<button data-reply="${c.id}" class="hover:text-slate-700">답글</button>`}
           ${canAdopt ? `<button data-adopt="${c.id}" class="font-semibold hover:underline" style="color:var(--brand-600)">이 답변 채택하기</button>` : ""}
+          ${c.mine ? `<button data-edit="${c.id}" class="hover:text-slate-700">수정</button>` : ""}
+          ${c.mine || isAdmin ? `<button data-delete="${c.id}" class="hover:text-red-500">삭제</button>` : ""}
         </div>
         ${isReply ? "" : `<div id="reply-box-${c.id}" class="hidden mt-2"></div>`}
         ${(c.replies || []).map((r) => commentHtml(r, true)).join("")}
       </li>`;
+    }
+
+    /** 최상위/대댓글 어디에 있든 id로 댓글 객체를 찾는다. */
+    function findComment(commentId) {
+      for (const c of post.comments) {
+        if (c.id === commentId) return c;
+        const r = (c.replies || []).find((x) => x.id === commentId);
+        if (r) return r;
+      }
+      return null;
+    }
+
+    /** 댓글(또는 대댓글) 1건을 post.comments에서 제거하고, 제거된 개수(대댓글이면 1, 최상위면 자신+대댓글)를 돌려준다. */
+    function removeComment(commentId) {
+      const topIdx = post.comments.findIndex((c) => c.id === commentId);
+      if (topIdx !== -1) {
+        const removed = 1 + (post.comments[topIdx].replies || []).length;
+        post.comments.splice(topIdx, 1);
+        return removed;
+      }
+      for (const c of post.comments) {
+        const replyIdx = (c.replies || []).findIndex((r) => r.id === commentId);
+        if (replyIdx !== -1) {
+          c.replies.splice(replyIdx, 1);
+          return 1;
+        }
+      }
+      return 0;
     }
 
     function renderComments() {
@@ -173,6 +228,7 @@
       document.title = `맞집 | ${post.title}`;
       document.getElementById("post").innerHTML = renderHeaderBlock() + renderVote() + renderActions() + renderComments();
       document.getElementById("back").href = `list.html?tab=${post.category}`;
+      API.setCommunitySidebarActive(post.category);
     }
 
     // ---------- 이벤트 (위임) ----------
@@ -214,11 +270,47 @@
           post.solved = true;
           post.comments.forEach((c) => { if (c.id === Number(t.dataset.adopt)) c.selected = true; });
           render();
+        } else if (t.dataset.edit) {
+          openEditBox(Number(t.dataset.edit));
+        } else if (t.dataset.delete) {
+          if (!confirm("이 댓글을 삭제할까요? 대댓글이 있으면 함께 삭제돼요.")) return;
+          const id = Number(t.dataset.delete);
+          await API.deleteComment(id);
+          post.commentCount -= removeComment(id);
+          render();
+        } else if (t.dataset.editSave) {
+          const id = Number(t.dataset.editSave);
+          const textarea = document.getElementById(`edit-box-${id}`).querySelector("textarea");
+          const content = textarea.value.trim();
+          if (!content) return;
+          await API.updateComment(id, content);
+          const c = findComment(id);
+          if (c) c.content = content;
+          render();
+        } else if (t.dataset.editCancel) {
+          render();
         }
       } catch (err) {
         alert(err.message);
       }
     });
+
+    function openEditBox(commentId) {
+      const li = root.querySelector(`li[data-comment="${commentId}"]`);
+      const p = li.querySelector(":scope > [data-comment-content]");
+      if (li.querySelector(`#edit-box-${commentId}`)) return; // 이미 편집 중
+      const box = document.createElement("div");
+      box.id = `edit-box-${commentId}`;
+      box.className = "mt-1 flex gap-2";
+      box.innerHTML = `
+        <textarea maxlength="2000" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" rows="2">${esc(findComment(commentId).content)}</textarea>
+        <div class="flex flex-col gap-1 shrink-0">
+          <button data-edit-save="${commentId}" class="px-3 py-1 rounded-lg text-white text-xs font-semibold brand-gradient">저장</button>
+          <button data-edit-cancel="${commentId}" class="px-3 py-1 rounded-lg border border-slate-200 text-xs">취소</button>
+        </div>`;
+      p.replaceWith(box);
+      box.querySelector("textarea").focus();
+    }
 
     function openReplyBox(parentId) {
       const box = document.getElementById(`reply-box-${parentId}`);
