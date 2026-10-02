@@ -1633,6 +1633,21 @@
                       </label>
                     </div>
                   </div>
+                  <!-- 신생아 특례 버팀목대출 "전용" 우대사항 - 체크박스가 아니라 자녀 "수"다. 위 자녀 수 칩과
+                       마찬가지로 "신혼부부(기혼자포함)"를 체크해야 입력 가능하다(gated-item). -->
+                  <div class="child-count-row gated-item" style="margin-top:14px">
+                    <span class="child-count-label">신생아 특례 버팀목대출 전용 <span class="text-gray-400 font-normal">(해당 대출에만 반영돼요)</span></span>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+                      <label style="flex:1;min-width:220px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:#475569;font-weight:600;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;background:#f8fafc">
+                        <span>대출접수일 기준 2년 내 추가 출산한 자녀 수</span>
+                        <input type="number" name="newbornAdditionalChildCount" data-gated disabled min="0" step="1" placeholder="0" class="input" style="width:40px; min-height:32px; padding:0 6px; font-size:13px; flex:none">
+                      </label>
+                      <label style="flex:1;min-width:220px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:#475569;font-weight:600;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;background:#f8fafc">
+                        <span>대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수</span>
+                        <input type="number" name="minorChildOver2YearsCount" data-gated disabled min="0" step="1" placeholder="0" class="input" style="width:40px; min-height:32px; padding:0 6px; font-size:13px; flex:none">
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2290,6 +2305,8 @@
       form.jobType.value = condition.jobType ?? "";
       form.noHouseholder.checked = !!condition.noHouseholder;
       form.militaryServiceMonths.value = condition.militaryServiceMonths ?? "";
+      form.newbornAdditionalChildCount.value = condition.newbornAdditionalChildCount ?? "";
+      form.minorChildOver2YearsCount.value = condition.minorChildOver2YearsCount ?? "";
 
       form.querySelectorAll('input[name="preferentialStatuses"]').forEach(box => {
         box.checked = false;
@@ -2347,6 +2364,8 @@
       jobType: fd.get("jobType") || null,
       noHouseholder: fd.get("noHouseholder") === "on",
       militaryServiceMonths: fd.get("militaryServiceMonths") ? Number(fd.get("militaryServiceMonths")) : null,
+      newbornAdditionalChildCount: fd.get("newbornAdditionalChildCount") ? Number(fd.get("newbornAdditionalChildCount")) : null,
+      minorChildOver2YearsCount: fd.get("minorChildOver2YearsCount") ? Number(fd.get("minorChildOver2YearsCount")) : null,
       preferentialStatuses: fd.getAll("preferentialStatuses"),
       notificationEnabled: fd.get("notificationEnabled") === "on"
     };

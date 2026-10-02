@@ -22,7 +22,7 @@ class AiListingRequestTest {
 
     private RecommendRequest recommend() {
         return new RecommendRequest(3400, null, 800, 20000, null, "강남구", 37.5, 127.03, 40, 29, true, null, null, "SME",
-                List.of("NEWLYWED"), "EXPLORING", "PUBLIC", true, List.of("아파트"));
+                List.of("NEWLYWED"), null, null, "EXPLORING", "PUBLIC", true, List.of("아파트"));
     }
 
     @Test

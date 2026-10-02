@@ -134,6 +134,17 @@ class DiagnosisRequest(BaseModel):
         "ELDERLY_HOUSEHOLD 중 다중 선택, 선택). 정책의 required_preferential_status 조건 판별용.",
         alias="preferentialStatuses",
     )
+    # 2026-10-02: 신생아 특례 버팀목대출 "전용" 우대사항 - 체크박스가 아니라 자녀 "수"다. loan_matcher의
+    # NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS 두 우대사항이 각각 이 수를 읽어
+    # (1명당 차감율 x 인원수)를 계산하고, 둘을 sum()해 하나의 후보로 다른 우대사항들과 다시 max() 비교한다.
+    newborn_additional_child_count: int | None = Field(
+        None, ge=0, description="대출접수일 기준 2년 내 추가 출산한 자녀 수 (선택)",
+        alias="newbornAdditionalChildCount",
+    )
+    minor_child_over_2years_count: int | None = Field(
+        None, ge=0, description="대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수 (선택)",
+        alias="minorChildOver2YearsCount",
+    )
 
     move_schedule: str | None = Field(
         None,

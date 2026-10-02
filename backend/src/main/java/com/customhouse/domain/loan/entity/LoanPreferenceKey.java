@@ -34,7 +34,16 @@ public enum LoanPreferenceKey {
     AGE_UNDER_25("만 25세 미만"),
     /** 재반영이 "더 관대한 값이 이긴다"는 기존 방향(_effective_limit)과 일치하도록 "미만"이 아니라
      * "이상"을 조건으로 잡았다 - 공통 조건(25세 미만 기준)보다 넓혀주는 쪽. */
-    AGE_25_OR_OLDER("만 25세 이상");
+    AGE_25_OR_OLDER("만 25세 이상"),
+    /** 체크박스가 아니라 진단 폼의 자녀 "수"(정수)로 판별되는 신생아 특례 버팀목대출 "전용" 조건이다 - 다른
+     * 대출에는 의미가 없다(관리자 화면도 다른 대출 표에서는 아예 뺀다). discount는 "1명당 차감율(%p)"로
+     * 쓰고(최종 차감 = discount x 인원수), 아래 MINOR_CHILD_OVER_2YEARS와 둘을 합쳐서(sum) 우대사항 하나의
+     * 후보값을 만든 뒤 다른 우대사항들과 다시 max()로 비교한다(loan_matcher._newborn_summed_discount,
+     * 2026-10-02) - 입력은 따로 받지만 최종 반영은 둘이 합쳐진 값 하나로 경쟁한다. */
+    NEWBORN_ADDITIONAL_CHILD("대출접수일 기준 2년 내 추가 출산한 자녀"),
+    /** NEWBORN_ADDITIONAL_CHILD 참고 - 같은 방식(자녀 수 x 1명당 차감율)으로 판별하고 그 우대사항과 sum() 후
+     * 다른 우대사항들과 max()로 경쟁한다. */
+    MINOR_CHILD_OVER_2YEARS("대출접수일 기준 출생 후 2년 초과한 미성년 자녀");
 
     private final String label;
 

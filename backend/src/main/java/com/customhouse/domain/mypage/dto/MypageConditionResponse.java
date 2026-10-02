@@ -30,6 +30,8 @@ public record MypageConditionResponse(
         JobType jobType,
         Boolean noHouseholder,
         Integer militaryServiceMonths,
+        Integer newbornAdditionalChildCount,
+        Integer minorChildOver2YearsCount,
         Set<PreferentialStatus> preferentialStatuses,
         boolean notificationEnabled
 ) {
@@ -54,6 +56,8 @@ public record MypageConditionResponse(
                 condition.getJobType(),
                 condition.getNoHouseholder(),
                 condition.getMilitaryServiceMonths(),
+                condition.getNewbornAdditionalChildCount(),
+                condition.getMinorChildOver2YearsCount(),
                 condition.getPreferentialStatuses(),
                 condition.isNotificationEnabled()
         );

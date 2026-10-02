@@ -59,6 +59,12 @@ public record RecommendRequest(
         List<String> preferentialStatuses, // 선택. BASIC_LIVELIHOOD/NEAR_POVERTY/SINGLE_PARENT/
         // INDEPENDENT_YOUTH/NEWLYWED/MULTI_CHILD 중 다중 선택 - 일부 정책의 우대사항 자격 판별용
 
+        @Min(value = 0, message = "대출접수일 기준 2년 내 추가 출산한 자녀 수는 0 이상이어야 합니다.")
+        Integer newbornAdditionalChildCount, // 선택. 신생아 특례 버팀목대출 전용 우대사항(NEWBORN_ADDITIONAL_CHILD) 판별용
+
+        @Min(value = 0, message = "대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수는 0 이상이어야 합니다.")
+        Integer minorChildOver2YearsCount, // 선택. 신생아 특례 버팀목대출 전용 우대사항(MINOR_CHILD_OVER_2YEARS) 판별용
+
         String moveSchedule, // 선택. IMMEDIATE/WITHIN_3M/WITHIN_6M/EXPLORING - 아직 로직에 안 쓰고 AI 엔진으로 전달만 함 (추후 데이터 활용)
 
         String transportType, // 선택. PUBLIC/WALK/CAR - 아직 로직에 안 쓰고 AI 엔진으로 전달만 함 (추후 데이터 활용)

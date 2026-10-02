@@ -31,20 +31,21 @@
     .adm-ref-save { border: 1px solid #1d4ed8; background: #1d4ed8; color: #fff; }
     .adm-ref-open { border: 1px solid #cbd5e1; background: #fff; color: #475569; }
     .adm-ref-open:disabled { opacity: .4; cursor: not-allowed; }
-    .adm-pref-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .adm-pref-table th { text-align: left; font-size: 11px; font-weight: 700; color: #94a3b8; padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
-    .adm-pref-table td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-    .adm-pref-table input[type=number] { width: 110px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 9px; }
+    .adm-pref-table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 14px; border: 1px solid #cbd5e1; }
+    .adm-pref-table th { text-align: center; font-size: 13px; font-weight: 800; color: #0f172a; padding: 10px; border: 1px solid #cbd5e1; background: #f8fafc; }
+    .adm-pref-table td { padding: 9px 10px; border: 1px solid #cbd5e1; vertical-align: middle; text-align: center; }
+    .adm-pref-table td:first-child, .adm-pref-table th:first-child { min-width: 240px; }
+    .adm-pref-table input[type=number] { width: 56px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 9px; }
     .adm-pref-table input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand-600, #1B2A4A); }
-    .adm-pref-override { display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 8px 16px; }
-    .adm-pref-override label { font-size: 11px; color: #64748b; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+    .adm-pref-override { display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 8px 16px; justify-content: center; }
+    .adm-pref-override label { font-size: 11px; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .adm-pref-override input[type=number] { width: 100%; max-width: 130px; padding: 5px 7px !important; }
     .adm-pref-none { color: #cbd5e1; font-size: 13px; }
     /* 특정 대출 상품에만 적용되는 전용 조건 행 - 일반 우대사항 표 안에서 파란 배경/테두리로만 구분한다 */
     .adm-pref-exclusive-row { background: #eff6ff; }
     .adm-pref-exclusive-row td { border-bottom: 1px solid #bfdbfe; }
     .adm-pref-exclusive-row td:first-child { border-left: 3px solid #3b82f6; }
-    .adm-pref-exclusive-badge { display: block; width: fit-content; white-space: nowrap; font-size: 10px; font-weight: 800; color: #1d4ed8; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 999px; padding: 1px 8px; margin-top: 4px; }
+    .adm-pref-exclusive-badge { display: block; width: fit-content; white-space: nowrap; font-size: 10px; font-weight: 800; color: #1d4ed8; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 999px; padding: 1px 8px; margin: 4px auto 0; }
     .adm-rate-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .adm-rate-table th, .adm-rate-table td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: center; }
     .adm-rate-table th { background: #f8fafc; font-weight: 700; color: #475569; font-size: 12px; }
@@ -178,10 +179,15 @@
     // 2026-10-01에 맞벌이부부/1자녀/2자녀/중소기업 취업청년 4종 추가 - AI 엔진(loan_matcher._effective_limit)은
     // 애초에 모든 우대사항 키를 범용으로 봐서 이 목록은 화면에 재반영 입력칸을 "보여줄지"만 결정한다).
     const OVERRIDE_PREFERENCE_KEYS = ["NEWLYWED", "MULTI_CHILD", "DUAL_INCOME", "ONE_CHILD", "TWO_CHILDREN", "SME_EMPLOYED_YOUTH", "AGE_UNDER_25", "AGE_25_OR_OLDER"];
-    // AGE_UNDER_25/AGE_25_OR_OLDER는 청년전용 버팀목 전세대출 "전용" 조건이다 - 그 대출의 표에서만 파란
-    // 배경 행으로 보여주고(아래 EXCLUSIVE_PREFERENCE_KEYS), 다른 대출에는 의미가 없어서 표에서 아예 뺀다.
-    const EXCLUSIVE_PREFERENCE_KEYS = ["AGE_25_OR_OLDER", "AGE_UNDER_25"];
-    const LOAN_EXCLUSIVE_KEYS = { YOUTH_BEOTIMMOK: EXCLUSIVE_PREFERENCE_KEYS };
+    // AGE_UNDER_25/AGE_25_OR_OLDER는 청년전용 버팀목 전세대출 "전용", NEWBORN_ADDITIONAL_CHILD/
+    // MINOR_CHILD_OVER_2YEARS는 신생아 특례 버팀목대출 "전용" 조건이다 - 해당 대출의 표에서만 파란 배경
+    // 행으로 보여주고(아래 LOAN_EXCLUSIVE_KEYS), 다른 대출에는 의미가 없어서 표에서 아예 뺀다(모든 대출
+    // 공통으로 이 전체 목록을 일반 우대사항 표에서 제외한다).
+    const LOAN_EXCLUSIVE_KEYS = {
+      YOUTH_BEOTIMMOK: ["AGE_25_OR_OLDER", "AGE_UNDER_25"],
+      NEWBORN_BEOTIMMOK: ["NEWBORN_ADDITIONAL_CHILD", "MINOR_CHILD_OVER_2YEARS"],
+    };
+    const EXCLUSIVE_PREFERENCE_KEYS = Object.values(LOAN_EXCLUSIVE_KEYS).flat();
     // 아래 네 우대사항은 시각적으로만 "부가 우대사항"으로 묶어 보여준다 - 로직상으로는 각각 완전히 독립된
     // 별개 우대사항이다(묶음의 첫 키 앞에만 구분용 행을 한 줄 끼워 넣는다). 백엔드 LoanPreferenceKey의
     // 선언 순서가 이 넷을 붙여두므로(DUAL_INCOME/ONE_CHILD/TWO_CHILDREN/MULTI_CHILD) 보통 이 순서 그대로 내려온다.
@@ -249,17 +255,22 @@
           <label>연소득 (이하) - 부부합산<input type="number" min="0" step="1" data-pref-override-income-couple="${esc(key)}" value="${p.overrideMaxIncomeCouple ?? ""}" placeholder="공통값 그대로" /></label>
           <label>전용면적 (이하, ㎡)<input type="number" min="0" step="0.01" data-pref-override-area="${esc(key)}" value="${p.overrideMaxExclusiveArea ?? ""}" placeholder="공통값 그대로" /></label>
         </div>`;
+      // NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS는 체크 여부가 아니라 "자녀 수"로 판별되고,
+      // discount는 1명당 차감율이다(최종 차감 = discount x 인원수, 둘을 sum() 후 다른 우대사항과 max() 경쟁
+      // - loan_matcher._newborn_summed_discount 참고) - 단위를 "%p/인"으로 다르게 보여준다.
+      const PER_CHILD_DISCOUNT_KEYS = ["NEWBORN_ADDITIONAL_CHILD", "MINOR_CHILD_OVER_2YEARS"];
       // 우대사항 표 한 행을 그린다. isExclusive면 파란 배경 + "이 대출 전용" 배지를 붙인다(정부 정책
       // 우대사항 표와 같은 틀 안에, 색으로만 구분 - 너무 화려하게 따로 박스를 만들지 않는다).
       const prefRowHtml = (opt, isExclusive) => {
         const p = (loan.preferences || {})[opt.key] || { required: false, discount: 0 };
         const overrideCell = OVERRIDE_PREFERENCE_KEYS.includes(opt.key) ? prefOverridePanel(opt.key, p) : `<span class="adm-pref-none">-</span>`;
         const badge = isExclusive ? `<span class="adm-pref-exclusive-badge">이 대출 전용</span>` : "";
+        const discountUnit = PER_CHILD_DISCOUNT_KEYS.includes(opt.key) ? "%p<br />1명당" : "%p";
         return `
           <tr class="${isExclusive ? "adm-pref-exclusive-row" : ""}">
-            <td class="font-semibold align-top">${esc(opt.label)}${badge}</td>
+            <td class="font-semibold align-top text-center">${esc(opt.label)}${badge}</td>
             <td class="align-top"><label class="inline-flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" data-pref-required="${esc(opt.key)}" ${p.required ? "checked" : ""} />필수조건</label></td>
-            <td class="align-top"><input type="number" min="0" max="10" step="0.01" data-pref-discount="${esc(opt.key)}" value="${p.discount ?? 0}" /> <span class="text-xs text-gray-400">%p</span></td>
+            <td class="align-top"><input type="number" min="0" max="10" step="0.01" data-pref-discount="${esc(opt.key)}" value="${p.discount ?? 0}" /> <span class="text-xs text-gray-400">${discountUnit}</span></td>
             <td class="align-top">${overrideCell}</td>
           </tr>`;
       };
@@ -280,8 +291,10 @@
 
       return `
         <form class="card p-6 space-y-6" data-loan="${esc(loan.type)}" novalidate>
-          <div class="flex items-center justify-between gap-3 flex-wrap">
-            <h2 class="text-lg font-extrabold">${esc(loan.name)}</h2>
+          <div class="flex items-center justify-between gap-3 flex-wrap rounded-xl" style="background: #eef2f7; padding: 16px 20px; border: 2px solid var(--brand-600, #1B2A4A); margin-bottom: 8px;">
+            <div class="flex-1 text-center">
+              <h2 class="text-4xl font-extrabold" style="color: var(--brand-600, #1B2A4A); text-shadow: 1px 2px 4px rgba(0,0,0,0.2)">${esc(loan.name)}</h2>
+            </div>
             <span class="adm-badge ${loan.saved ? "saved" : "empty"}" data-badge>${loan.saved ? "저장됨" : "미설정"}</span>
           </div>
 
@@ -346,10 +359,31 @@
           </div>
 
           <div>
-            <h3 class="text-sm font-extrabold text-slate-700 mb-1">정부 주거지원 정책 우대사항</h3>
-            <p class="text-xs text-slate-400 mb-3">필수조건에 체크하면 그 우대사항에 해당해야 이 대출을 받을 수 있어요. 우대금리 차감은 해당 우대사항일 때 연 이자율에서 자동으로 빼는 값입니다.
-              신혼부부·다자녀가구·맞벌이부부·1자녀·2자녀·중소기업 취업청년은 매물 보증금/최대 대출금액/최대 대출금 비율한도/연소득 한도를 위 공통 조건과 다르게 따로 입력할 수 있어요 (비워두면 공통 조건 값을 그대로 써요. 여러 개 해당하면 더 관대한 값이 적용돼요).
-              <b class="text-blue-700">파란 배경</b> 행은 이 대출에만 있는 전용 조건이에요(다른 대출 표에는 안 보여요).</p>
+            <h3 class="text-3xl font-extrabold mb-1" style="color: #3b82f6; text-shadow: 1px 2px 4px rgba(0,0,0,0.2)">정부 주거지원 정책 우대사항</h3>
+            <p class="text-xs text-slate-900 mb-2" style="line-height:1.7">
+              필수조건에 체크하면 그 우대사항에 해당해야 이 대출을 받을 수 있어요.<br />
+              우대금리 차감은 해당 우대사항일 때 연 이자율에서 자동으로 빼는 값입니다.<br />
+              특정 우대사항은 아래 항목을 위 공통 조건과 다르게 따로 입력할 수 있어요:<br />
+              &nbsp;&nbsp;- 매물 보증금 한도<br />
+              &nbsp;&nbsp;- 최대 대출금액<br />
+              &nbsp;&nbsp;- 최대 대출금 비율한도<br />
+              &nbsp;&nbsp;- 연소득 한도 (개인)<br />
+              &nbsp;&nbsp;- 연소득 한도 (부부합산)<br />
+              &nbsp;&nbsp;- 전용면적 한도<br />
+              (비워두면 공통 조건 값을 그대로 써요. 여러 개 해당하면 더 관대한 값이 적용돼요.)<br />
+              <b class="text-blue-700">파란 배경 행은 이 대출에만 있는 전용 조건이에요(다른 대출 표에는 안 보여요).</b><br />
+              <b class="text-blue-700">신생아 특례의 자녀 수 우대사항 2종은 서로 합산(sum)해서 하나의 후보값을 만든 뒤, 다른 우대사항들과 다시 가장 큰 값 하나로 경쟁해요.</b>
+            </p>
+            <p class="text-xs text-slate-600 mb-3" style="line-height:1.7">
+              <b>우대금리 차감 상한</b> <span class="text-slate-400">(화면에서 수정 불가, 코드로 고정)</span><br />
+              <b>일반 버팀목 전세대출 · 청년전용 버팀목 전세대출</b>:<br />
+              &nbsp;&nbsp;- 기본 <b>최대 0.5%p</b><br />
+              &nbsp;&nbsp;- 다자녀가구는 <b>최대 0.7%p</b><br />
+              &nbsp;&nbsp;- 기초생활수급자·차상위계층·한부모가구는 <b>최대 1.0%p</b>까지 적용돼요.<br />
+              <b>신생아 특례 버팀목대출</b>:<br />
+              &nbsp;&nbsp;- 그룹 구분 없이 항상 <b>최대 0.5%p</b>로만 적용돼요.<br />
+              <span class="text-slate-400">(아래 표에서 고른 가장 큰 우대금리 차감이 이 상한보다 작으면 상한과 무관하게 그 값 그대로 적용돼요.)</span>
+            </p>
             <div class="overflow-x-auto">
               <table class="adm-pref-table">
                 <thead><tr><th>우대사항</th><th>필수 여부</th><th>우대금리 차감</th><th>우대 한도 재반영</th></tr></thead>
@@ -359,7 +393,7 @@
           </div>
 
           <div>
-            <h3 class="text-sm font-extrabold text-slate-700 mb-1">대출금리 <span class="font-medium text-slate-400">(변동금리, 국토교통부 고시 기준)</span></h3>
+            <h3 class="text-3xl font-extrabold mb-1" style="color: #3b82f6; text-shadow: 1px 2px 4px rgba(0,0,0,0.2)">대출금리 <span class="font-medium text-slate-400">(변동금리, 주택도시공사 고시 기준)</span></h3>
             <p class="text-xs text-slate-400 mb-3">
               부부 합산 연 소득(개인만 있어도 같은 표를 써요) x 임차보증금 구간별 연 금리예요. 위 우대금리 차감은 이 표의 값에서 추가로 빠져요.
               <b>표를 비워두면</b> 아직 이 대출의 실제 금리표가 없는 것으로 보고, 기준금리(보증금액 전환 이자기회비용과 같은 API 값)를 대신 써요.

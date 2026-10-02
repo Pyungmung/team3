@@ -80,7 +80,35 @@ def _preference_satisfied(key: str, request) -> bool:
         return request.age is not None and request.age >= 25
     if key == "AGE_UNDER_25":
         return request.age is not None and request.age < 25
+    if key in _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD:
+        return _newborn_child_count(key, request) > 0
     return False  # 관리자 화면에 없는 낯선 코드는 해당 없음으로 본다
+
+
+# 신생아 특례 버팀목대출 "전용" 우대사항 - 체크박스가 아니라 자녀 "수"(진단 폼의 숫자 입력)로 판별하고,
+# discount는 "1명당 차감율(%p)"로 쓴다(최종 차감 = discount x 인원수). 2026-10-02: 이 둘은 서로 다른
+# 우대사항이라 각자 입력은 따로 받지만, 최종 우대금리 계산에서는 둘을 sum()해서 "우대사항 하나"로 합친 뒤
+# 다른 우대사항들과 다시 max()로 비교한다(가장 유리한 쪽 하나만 적용) - _final_rate_percent 참고.
+_NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD = {
+    "NEWBORN_ADDITIONAL_CHILD": "newborn_additional_child_count",
+    "MINOR_CHILD_OVER_2YEARS": "minor_child_over_2years_count",
+}
+
+
+def _newborn_child_count(key: str, request) -> int:
+    return getattr(request, _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD[key], None) or 0
+
+
+def _newborn_summed_discount(loan, request) -> float:
+    """NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS 두 우대사항의 (1명당 차감율 x 인원수)를 더한 값.
+    대출에 그 우대사항 행이 아예 없으면(다른 대출들) 0으로, 있어도 인원수가 0이면 0이다."""
+    total = 0.0
+    for key, count_field in _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD.items():
+        setting = loan.preferences.get(key)
+        if setting is None:
+            continue
+        total += (setting.discount or 0.0) * _newborn_child_count(key, request)
+    return total
 
 
 def _effective_limit(loan, request, base_limit, override_getter):
@@ -191,20 +219,54 @@ def is_eligible(loan, request, listing: dict) -> bool:
     )
 
 
+# 2026-10-02: 관리자 요청으로 우대금리 차감에 대출별 상한(cap)을 둔다 - 위에서 고른 "가장 큰 차감값"이라도
+# 이 상한을 넘으면 상한으로 깎인다(차감이 상한보다 작으면 그대로 - 상한은 바닥이 아니라 천장이다). 일반/청년전용
+# 버팀목 전세대출은 그룹별로 상한이 다르고(기초생활수급자·차상위계층·한부모가구가 가장 넓고, 다자녀가구가 그
+# 다음, 나머지는 기본값), 신생아 특례 버팀목대출은 예외 없이 기본값 하나다. 목록에 없는 대출(예: 청년전용
+# 보증부월세대출)은 상한 없이 기존처럼 무제한이다.
+_DISCOUNT_CAP_DEFAULT_PERCENT = 0.5
+_DISCOUNT_CAP_MULTI_CHILD_PERCENT = 0.7
+_DISCOUNT_CAP_HIGH_TIER_PERCENT = 1.0
+_DISCOUNT_CAP_HIGH_TIER_PREFERENCES = ("BASIC_LIVELIHOOD", "NEAR_POOR", "SINGLE_PARENT")
+_LOAN_TYPES_WITH_TIERED_DISCOUNT_CAP = ("GENERAL_BEOTIMMOK", "YOUTH_BEOTIMMOK")
+_LOAN_TYPES_WITH_FLAT_DISCOUNT_CAP = ("NEWBORN_BEOTIMMOK",)
+
+
+def _discount_cap_percent(loan, request) -> float | None:
+    """이 대출·사용자 조합에서 우대금리 차감이 넘을 수 없는 상한(%p). None이면 상한 없음(무제한)."""
+    if loan.type in _LOAN_TYPES_WITH_FLAT_DISCOUNT_CAP:
+        return _DISCOUNT_CAP_DEFAULT_PERCENT
+    if loan.type in _LOAN_TYPES_WITH_TIERED_DISCOUNT_CAP:
+        if any(_preference_satisfied(key, request) for key in _DISCOUNT_CAP_HIGH_TIER_PREFERENCES):
+            return _DISCOUNT_CAP_HIGH_TIER_PERCENT
+        if _preference_satisfied("MULTI_CHILD", request):
+            return _DISCOUNT_CAP_MULTI_CHILD_PERCENT
+        return _DISCOUNT_CAP_DEFAULT_PERCENT
+    return None
+
+
 def _final_rate_percent(loan, request, listing: dict, market_rate_percent: float) -> float:
     """기본금리(대출금리표가 있으면 그 표의 값, 없으면 market_rate_percent - 기준금리 API 값)에서, 사용자가
     해당하는 우대사항 중 "가장 큰 우대금리 차감 하나만" 뺀 최종 금리(연 %) - 여러 우대사항에 해당해도 중복으로
     합산하지 않는다(2026-10-01, 관리자 요청으로 sum()에서 max()로 변경. 모든 대출 공통). required 여부와
-    무관하게 "해당하면" 차감 후보가 된다(필수 자격 판별과는 별개 계산식). 0% 밑으로는 내려가지 않는다."""
+    무관하게 "해당하면" 차감 후보가 된다(필수 자격 판별과는 별개 계산식). 단, NEWBORN_ADDITIONAL_CHILD/
+    MINOR_CHILD_OVER_2YEARS 둘은 예외로 서로 sum()해서 "우대사항 하나"의 후보값으로 만든 뒤에 이 max() 풀에
+    섞는다(_newborn_summed_discount, 2026-10-02) - 입력은 따로 받지만 최종 반영은 합쳐서 하나로 경쟁시킨다.
+    그 값이 대출별 상한(cap)을 넘으면 상한으로 깎인다(_discount_cap_percent 참고, 2026-10-02). 0% 밑으로는
+    내려가지 않는다."""
     base_rate = _table_base_rate_percent(loan, request, listing)
     if base_rate is None:
         base_rate = market_rate_percent
-    discount = max(
-        (setting.discount or 0.0
-         for key, setting in loan.preferences.items()
-         if _preference_satisfied(key, request)),
-        default=0.0,
-    )
+    candidates = [
+        setting.discount or 0.0
+        for key, setting in loan.preferences.items()
+        if key not in _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD and _preference_satisfied(key, request)
+    ]
+    candidates.append(_newborn_summed_discount(loan, request))
+    discount = max(candidates, default=0.0)
+    cap = _discount_cap_percent(loan, request)
+    if cap is not None:
+        discount = min(discount, cap)
     return round(max(0.0, base_rate - discount), 2)
 
 

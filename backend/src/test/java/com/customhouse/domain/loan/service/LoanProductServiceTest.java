@@ -65,7 +65,8 @@ class LoanProductServiceTest {
                 .containsExactly("BASIC_LIVELIHOOD", "NEAR_POOR", "SINGLE_PARENT", "INDEPENDENT_YOUTH", "NEWLYWED",
                         "DUAL_INCOME", "ONE_CHILD", "TWO_CHILDREN", "MULTI_CHILD",
                         "DISABLED", "MULTICULTURAL", "ELDERLY_DEPENDENT", "ELDERLY_HOUSEHOLD",
-                        "NO_HOME", "SME_EMPLOYED_YOUTH", "AGE_UNDER_25", "AGE_25_OR_OLDER");
+                        "NO_HOME", "SME_EMPLOYED_YOUTH", "AGE_UNDER_25", "AGE_25_OR_OLDER",
+                        "NEWBORN_ADDITIONAL_CHILD", "MINOR_CHILD_OVER_2YEARS");
         assertThat(res.loans()).extracting("name").contains("일반 버팀목 전세대출", "청년전용 보증부월세대출");
     }
 

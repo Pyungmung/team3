@@ -356,20 +356,100 @@ def test_보유_보증금이_매물_보증금보다_많거나_같으면_대출�
 
 def test_여러_우대금리_차감_중_가장_큰_값_하나만_적용되고_0퍼센트_밑으로는_내려가지_않는다():
     # 2026-10-01: 여러 우대사항에 해당해도 합산하지 않고 가장 큰 차감 하나만 적용한다(모든 대출 공통).
-    loans = [loan(preferences={
+    # YOUTH_MONTHLY_RENT는 우대금리 차감 상한(2026-10-02) 목록에 없는 대출이라 이 테스트는 상한 영향 없이
+    # 순수하게 max() 동작만 검증한다 - 상한 자체는 아래 전용 테스트들에서 따로 검증한다.
+    loans = [loan(type_="YOUTH_MONTHLY_RENT", lease="월세", preferences={
         "NEWLYWED": {"required": False, "discount": 1.0},
         "NO_HOME": {"required": False, "discount": 1.5},
         "SME_EMPLOYED_YOUTH": {"required": False, "discount": 1.0},
     })]
     r = req(loans, preferentialStatuses=["NEWLYWED"], noHouseholder=True, jobType="SME")
-    result = loan_matcher.match_eligible_loans(r, JEONSE)[0]
+    result = loan_matcher.match_eligible_loans(r, WOLSE)[0]
     assert result["rate_percent"] == 1.5  # 3.0 - max(1.0, 1.5, 1.0) = 1.5 (합산 아님)
 
     # 가장 큰 차감이 기본금리를 넘으면 0으로 바닥
-    loans_big = [loan(preferences={"NO_HOME": {"required": False, "discount": 5.0}})]
+    loans_big = [loan(type_="YOUTH_MONTHLY_RENT", lease="월세", preferences={"NO_HOME": {"required": False, "discount": 5.0}})]
     r_big = req(loans_big, noHouseholder=True)
-    result_big = loan_matcher.match_eligible_loans(r_big, JEONSE)[0]
+    result_big = loan_matcher.match_eligible_loans(r_big, WOLSE)[0]
     assert result_big["rate_percent"] == 0.0
+
+
+def test_우대금리_차감_상한_일반_청년전용_버팀목은_기본값_0_5퍼센트다():
+    # 2026-10-02: 상한보다 작게 설정된 차감은 그대로 적용되고(상한은 천장일 뿐 바닥이 아님), 상한을 넘게
+    # 설정된 차감은 상한값으로 깎인다. 다자녀가구/기초수급 등 특례 그룹이 아니면 상한은 기본값 0.5%다.
+    for loan_type in ("GENERAL_BEOTIMMOK", "YOUTH_BEOTIMMOK"):
+        small = [loan(type_=loan_type, preferences={"NEWLYWED": {"discount": 0.2}})]
+        small_result = loan_matcher.match_eligible_loans(req(small, preferentialStatuses=["NEWLYWED"]), JEONSE)[0]
+        assert small_result["rate_percent"] == 2.8  # 3.0 - 0.2 (상한 밑이라 그대로)
+
+        big = [loan(type_=loan_type, preferences={"NEWLYWED": {"discount": 2.0}})]
+        big_result = loan_matcher.match_eligible_loans(req(big, preferentialStatuses=["NEWLYWED"]), JEONSE)[0]
+        assert big_result["rate_percent"] == 2.5  # 3.0 - min(2.0, 0.5) = 2.5 (상한으로 깎임)
+
+
+def test_우대금리_차감_상한_다자녀가구는_0_7퍼센트다():
+    for loan_type in ("GENERAL_BEOTIMMOK", "YOUTH_BEOTIMMOK"):
+        loans = [loan(type_=loan_type, preferences={"MULTI_CHILD": {"discount": 2.0}})]
+        result = loan_matcher.match_eligible_loans(req(loans, preferentialStatuses=["MULTI_CHILD"]), JEONSE)[0]
+        assert result["rate_percent"] == 2.3  # 3.0 - min(2.0, 0.7) = 2.3
+
+
+def test_우대금리_차감_상한_기초수급_차상위_한부모는_1_0퍼센트다():
+    for loan_type in ("GENERAL_BEOTIMMOK", "YOUTH_BEOTIMMOK"):
+        for pref_key, status_code in (("BASIC_LIVELIHOOD", "BASIC_LIVELIHOOD"), ("NEAR_POOR", "NEAR_POVERTY"), ("SINGLE_PARENT", "SINGLE_PARENT")):
+            loans = [loan(type_=loan_type, preferences={pref_key: {"discount": 2.0}})]
+            result = loan_matcher.match_eligible_loans(req(loans, preferentialStatuses=[status_code]), JEONSE)[0]
+            assert result["rate_percent"] == 2.0  # 3.0 - min(2.0, 1.0) = 2.0
+
+
+def test_신생아특례_버팀목대출은_그룹과_무관하게_상한이_항상_0_5퍼센트다():
+    # 다자녀가구에 해당해도(다른 대출이면 0.7%까지 가능) 신생아 특례는 예외 없이 0.5%로 고정된다.
+    loans = [loan(type_="NEWBORN_BEOTIMMOK", preferences={"MULTI_CHILD": {"discount": 2.0}})]
+    result = loan_matcher.match_eligible_loans(req(loans, preferentialStatuses=["MULTI_CHILD"]), JEONSE)[0]
+    assert result["rate_percent"] == 2.5  # 3.0 - min(2.0, 0.5) = 2.5
+
+
+def test_상한_목록에_없는_대출은_우대금리_차감에_제한이_없다():
+    loans = [loan(type_="YOUTH_MONTHLY_RENT", lease="월세", preferences={"NEWLYWED": {"discount": 2.0}})]
+    result = loan_matcher.match_eligible_loans(req(loans, preferentialStatuses=["NEWLYWED"]), WOLSE)[0]
+    assert result["rate_percent"] == 1.0  # 3.0 - 2.0, 상한 없음
+
+
+# 2026-10-02: 신생아 특례 버팀목대출 "전용" 우대사항 - NEWBORN_ADDITIONAL_CHILD(대출접수일 기준 2년 내 추가
+# 출산한 자녀, 1명당 0.2%p)와 MINOR_CHILD_OVER_2YEARS(출생 후 2년 초과한 미성년 자녀, 1명당 0.1%p)는 입력은
+# 따로 받지만(자녀 수), 최종 반영은 (discount x 인원수)를 둘이 sum()해서 "우대사항 하나"로 합친 뒤 다른
+# 우대사항들과 다시 max()로 경쟁한다 - _newborn_summed_discount/_final_rate_percent 참고.
+_NEWBORN_PREFS = {
+    "NEWBORN_ADDITIONAL_CHILD": {"discount": 0.2},
+    "MINOR_CHILD_OVER_2YEARS": {"discount": 0.1},
+}
+
+
+def test_신생아_추가출산_자녀_3명이면_0_2퍼센트x3명_합산후_상한에_걸린다():
+    loans = [loan(type_="NEWBORN_BEOTIMMOK", preferences=_NEWBORN_PREFS)]
+    result = loan_matcher.match_eligible_loans(req(loans, newbornAdditionalChildCount=3), JEONSE)[0]
+    assert result["rate_percent"] == 2.5  # 3.0 - min(3*0.2, 0.5) = 3.0 - 0.5 = 2.5
+
+
+def test_신생아_추가출산_1명과_2년초과_미성년_1명은_sum되어_0_3퍼센트다():
+    loans = [loan(type_="NEWBORN_BEOTIMMOK", preferences=_NEWBORN_PREFS)]
+    result = loan_matcher.match_eligible_loans(
+        req(loans, newbornAdditionalChildCount=1, minorChildOver2YearsCount=1), JEONSE)[0]
+    assert result["rate_percent"] == 2.7  # 3.0 - (1*0.2 + 1*0.1) = 2.7 (상한 0.5% 안 넘음)
+
+
+def test_신생아_합산값도_다른_우대사항과_max로_경쟁한다():
+    loans = [loan(type_="NEWBORN_BEOTIMMOK", preferences={**_NEWBORN_PREFS, "BASIC_LIVELIHOOD": {"discount": 2.0}})]
+    result = loan_matcher.match_eligible_loans(
+        req(loans, newbornAdditionalChildCount=1, preferentialStatuses=["BASIC_LIVELIHOOD"]), JEONSE)[0]
+    assert result["rate_percent"] == 2.5  # max(1*0.2, 2.0)=2.0, 상한(0.5) 적용 -> 3.0-0.5=2.5
+
+
+def test_신생아_우대사항_행이_없는_대출은_자녀수_입력을_무시한다():
+    loans = [loan(type_="GENERAL_BEOTIMMOK", preferences={"NEWLYWED": {"discount": 0.3}})]
+    result = loan_matcher.match_eligible_loans(
+        req(loans, newbornAdditionalChildCount=5, preferentialStatuses=["NEWLYWED"]), JEONSE)[0]
+    assert result["rate_percent"] == 2.7  # 3.0 - 0.3, 자녀수 5는 이 대출엔 의미 없어 무시됨
 
 
 def test_보증금이_다르면_같은_대출이라도_실질주거비가_다르다():

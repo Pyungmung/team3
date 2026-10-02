@@ -97,6 +97,12 @@ public class HousingCondition extends BaseTimeEntity {
     // 연동 예정(12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식).
     private Integer militaryServiceMonths;
 
+    // 2026-10-02: 신생아 특례 버팀목대출 "전용" 우대사항(NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS)
+    // 판별용 자녀 수. 체크박스(PreferentialStatus)가 아니라 숫자라서 별도 컬럼으로 둔다.
+    private Integer newbornAdditionalChildCount; // 대출접수일 기준 2년 내 추가 출산한 자녀 수
+
+    private Integer minorChildOver2YearsCount; // 대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수
+
     // 우대사항(다중 선택). 예전엔 @ElementCollection(값 컬렉션)이라 자체 기본키가 없는 테이블로 생성됐는데,
     // Aiven 등 관리형 클라우드 MySQL은 `sql_require_primary_key`가 켜져 있어 그런 테이블 생성 자체가
     // 거부됐다(2026-09-22). 그래서 board 도메인의 PostMeta처럼 자체 id를 가진 진짜 엔티티로 바꿨다.
