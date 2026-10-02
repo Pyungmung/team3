@@ -234,9 +234,12 @@
     // 관리자 화면에서 저장한 대출 조건을 통과한 대출 (AI 엔진이 매물마다 판별) - "[대출이름] 실질주거비"를 다른 비용 박스와 같은 모양으로 보여준다.
     // 2026-09-30: 대출별 실제 금리표(관리자 입력)가 있으면 그 금리를, 없으면 기준금리 API(보증금액 전환 이자기회비용과 같은 값)를
     // 대신 쓰고 우대금리만 반영한다 - is_temporary_rate가 어느 쪽인지 나타낸다.
+    // 2026-10-02: 청년전용 보증부월세대출은 보증금 대출과 월세대출을 성격이 달라서(월세대출은 실질주거비에
+    // 안 섞고 24개월 환산/2년 총액을 따로 보여준다) 다른 대출 설명처럼 카드를 통째로 하나 더 분리해서 보여준다
+    // (rent_loan_total_cap_manwon이 있으면 = 이 대출에 월세대출 구조가 설정돼 있다는 뜻).
     const loanBoxes = (r.eligible_loans || [])
-      .map(
-        (l) => `
+      .map((l) => {
+        const depositBox = `
           <div class="cost-box loan" title="${
             l.is_temporary_rate
               ? "입력하신 조건이 이 대출의 자격 조건을 충족해요. 이 대출은 아직 실제 금리표가 없어 기준금리(보증금 전환율 API)에서 우대금리만 반영한 참고용이며, 실제 금리·한도·신청 가능 여부는 금융기관 심사로 확정돼요."
@@ -249,8 +252,16 @@
                 ? `월세 + 관리비 + 부족분 ${fmtNum(l.loan_principal)}만 대출이자 ${fmtNum(l.monthly_interest)}만 (연 ${fmtRate(l.rate_percent)}%${l.is_temporary_rate ? ", 기준금리 적용" : ""})`
                 : "보유 보증금으로 충분해 대출이 필요 없어요 (이자 0원)"
             }</div>
-          </div>`
-      )
+          </div>`;
+        const rentLoanBox = l.rent_loan_total_cap_manwon == null ? "" : `
+          <div class="cost-box loan" title="월세대출(무이자 기준액을 초과하는 월세 금액) 이자 안내예요. 실제 거주 기간에 따라 2년 총 이자는 달라질 수 있어요.">
+            <div class="lbl">${esc(l.name)} 월세대출</div>
+            <div class="val">${Number(l.rent_loan_monthly_interest || 0).toLocaleString()}원/월 환산</div>
+            <div class="sub">월세대출 예상액/24개월 환산시 ${Number(l.rent_loan_monthly_interest || 0).toLocaleString()}원 (2년간 총 이자 ${Number(l.rent_loan_total_interest || 0).toLocaleString()}원 예상)</div>
+            <div class="sub">월세대출 최대 ${fmtNum(l.rent_loan_total_cap_manwon)}만원까지 가능해요</div>
+          </div>`;
+        return depositBox + rentLoanBox;
+      })
       .join("");
 
     const facts = [

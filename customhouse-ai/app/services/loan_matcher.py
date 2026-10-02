@@ -40,11 +40,36 @@ from app.services import policy_matcher
 DEFAULT_BASE_RATE_PERCENT = 3.0
 
 # 대출금리표의 구간 정의 (관리자 화면의 표와 순서가 같아야 한다 - admin/loans.html 참고).
-# 소득: 상한(만원) 오름차순, 이 값 이하면 그 구간 - 마지막 구간(7500)을 넘으면 그냥 마지막 구간을 쓴다
-# (실제로는 그 전에 max_income_couple/single 자격 조건에서 이미 걸러지는 게 보통이다).
+# 소득: 상한(만원) 오름차순, 이 값 이하면 그 구간 - 마지막 구간을 넘으면 그냥 마지막 구간을 쓴다(실제로는
+# 그 전에 max_income_couple/single 자격 조건에서 이미 걸러지는 게 보통이다). 일반/청년전용 버팀목 공통 구간.
 RATE_TABLE_INCOME_BRACKETS_MANWON = [2000, 4000, 6000, 7500]
-# 임차보증금: 상한(만원), 마지막(None)은 상한 없음(1억원 초과 전부).
+# 임차보증금: 상한(만원), 마지막(None)은 상한 없음(1억원 초과 전부). 일반 버팀목 전세대출의 구간이다.
 RATE_TABLE_DEPOSIT_BRACKETS_MANWON = [5000, 10000, None]
+
+# 2026-10-02: 대출금리표(정부 고시 연소득x임차보증금 구간표)는 대출마다 구간 구조가 전부 다를 수 있다 -
+# 일반 버팀목 전세대출은 연소득 4단계 x 임차보증금 5천/1억 기준 3단계, 청년전용 버팀목 전세대출은 같은
+# 연소득 4단계에 임차보증금은 정부 고시 그대로 "3억원 이하" 단일 구간(열이 하나뿐이라 경계값 자체는
+# 의미 없다), 신생아 특례 버팀목대출은 연소득 9단계(1.3억원 초과부터는 맞벌이부부 우대사항에 해당해야만
+# 적용되는 구간 - 공통 조건 연소득 한도 자체를 1.3억원으로 두고 맞벌이부부 우대사항의 연소득 재반영을
+# 2억원으로 입력해두면 이 구간까지 자격이 열린다, admin/loans.html의 안내 참고) x 임차보증금 4단계다.
+# 이 목록에 없는 대출(청년전용 보증부월세대출)은 아직 이자율 결정 방식이 미정이라, 설령 DB에 예전 표 값이
+# 남아있어도 더는 읽지 않는다(관리자 화면도 이 목록에 있는 대출에서만 표를 보여준다). 미정인 대출은 기준금리
+# API 값을 "입력 대기" 임시값으로 쓴다(is_temporary_rate=True로 표시).
+RATE_TABLE_BRACKETS_BY_LOAN_TYPE = {
+    "GENERAL_BEOTIMMOK": {
+        "income": RATE_TABLE_INCOME_BRACKETS_MANWON,
+        "deposit": RATE_TABLE_DEPOSIT_BRACKETS_MANWON,
+    },
+    "YOUTH_BEOTIMMOK": {
+        "income": RATE_TABLE_INCOME_BRACKETS_MANWON,
+        "deposit": [30000],  # [3억원 이하] 단일 구간
+    },
+    "NEWBORN_BEOTIMMOK": {
+        # 9단계: ~2천/4천/6천/7.5천/1억/1.3억(공통 조건 연소득 한도) / (맞벌이) 1.5억/1.7억/2억
+        "income": [2000, 4000, 6000, 7500, 10000, 13000, 15000, 17000, 20000],
+        "deposit": [5000, 10000, 15000, None],  # 5천/1억/1.5억 기준 4단계
+    },
+}
 
 # 관리자 화면의 우대사항 코드 -> 요청의 preferential_statuses 코드. 이름이 같으면 생략한다.
 # (관리자 화면은 NEAR_POOR, 주거조건 입력은 NEAR_POVERTY로 코드가 달라서 여기서 맞춘다)
@@ -141,14 +166,34 @@ def _bracket_index(value: float, upper_bounds: list) -> int:
     return len(upper_bounds) - 1
 
 
+# 2026-10-02: 청년전용 보증부월세대출 "전용" 금리 구조 - 연소득x임차보증금 구간표가 아니라, 보증금 대출은
+# 고정금리 하나, 월세대출은 (무이자 기준액을 초과하는 월세 금액이 매달 누적되는) 전혀 다른 계산식을 쓴다.
+# RATE_TABLE_BRACKETS_BY_LOAN_TYPE에는 안 들어간다 - _table_base_rate_percent/_has_real_rate에서 따로 분기한다.
+YOUTH_MONTHLY_RENT_LOAN_TYPE = "YOUTH_MONTHLY_RENT"
+
+
 def _table_base_rate_percent(loan, request, listing: dict) -> float | None:
-    """대출금리표(loan.rate_table)에서 연소득 구간(행) x 임차보증금 구간(열)에 해당하는 기본금리를 찾는다.
-    표가 없으면 None(호출하는 쪽이 DEFAULT_BASE_RATE_PERCENT로 대신한다)."""
-    if not loan.rate_table:
+    """기본금리(연 %)를 찾는다. 청년전용 보증부월세대출은 표가 아니라 보증금 대출 금리(고정값, 관리자가
+    입력)를 그대로 쓴다. 다른 대출은 대출금리표(loan.rate_table)에서 연소득 구간(행) x 임차보증금 구간(열) -
+    둘 다 대출마다 다르다(RATE_TABLE_BRACKETS_BY_LOAN_TYPE)에 해당하는 기본금리를 찾는다. 이자율 결정 방식이
+    미정인 대출(그 목록에도, 청년전용 보증부월세대출도 아닌 대출, 2026-10-02)은 표 자체를 읽지 않는다.
+    값이 없으면 None(호출하는 쪽이 기준금리 API 값으로 대신한다)."""
+    if loan.type == YOUTH_MONTHLY_RENT_LOAN_TYPE:
+        return loan.deposit_loan_rate_percent
+    brackets = RATE_TABLE_BRACKETS_BY_LOAN_TYPE.get(loan.type)
+    if brackets is None or not loan.rate_table:
         return None
-    income_idx = _bracket_index(_effective_income(request), RATE_TABLE_INCOME_BRACKETS_MANWON)
-    deposit_idx = _bracket_index(listing.get("listing_deposit") or 0, RATE_TABLE_DEPOSIT_BRACKETS_MANWON)
+    income_idx = _bracket_index(_effective_income(request), brackets["income"])
+    deposit_idx = _bracket_index(listing.get("listing_deposit") or 0, brackets["deposit"])
     return loan.rate_table[income_idx][deposit_idx]
+
+
+def _has_real_rate(loan) -> bool:
+    """is_temporary_rate 판별용 - True면 관리자가 입력한 실제 금리(표 또는 청년전용 보증부월세대출의
+    고정 보증금 금리)가 있다는 뜻이다. False면 기준금리 API 값을 "입력 대기" 임시값으로 대신 쓴다."""
+    if loan.type == YOUTH_MONTHLY_RENT_LOAN_TYPE:
+        return loan.deposit_loan_rate_percent is not None
+    return loan.type in RATE_TABLE_BRACKETS_BY_LOAN_TYPE and bool(loan.rate_table)
 
 
 def _income_ok(loan, request) -> bool:
@@ -164,6 +209,13 @@ def _income_ok(loan, request) -> bool:
 def _listing_deposit_ok(loan, request, listing: dict) -> bool:
     limit = _effective_limit(loan, request, loan.max_listing_deposit, lambda s: s.override_max_listing_deposit)
     return limit is None or (listing.get("listing_deposit") or 0) <= limit
+
+
+def _listing_monthly_rent_ok(loan, listing: dict) -> bool:
+    """매물 월세 제한(이하) - 공통 조건이 아니라 이 대출만의 별도 조건(청년전용 보증부월세대출처럼 월세
+    매물을 대상으로 하는 대출에서만 쓴다, 2026-10-02). None이면 제한 없음."""
+    limit = loan.max_listing_monthly_rent
+    return limit is None or (listing.get("listing_monthly_rent") or 0) <= limit
 
 
 def _area_ok(loan, request, listing: dict) -> bool:
@@ -213,6 +265,7 @@ def is_eligible(loan, request, listing: dict) -> bool:
         and _income_ok(loan, request)
         and policy_matcher._asset_ok({"max_asset": loan.max_asset}, request.assets)
         and _listing_deposit_ok(loan, request, listing)
+        and _listing_monthly_rent_ok(loan, listing)
         and _area_ok(loan, request, listing)
         and _required_preferences_ok(loan, request)
         and _loan_amount_ok(loan, request, listing)
@@ -270,25 +323,74 @@ def _final_rate_percent(loan, request, listing: dict, market_rate_percent: float
     return round(max(0.0, base_rate - discount), 2)
 
 
+# 2026-10-02: 월세대출 총 이자를 보여줄 기준 기간. 사용자가 실제로 얼마나 거주할지 알 방법이 없어서(전세
+# 계약 기간처럼 입력받는 값이 없음), 표준 임대 계약 기간인 "2년"을 고정값으로 가정한다 - 관리자가 대출마다
+# 바꿀 값이 아니라 코드에 고정해둔다(admin/loans.html에도 입력칸을 안 둔다).
+_RENT_LOAN_ASSUMED_TERM_MONTHS = 24
+
+
+def _rent_loan_total_interest_won(loan, listing: dict) -> float:
+    """청년전용 보증부월세대출 "전용" - 월세대출(무이자 기준액 초과분)의 2년(_RENT_LOAN_ASSUMED_TERM_MONTHS)
+    총 이자(원). 월세대출은 매달 (월세 중 무이자 기준액을 초과하는 금액)만큼 추가로 빌리는 구조라, k번째 달의
+    누적 대출 잔액은 "초과금액 x k"이고 그 달 이자는 "잔액 x 연금리/12"다 - 이걸 2년 동안 합산한 닫힌 형태가
+    "초과금액(원) x 연금리 x 24 x 25/2/12"다(등차수열 합). 월 단위 실질주거비(effective_cost)와는 별개의
+    "총 이자" 수치라 월 단위로 나누지 않고 그대로 보여준다. 설정이 미완성이면(한도/기준액/금리 중 하나라도
+    비어 있으면) 0이다."""
+    if loan.type != YOUTH_MONTHLY_RENT_LOAN_TYPE:
+        return 0.0
+    cap = loan.monthly_rent_loan_cap_manwon
+    threshold = loan.monthly_rent_loan_free_threshold_manwon
+    rate = loan.monthly_rent_loan_rate_percent
+    if cap is None or threshold is None or rate is None:
+        return 0.0
+    monthly_rent_manwon = (listing.get("listing_monthly_rent") or 0)
+    loan_amount_manwon = min(monthly_rent_manwon, cap)
+    excess_manwon = max(0.0, loan_amount_manwon - threshold)
+    if excess_manwon <= 0:
+        return 0.0
+    excess_won = excess_manwon * 10000
+    term = _RENT_LOAN_ASSUMED_TERM_MONTHS
+    return round(excess_won * (rate / 100) * (term * (term + 1) / 2) / 12)
+
+
+def _rent_loan_monthly_interest_won(loan, listing: dict) -> float:
+    """_rent_loan_total_interest_won(2년 총 이자)을 _RENT_LOAN_ASSUMED_TERM_MONTHS로 나눈 "24개월 환산"
+    평균 월 이자(원) - 실제로는 회차마다 다르지만(1회차 250원 ~ 24회차 6,250원씩 늘어남), 카드에는 보기 쉽게
+    평균값 하나로 보여준다(2026-10-02, 총액과 같이 보여줘서 "월 환산"이라는 걸 명확히 한다)."""
+    total = _rent_loan_total_interest_won(loan, listing)
+    return round(total / _RENT_LOAN_ASSUMED_TERM_MONTHS) if total > 0 else 0.0
+
+
 def _loan_result(loan, request, listing: dict, market_rate_percent: float) -> dict:
     """이 대출을 신청했을 때의 "[대출이름] 실질주거비". 보증금전환 실질거주비와 같은 방식(월세+관리비+이자)이되,
     이자는 매물 보증금 전체가 아니라 "매물 보증금 - 사용자가 지금 가진 보증금(request.deposit)"만큼, 즉 대출로
     메워야 하는 부족분에 대해서만 계산한다(자기 돈으로 낼 수 있는 만큼은 대출이 필요 없다).
-    보유 보증금이 매물 보증금과 같거나 더 많으면(대출이 필요 없으면) 부족분이 0이라 이자도 0이 된다."""
+    보유 보증금이 매물 보증금과 같거나 더 많으면(대출이 필요 없으면) 부족분이 0이라 이자도 0이 된다.
+    청년전용 보증부월세대출은 보증금 쪽(위 계산)과 별개로 월세대출 2년 총 이자(rent_loan_total_interest)도
+    추가로 담아 보낸다 - effective_cost(월 단위)에는 섞지 않는다(기간 기준이 다른 별개의 수치라서). 월세대출
+    전체 한도(월 한도 x 2년, rent_loan_total_cap_manwon)는 자격 판별에는 안 쓰고 카드 안내문에 참고 정보로만
+    보낸다(월세대출 최대한도를 제한해서 떨어뜨리는 로직 자체가 없다 - 2026-10-02)."""
     rate = _final_rate_percent(loan, request, listing, market_rate_percent)
     listing_deposit = listing.get("listing_deposit") or 0
     loan_principal = max(0, listing_deposit - (request.deposit or 0))
     monthly_interest = round(loan_principal * rate / 100 / 12, 1)
     rent = listing.get("listing_monthly_rent") or 0
     maintenance = listing.get("maintenance_fee") or 0
+    cap = loan.monthly_rent_loan_cap_manwon if loan.type == YOUTH_MONTHLY_RENT_LOAN_TYPE else None
     return {
         "type": loan.type,
         "name": loan.name,
         "rate_percent": rate,
-        "is_temporary_rate": not loan.rate_table,  # True면 이 대출에 아직 실제 금리표가 없어 기준금리 API 값을 대신 쓴 것
+        # True면 이 대출에 실제 금리표가 없어(또는 아예 적용 대상이 아니라서) 기준금리 API 값을 "입력 대기"
+        # 임시값으로 대신 쓴 것 - _has_real_rate 참고.
+        "is_temporary_rate": not _has_real_rate(loan),
         "loan_principal": loan_principal,  # 대출로 메우는 부족분 (매물 보증금 - 보유 보증금, 0 이상)
         "monthly_interest": monthly_interest,
         "effective_cost": round(rent + maintenance + monthly_interest, 1),
+        # 청년전용 보증부월세대출 전용 - 다른 대출은 항상 0/None이다.
+        "rent_loan_total_interest": _rent_loan_total_interest_won(loan, listing),
+        "rent_loan_monthly_interest": _rent_loan_monthly_interest_won(loan, listing),
+        "rent_loan_total_cap_manwon": cap * _RENT_LOAN_ASSUMED_TERM_MONTHS if cap is not None else None,
     }
 
 

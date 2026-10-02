@@ -48,7 +48,8 @@ class LoanProductServiceTest {
     }
 
     private LoanProductRequest request(Integer minAge, Integer maxAge, Map<String, LoanPreference> prefs) {
-        return new LoanProductRequest(minAge, maxAge, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, prefs, null);
+        return new LoanProductRequest(minAge, maxAge, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000,
+                null, null, null, null, null, prefs, null);
     }
 
     @Test
@@ -125,7 +126,7 @@ class LoanProductServiceTest {
                 List.of(2.7, 2.8, 2.9),
                 List.of(3.0, 3.1, 3.2),
                 List.of(3.3, 3.4, 3.5));
-        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, Map.of(), rateTable);
+        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, null, null, null, null, null, Map.of(), rateTable);
 
         LoanProductResponse res = service.save("GENERAL_BEOTIMMOK", req);
 
@@ -144,7 +145,7 @@ class LoanProductServiceTest {
     @Test
     void 대출금리표는_4행이_아니면_검증_오류() {
         List<List<Double>> wrongRows = List.of(List.of(2.5, 2.6, 2.7));
-        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, Map.of(), wrongRows);
+        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, null, null, null, null, null, Map.of(), wrongRows);
 
         assertThatThrownBy(() -> service.save("GENERAL_BEOTIMMOK", req))
                 .isInstanceOf(CustomException.class)
@@ -158,7 +159,7 @@ class LoanProductServiceTest {
                 List.of(2.7, 2.8, 2.9),
                 List.of(3.0, 3.1, 3.2),
                 List.of(3.3, 3.4, 3.5));
-        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, Map.of(), wrongCols);
+        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, null, null, null, null, null, Map.of(), wrongCols);
 
         assertThatThrownBy(() -> service.save("GENERAL_BEOTIMMOK", req))
                 .isInstanceOf(CustomException.class)
@@ -172,7 +173,7 @@ class LoanProductServiceTest {
                 List.of(2.7, 2.8, 2.9),
                 List.of(3.0, 3.1, 3.2),
                 List.of(3.3, 3.4, 20.0));
-        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, Map.of(), tooHigh);
+        LoanProductRequest req = new LoanProductRequest(19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, null, null, null, null, null, Map.of(), tooHigh);
 
         assertThatThrownBy(() -> service.save("GENERAL_BEOTIMMOK", req))
                 .isInstanceOf(CustomException.class)
@@ -180,9 +181,48 @@ class LoanProductServiceTest {
     }
 
     @Test
+    void 청년전용_버팀목_전세대출의_대출금리표는_4행_1열이다() {
+        when(repository.findByLoanType("YOUTH_BEOTIMMOK")).thenReturn(Optional.empty());
+        List<List<Double>> rateTable = List.of(List.of(2.2), List.of(2.5), List.of(2.9), List.of(3.3));
+        LoanProductRequest req = new LoanProductRequest(null, null, null, null, null, null, null, null, null, null, null, null, null, null, Map.of(), rateTable);
+
+        LoanProductResponse res = service.save("YOUTH_BEOTIMMOK", req);
+
+        assertThat(res.rateTable()).isEqualTo(rateTable);
+    }
+
+    @Test
+    void 신생아_특례_버팀목대출의_대출금리표는_9행_4열이다() {
+        when(repository.findByLoanType("NEWBORN_BEOTIMMOK")).thenReturn(Optional.empty());
+        List<List<Double>> rateTable = List.of(
+                List.of(1.30, 1.40, 1.50, 1.60), List.of(1.60, 1.70, 1.80, 1.90),
+                List.of(1.90, 2.00, 2.10, 2.20), List.of(2.20, 2.30, 2.40, 2.50),
+                List.of(2.55, 2.65, 2.75, 2.85), List.of(2.90, 3.00, 3.10, 3.20),
+                List.of(3.25, 3.35, 3.45, 3.55), List.of(3.60, 3.70, 3.80, 3.90),
+                List.of(4.00, 4.10, 4.20, 4.30));
+        LoanProductRequest req = new LoanProductRequest(null, null, null, null, null, null, null, null, null, null, null, null, null, null, Map.of(), rateTable);
+
+        LoanProductResponse res = service.save("NEWBORN_BEOTIMMOK", req);
+
+        assertThat(res.rateTable()).isEqualTo(rateTable);
+    }
+
+    @Test
+    void 대출금리표를_지원하지_않는_대출에_보내면_검증_오류() {
+        when(repository.findByLoanType("YOUTH_MONTHLY_RENT")).thenReturn(Optional.empty());
+        List<List<Double>> rateTable = List.of(
+                List.of(2.5, 2.6, 2.7), List.of(2.7, 2.8, 2.9), List.of(3.0, 3.1, 3.2), List.of(3.3, 3.4, 3.5));
+        LoanProductRequest req = new LoanProductRequest(null, null, null, null, null, null, null, null, null, null, null, null, null, null, Map.of(), rateTable);
+
+        assertThatThrownBy(() -> service.save("YOUTH_MONTHLY_RENT", req))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
     void 저장된_대출금리표_JSON이_깨져_있어도_기본값으로_내려온다() {
         LoanProduct broken = LoanProduct.of(com.customhouse.domain.loan.entity.LoanType.GENERAL_BEOTIMMOK);
-        broken.update(null, null, null, null, null, null, null, null, null, null, "{not json");
+        broken.update(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "{not json");
         when(repository.findByLoanType(any())).thenReturn(Optional.empty());
         when(repository.findByLoanType("GENERAL_BEOTIMMOK")).thenReturn(Optional.of(broken));
 
@@ -219,7 +259,7 @@ class LoanProductServiceTest {
         assertThat(limited.maxLoanRatioPercent()).isEqualTo(80.0);
         assertThat(limited.maxLoanAmount()).isEqualTo(20000);
 
-        LoanProductRequest noLimit = new LoanProductRequest(19, 39, 5000, 6000, 33700, 20000, 85.0, null, null, Map.of(), null);
+        LoanProductRequest noLimit = new LoanProductRequest(19, 39, 5000, 6000, 33700, 20000, 85.0, null, null, null, null, null, null, null, Map.of(), null);
         LoanProductResponse res = service.save("YOUTH_BEOTIMMOK", noLimit);
         assertThat(res.maxLoanRatioPercent()).isNull();
         assertThat(res.maxLoanAmount()).isNull();
@@ -313,7 +353,7 @@ class LoanProductServiceTest {
     @Test
     void 저장된_JSON이_깨져_있어도_목록은_기본값으로_내려온다() {
         LoanProduct broken = LoanProduct.of(com.customhouse.domain.loan.entity.LoanType.GENERAL_BEOTIMMOK);
-        broken.update(null, null, null, null, null, null, null, null, null, "{not json", null);
+        broken.update(null, null, null, null, null, null, null, null, null, null, null, null, null, null, "{not json", null);
         when(repository.findByLoanType(any())).thenReturn(Optional.empty());
         when(repository.findByLoanType("GENERAL_BEOTIMMOK")).thenReturn(Optional.of(broken));
 

@@ -125,6 +125,11 @@ class EligibleLoan(BaseModel):
     loan_principal: float = 0.0    # 만원, 대출로 메우는 부족분 = 매물 보증금 - 보유 보증금(0 이상)
     monthly_interest: float = 0.0  # 만원/월 = loan_principal x 연 rate_percent% / 12
     effective_cost: float = 0.0    # 만원/월 = 월세 + 관리비 + monthly_interest ("[대출이름] 실질주거비")
+    # 청년전용 보증부월세대출(YOUTH_MONTHLY_RENT) 전용 - 월세대출(무이자 기준액 초과분)의 2년 총 이자/월 환산/전체 한도.
+    # 다른 대출 타입은 항상 0/None (loan_matcher._loan_result).
+    rent_loan_total_interest: float = 0.0       # 원, 2년 총 이자 (등차수열 합)
+    rent_loan_monthly_interest: float = 0.0     # 원, 위 총 이자를 24개월로 나눈 월 환산 평균값
+    rent_loan_total_cap_manwon: float | None = None  # 만원, 월세대출 월 한도 x 24개월 (자격 판별에는 안 씀, 안내용)
 
 
 class ListingRecommendation(BuildingRecommendation):

@@ -25,6 +25,15 @@ public record LoanProductRequest(
         @DecimalMin(value = "0", message = "전용면적은 0 이상이어야 합니다.") @DecimalMax(value = "1000", message = "전용면적이 너무 큽니다.") Double maxExclusiveArea,
         @DecimalMin(value = "0", message = "최대 대출금 비율한도는 0 이상이어야 합니다.") @DecimalMax(value = "100", message = "최대 대출금 비율한도는 100% 이하로 입력해주세요.") Double maxLoanRatioPercent,
         @Min(value = 0, message = "최대 대출금액은 0 이상이어야 합니다.") @Max(value = 1_000_000, message = "최대 대출금액이 너무 큽니다.") Integer maxLoanAmount,
+
+        @Min(value = 0, message = "매물 월세 제한은 0 이상이어야 합니다.") @Max(value = 10_000, message = "매물 월세 제한이 너무 큽니다.") Integer maxListingMonthlyRent,
+
+        // 청년전용 보증부월세대출 "전용" 금리 구조 - 다른 대출은 전부 null로 둔다.
+        @DecimalMin(value = "0", message = "보증금 대출 금리는 0 이상이어야 합니다.") @DecimalMax(value = "15", message = "보증금 대출 금리가 너무 큽니다.") Double depositLoanRatePercent,
+        @Min(value = 0, message = "월세대출 월 한도는 0 이상이어야 합니다.") @Max(value = 1_000, message = "월세대출 월 한도가 너무 큽니다.") Integer monthlyRentLoanCapManwon,
+        @Min(value = 0, message = "월세대출 무이자 기준액은 0 이상이어야 합니다.") @Max(value = 1_000, message = "월세대출 무이자 기준액이 너무 큽니다.") Integer monthlyRentLoanFreeThresholdManwon,
+        @DecimalMin(value = "0", message = "월세대출 금리는 0 이상이어야 합니다.") @DecimalMax(value = "15", message = "월세대출 금리가 너무 큽니다.") Double monthlyRentLoanRatePercent,
+
         Map<String, @Valid LoanPreference> preferences,
         List<List<Double>> rateTable
 ) {

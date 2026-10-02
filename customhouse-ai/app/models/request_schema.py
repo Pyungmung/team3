@@ -73,11 +73,20 @@ class LoanProductCondition(BaseModel):
     max_exclusive_area: float | None = Field(None, alias="maxExclusiveArea")
     max_loan_ratio_percent: float | None = Field(None, alias="maxLoanRatioPercent")  # 매물 보증금의 이 비율(%)까지만 대출 가능
     max_loan_amount: int | None = Field(None, alias="maxLoanAmount")  # 만원, 매물과 무관한 대출 절대 상한
+    # 매물 월세 제한(이하, 만원) - 공통 조건이 아니라 이 대출만의 별도 조건(청년전용 보증부월세대출처럼 월세
+    # 매물을 대상으로 하는 대출에서만 쓴다). None이면 제한 없음.
+    max_listing_monthly_rent: int | None = Field(None, alias="maxListingMonthlyRent")
     preferences: dict[str, LoanPreferenceSetting] = Field(default_factory=dict)
-    # 대출금리표: [행(부부합산 연소득 4구간)][열(임차보증금 3구간)] = 연 금리(%). None이면 아직 실제 금리표가 없어
-    # loan_matcher.DEFAULT_BASE_RATE_PERCENT(임시 고정금리)를 쓴다 - loan_matcher.RATE_TABLE_INCOME_BRACKETS_MANWON/
-    # RATE_TABLE_DEPOSIT_BRACKETS_MANWON이 행/열의 구간 정의다.
+    # 대출금리표: [행(부부합산 연소득 N구간)][열(임차보증금 M구간)] = 연 금리(%). 구간 수는 대출마다 다르다
+    # (loan_matcher.RATE_TABLE_BRACKETS_BY_LOAN_TYPE). None이면 아직 실제 금리표가 없어
+    # loan_matcher.DEFAULT_BASE_RATE_PERCENT(임시 고정금리)를 쓴다.
     rate_table: list[list[float]] | None = Field(None, alias="rateTable")
+    # 2026-10-02: 청년전용 보증부월세대출 "전용" 금리 구조 - 다른 대출은 전부 None이다(loan_matcher 참고).
+    deposit_loan_rate_percent: float | None = Field(None, alias="depositLoanRatePercent")  # 보증금 대출 금리(연 %, 고정값)
+    # 월세대출 월 한도(만원) - 2년(24개월) 고정 가정 하에 총 한도(카드 안내용, loan_matcher 참고)도 이 값에서 나온다.
+    monthly_rent_loan_cap_manwon: int | None = Field(None, alias="monthlyRentLoanCapManwon")
+    monthly_rent_loan_free_threshold_manwon: int | None = Field(None, alias="monthlyRentLoanFreeThresholdManwon")  # 무이자 기준액(만원)
+    monthly_rent_loan_rate_percent: float | None = Field(None, alias="monthlyRentLoanRatePercent")  # 기준액 초과분 금리(연 %)
 
     class Config:
         populate_by_name = True

@@ -284,6 +284,189 @@ def test_대출금리표가_있으면_market_rate_percent를_무시하고_표_�
     assert r["is_temporary_rate"] is False
 
 
+def test_이자율_미정인_대출은_저장된_금리표가_있어도_무시하고_기준금리를_쓴다():
+    # 2026-10-02: 청년전용 보증부월세대출은 아직 이자율 결정 방식이 미정이라, 설령 DB에 예전 표 값이
+    # 남아있어도 더는 읽지 않고(RATE_TABLE_BRACKETS_BY_LOAN_TYPE에 없음), 항상 기준금리 API 값을 "입력 대기"
+    # 임시값으로 쓴다(is_temporary_rate=True). (일반/청년전용/신생아 특례 버팀목은 각자 자기 구조의 금리표를
+    # 쓴다 - 아래 별도 테스트들 참고.)
+    loans = [loan(type_="YOUTH_MONTHLY_RENT", lease="월세", rateTable=RATE_TABLE)]
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0), WOLSE, market_rate_percent=6.35)[0]
+    assert r["rate_percent"] == 6.35  # 표 값(2.5)이 아니라 기준금리를 그대로 씀
+    assert r["is_temporary_rate"] is True
+
+
+# 청년전용 버팀목 전세대출 금리표 - 정부 고시 그대로 연소득 4구간 x 임차보증금 단일 구간("3억원 이하").
+YOUTH_RATE_TABLE = [
+    [2.2],  # ~2천만원 이하
+    [2.5],  # 2천 초과~4천 이하
+    [2.9],  # 4천 초과~6천 이하
+    [3.3],  # 6천 초과~7.5천 이하
+]
+
+
+def test_청년전용_버팀목_전세대출은_자기_구조의_금리표를_쓴다():
+    loans = [loan(type_="YOUTH_BEOTIMMOK", rateTable=YOUTH_RATE_TABLE)]
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0), listing, market_rate_percent=6.35)[0]
+    assert r["rate_percent"] == 2.2  # 표 값(연소득 ~2천 구간) - 기준금리(6.35)는 무시
+    assert r["is_temporary_rate"] is False
+
+    r2 = loan_matcher.match_eligible_loans(req(loans, annualIncome=5000, deposit=0), listing)[0]
+    assert r2["rate_percent"] == 2.9  # 연소득 4천초과~6천이하 구간
+
+
+def test_청년전용_버팀목_전세대출은_임차보증금과_무관하게_단일_구간이다():
+    # 임차보증금이 3억원을 훌쩍 넘어도 열이 하나뿐이라 같은 구간(index 0)을 쓴다.
+    loans = [loan(type_="YOUTH_BEOTIMMOK", rateTable=YOUTH_RATE_TABLE)]
+    cheap = loan_matcher.match_eligible_loans(
+        req(loans, annualIncome=1500, deposit=0), {**JEONSE, "listing_deposit": 3000})[0]
+    expensive = loan_matcher.match_eligible_loans(
+        req(loans, annualIncome=1500, deposit=0), {**JEONSE, "listing_deposit": 50000})[0]
+    assert cheap["rate_percent"] == expensive["rate_percent"] == 2.2
+
+
+def test_청년전용_버팀목_전세대출도_금리표가_없으면_기준금리를_쓴다():
+    loans = [loan(type_="YOUTH_BEOTIMMOK")]  # rateTable 없음
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(req(loans, annualIncome=1500, deposit=0), listing, market_rate_percent=6.35)[0]
+    assert r["rate_percent"] == 6.35
+    assert r["is_temporary_rate"] is True
+
+
+# 신생아 특례 버팀목대출 금리표 - 연소득 9단계(1.3억원 초과부터는 맞벌이부부 전용) x 임차보증금 4단계.
+NEWBORN_RATE_TABLE = [
+    [1.30, 1.40, 1.50, 1.60],  # ~2천만원 이하
+    [1.60, 1.70, 1.80, 1.90],  # 2천 초과~4천 이하
+    [1.90, 2.00, 2.10, 2.20],  # 4천 초과~6천 이하
+    [2.20, 2.30, 2.40, 2.50],  # 6천 초과~7.5천 이하
+    [2.55, 2.65, 2.75, 2.85],  # 7.5천 초과~1억 이하
+    [2.90, 3.00, 3.10, 3.20],  # 1억 초과~1.3억 이하
+    [3.25, 3.35, 3.45, 3.55],  # (맞벌이) 1.3억 초과~1.5억 이하
+    [3.60, 3.70, 3.80, 3.90],  # (맞벌이) 1.5억 초과~1.7억 이하
+    [4.00, 4.10, 4.20, 4.30],  # (맞벌이) 1.7억 초과~2억 이하
+]
+
+
+def test_신생아_특례_버팀목대출은_9단계x4단계_자기_구조의_금리표를_쓴다():
+    loans = [loan(type_="NEWBORN_BEOTIMMOK", rateTable=NEWBORN_RATE_TABLE)]
+    r1 = loan_matcher.match_eligible_loans(
+        req(loans, annualIncome=1500, deposit=0), {**JEONSE, "listing_deposit": 3000}, market_rate_percent=6.35)[0]
+    assert r1["rate_percent"] == 1.30  # ~2천만원 이하 x 5천만원 이하
+    assert r1["is_temporary_rate"] is False
+
+    r2 = loan_matcher.match_eligible_loans(
+        req(loans, annualIncome=3000, deposit=0), {**JEONSE, "listing_deposit": 8000})[0]
+    assert r2["rate_percent"] == 1.70  # 2천초과~4천이하 x 5천초과~1억이하
+
+    r3 = loan_matcher.match_eligible_loans(
+        req(loans, annualIncome=9000, deposit=0), {**JEONSE, "listing_deposit": 20000})[0]
+    assert r3["rate_percent"] == 2.85  # 7.5천초과~1억이하 x 1.5억초과
+
+
+def test_신생아_특례_버팀목대출_맞벌이_아니면_연소득_1_3억_초과시_자격을_잃는다():
+    # 공통 조건 연소득 한도(개인/부부합산 모두 1.3억원)를 두면, 맞벌이부부에 해당하지 않는 한 그 이상
+    # 소득은 이 대출 자체가 "신청 가능"에서 빠진다(재반영 없이 공통값 그대로 적용됨). coupleAnnualIncome을
+    # 보고하지 않은 개인 신고라 _income_ok는 maxIncomeSingle 쪽으로 판정한다.
+    loans = [loan(type_="NEWBORN_BEOTIMMOK", maxIncomeSingle=13000, maxIncomeCouple=13000, rateTable=NEWBORN_RATE_TABLE)]
+    ok = names(req(loans, annualIncome=13000, deposit=0), JEONSE)
+    over = names(req(loans, annualIncome=14000, deposit=0), JEONSE)
+    assert ok == ["NEWBORN_BEOTIMMOK"]
+    assert over == []  # 맞벌이 체크 없이 1.3억 초과 -> 탈락
+
+
+def test_신생아_특례_버팀목대출_맞벌이면_연소득_2억까지_확대되고_맞벌이전용_구간_금리가_적용된다():
+    # 맞벌이부부 우대사항의 연소득(부부합산) 재반영을 2억원으로 입력해두면, 맞벌이에 해당하는 사용자는
+    # 1.3억 초과(맞벌이 전용 구간)도 자격이 유지되고, 그 구간의 금리(3.25~)가 그대로 적용된다.
+    loans = [loan(
+        type_="NEWBORN_BEOTIMMOK", maxIncomeSingle=13000, maxIncomeCouple=13000, rateTable=NEWBORN_RATE_TABLE,
+        preferences={"DUAL_INCOME": {"overrideMaxIncomeCouple": 20000}},
+    )]
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(
+        req(loans, coupleAnnualIncome=14000, deposit=0, preferentialStatuses=["DUAL_INCOME"]), listing)[0]
+    assert r["type"] == "NEWBORN_BEOTIMMOK"
+    assert r["rate_percent"] == 3.25  # (맞벌이) 1.3억초과~1.5억이하 x 5천만원 이하
+
+    too_much = names(req(loans, coupleAnnualIncome=21000, deposit=0, preferentialStatuses=["DUAL_INCOME"]), listing)
+    assert too_much == []  # 맞벌이여도 재반영 한도(2억)를 넘으면 연소득 자격 자체를 잃는다
+
+
+# 청년전용 보증부월세대출 전용 금리 구조 - 보증금 대출(고정금리) + 월세대출(무이자 기준액 초과분 누적 상환,
+# 2년 고정 가정 - loan_matcher._RENT_LOAN_ASSUMED_TERM_MONTHS). 기간은 입력칸이 아니라 코드 고정값이다.
+def _youth_monthly_rent_loan(**kw):
+    defaults = dict(
+        type_="YOUTH_MONTHLY_RENT", lease="월세",
+        maxListingMonthlyRent=50, depositLoanRatePercent=1.3,
+        monthlyRentLoanCapManwon=50,
+        monthlyRentLoanFreeThresholdManwon=20, monthlyRentLoanRatePercent=1,
+    )
+    defaults.update(kw)
+    return loan(**defaults)
+
+
+def test_청년전용_보증부월세대출은_매물_월세_제한을_넘으면_탈락한다():
+    loans = [_youth_monthly_rent_loan()]
+    ok = names(req(loans, deposit=0), {**WOLSE, "listing_monthly_rent": 50})
+    over = names(req(loans, deposit=0), {**WOLSE, "listing_monthly_rent": 51})
+    assert ok == ["YOUTH_MONTHLY_RENT"]
+    assert over == []
+
+
+def test_청년전용_보증부월세대출_보증금_금리는_표가_아니라_고정값이다():
+    loans = [_youth_monthly_rent_loan()]
+    listing = {**WOLSE, "listing_deposit": 3000, "listing_monthly_rent": 10}
+    r = loan_matcher.match_eligible_loans(req(loans, deposit=0), listing, market_rate_percent=6.35)[0]
+    assert r["rate_percent"] == 1.3  # deposit_loan_rate_percent 그대로, 기준금리(6.35) 무시
+    assert r["is_temporary_rate"] is False
+
+
+def test_청년전용_보증부월세대출_고정금리가_없으면_기준금리를_쓴다():
+    loans = [_youth_monthly_rent_loan(depositLoanRatePercent=None)]
+    listing = {**WOLSE, "listing_deposit": 3000, "listing_monthly_rent": 10}
+    r = loan_matcher.match_eligible_loans(req(loans, deposit=0), listing, market_rate_percent=6.35)[0]
+    assert r["rate_percent"] == 6.35
+    assert r["is_temporary_rate"] is True
+
+
+def test_월세대출_무이자_기준액_이하면_총_이자가_0이다():
+    loans = [_youth_monthly_rent_loan()]
+    listing = {**WOLSE, "listing_deposit": 0, "listing_monthly_rent": 20}
+    r = loan_matcher.match_eligible_loans(req(loans, deposit=0), listing)[0]
+    assert r["rent_loan_total_interest"] == 0
+    assert r["rent_loan_monthly_interest"] == 0
+
+
+def test_월세대출_24개월_총_이자는_누적_상환_방식으로_계산되고_월_환산값도_함께_온다():
+    # 월세 50만원(한도까지) - 무이자 20만원을 뺀 30만원이 매달 누적되는 구조. 1%p 기준 24개월(2년 고정 가정)
+    # 총 이자 75,000원 (사용자가 직접 계산해 준 예시와 일치 - 회차별 누적액 x 1% ÷ 12를 24번 합산한 값).
+    # 월 환산값(rent_loan_monthly_interest)은 그 총액을 24로 나눈 평균값(75000/24=3125원)이다.
+    # 전체 한도 안내용 수치(rent_loan_total_cap_manwon)는 월 한도(50) x 24개월 = 1200(만원)이다.
+    loans = [_youth_monthly_rent_loan()]
+    listing = {**WOLSE, "listing_deposit": 0, "listing_monthly_rent": 50}
+    r = loan_matcher.match_eligible_loans(req(loans, deposit=0), listing)[0]
+    assert r["rent_loan_total_interest"] == 75000
+    assert r["rent_loan_monthly_interest"] == 3125
+    assert r["rent_loan_total_cap_manwon"] == 1200
+
+
+def test_월세대출_한도를_넘는_월세는_한도까지만_잡힌다():
+    # 월세 70만원이어도 월세대출 월 한도(50만원)까지만 대출로 잡히므로, 월세 50만원일 때와 총 이자가 같다.
+    # 매물 월세 제한(eligibility)은 이 테스트의 관심사가 아니라 넉넉히 올려둔다.
+    loans = [_youth_monthly_rent_loan(maxListingMonthlyRent=100)]
+    listing = {**WOLSE, "listing_deposit": 0, "listing_monthly_rent": 70}
+    r = loan_matcher.match_eligible_loans(req(loans, deposit=0), listing)[0]
+    assert r["rent_loan_total_interest"] == 75000
+
+
+def test_다른_대출은_월세대출_총_이자가_항상_0이고_전체_한도도_None이다():
+    loans = [loan(preferences={"NEWLYWED": {"discount": 0.5}})]
+    listing = {**JEONSE, "listing_deposit": 3000}
+    r = loan_matcher.match_eligible_loans(req(loans, deposit=0, preferentialStatuses=["NEWLYWED"]), listing)[0]
+    assert r["rent_loan_total_interest"] == 0
+    assert r["rent_loan_monthly_interest"] == 0
+    assert r["rent_loan_total_cap_manwon"] is None
+
+
 def test_기본금리가_기준금리_API_값이어도_우대금리_차감은_그대로_적용된다():
     loans = [loan(preferences={"NEWLYWED": {"discount": 0.5}})]  # rateTable 없음
     listing = {**JEONSE, "listing_deposit": 3000}

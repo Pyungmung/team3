@@ -28,7 +28,7 @@ class AiListingRequestTest {
     @Test
     void 사용자_조건은_최상위로_펼쳐지고_대출_조건이_함께_실린다() throws Exception {
         LoanProductResponse loan = new LoanProductResponse("GENERAL_BEOTIMMOK", "일반 버팀목 전세대출", "전세", true,
-                19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000,
+                19, 34, 5000, 6000, 33700, 20000, 85.0, 80.0, 20000, null, null, null, null, null,
                 Map.of("NEWLYWED", new LoanPreference(true, 0.2, null, null, null, null, null, null)), null, null, null);
 
         IncomeStandardResponse incomeStandard = new IncomeStandardResponse(15.8, 18.4, 18.3, 16.2, 19.4, 2024, "국토교통부,「주거실태조사」", 2_564_238L, null);
