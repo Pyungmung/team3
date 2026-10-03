@@ -85,7 +85,7 @@
 
     .hero-title .accent { color: var(--brand-600); }
 
-    .hero-description {
+    .hero-desc {
       max-width: 38rem;
       margin-top: 18px;
       font-size: 17px;
@@ -95,7 +95,7 @@
 
     .page-shell {
       max-width:1180px;
-      margin:8px auto 80px;
+      margin:32px auto 80px;
       padding:0 24px;
       position:relative;
       z-index:5;
@@ -128,19 +128,6 @@
       gap:13px;
       padding-bottom:22px;
       border-bottom:1px solid #edf1f5;
-    }
-
-    .avatar {
-      width:62px;
-      height:62px;
-      flex:none;
-      display:grid;
-      place-items:center;
-      border-radius:50%;
-      background:linear-gradient(145deg,#f1f5f9,#e2e8f0);
-      color:var(--navy);
-      font-size:24px;
-      font-weight:900;
     }
 
     .side-nav {
@@ -741,7 +728,7 @@
     @media(max-width:850px) {
       .hero-inner { padding:48px 20px; }
       .hero-title { font-size:30px; }
-      .page-shell { margin:0 auto 60px; padding:18px 15px; }
+      .page-shell { margin:20px auto 60px; padding:18px 15px; }
       .mypage-grid { display:block; }
       .side-card { display:none; }
       .mobile-tabs { display:flex; }
@@ -781,7 +768,7 @@
   <div class="hero-inner">
     <div class="hero-label">MY PAGE</div>
     <h1 class="hero-title">나에게 맞는 집을 찾기 위한<br><span class="accent">정보를 관리하세요.</span></h1>
-    <p class="hero-description">더 정확한 추천을 위해, 지금 당신의 정보를 업데이트해보세요.</p>
+    <p class="hero-desc">더 정확한 추천을 위해,<br>지금 당신의 정보를 업데이트해보세요.</p>
   </div>
 </section>
 
@@ -800,7 +787,6 @@
 
     <aside class="side-card">
       <div class="profile-head">
-        <div class="avatar" id="profile-avatar">M</div>
         <div class="min-w-0">
           <div id="sidebar-name" class="font-extrabold text-lg truncate">회원</div>
           <div id="sidebar-email" class="text-xs text-gray-400 truncate mt-1">로그인 계정</div>
@@ -1376,17 +1362,6 @@
                 </div>
 
                 <div class="field">
-                  <label>연소득 (만원)</label>
-                  <input type="number" name="annualIncome" required min="0" placeholder="예: 3400" class="input">
-                </div>
-
-                <div class="field">
-                  <label>부부합산 연소득 (만원, 선택)</label>
-                  <input type="number" name="coupleAnnualIncome" min="0" placeholder="배우자와 합산한 연소득" class="input">
-                  <div class="hint">입력하면 소득 기준 정책 판별 시 연소득과 비교해 더 큰 값을 사용해요.</div>
-                </div>
-
-                <div class="field">
                   <label>직장 위치</label>
 
                   <div id="work-address-ui" class="hidden">
@@ -1436,6 +1411,17 @@
                     <option value="분당구">분당구(판교)</option>
                   </select>
                 </div>
+
+                <div class="field">
+                  <label>연소득 (만원)</label>
+                  <input type="number" name="annualIncome" required min="0" placeholder="예: 3400" class="input">
+                </div>
+
+                <div class="field">
+                  <label>부부합산 연소득 (만원, 선택)</label>
+                  <input type="number" name="coupleAnnualIncome" min="0" placeholder="배우자와 합산한 연소득" class="input">
+                  <div class="hint">입력하면 소득 기준 정책 판별 시 연소득과 비교해 더 큰 값을 사용해요.</div>
+                </div>
               </div>
             </div>
 
@@ -1450,8 +1436,14 @@
               </div>
 
               <div class="field mb-4">
-                <label>희망 보증금 (만원)</label>
-                <input type="number" name="desiredDeposit" required min="0" placeholder="예: 1000" class="input">
+                <label>현재 사용가능 보증금 (만원, 선택)</label>
+                <input type="number" name="deposit" min="0" placeholder="예: 1000" class="input">
+                <div class="hint">지금 수중에 있는 현금 기준 - 저장해두면 AI 진단 폼에서 자동으로 불러와요.</div>
+              </div>
+
+              <div class="field mb-4">
+                <label>희망 보증금 (만원, 선택)</label>
+                <input type="number" name="desiredDeposit" min="0" placeholder="예: 1000" class="input">
               </div>
 
               <div class="field">
@@ -1488,18 +1480,8 @@
                 </div>
 
                 <div class="field">
-                  <label>일반자산</label>
-                  <input type="number" name="otherAsset" min="0" value="0" class="input asset-input">
-                </div>
-
-                <div class="field">
                   <label>금융부채</label>
                   <input type="number" name="financialDebt" min="0" value="0" class="input asset-input">
-                </div>
-
-                <div class="field">
-                  <label>일반부채</label>
-                  <input type="number" name="otherDebt" min="0" value="0" class="input asset-input">
                 </div>
               </div>
 
@@ -1550,12 +1532,6 @@
                   <span class="text-gray-400 font-normal">(다중 선택 가능)</span>
                 </div>
 
-                <div class="field mb-4" style="max-width:320px">
-                  <label>군복무기간 (개월)</label>
-                  <input type="number" name="militaryServiceMonths" min="0" placeholder="예: 18" class="input">
-                  <div class="hint">지금은 값만 저장해두고, 추후 특정 대출상품 심사에 연동할 예정이에요.</div>
-                </div>
-
                 <div class="preference-grid">
                   <label class="check-card">
                     <input type="checkbox" name="preferentialStatuses" value="BASIC_LIVELIHOOD">
@@ -1596,6 +1572,17 @@
                     <input type="checkbox" name="preferentialStatuses" value="ELDERLY_HOUSEHOLD">
                     고령자가구
                   </label>
+
+                  <div class="check-card" style="cursor:default; justify-content:space-between" title="지금은 값만 저장해두고, 추후 특정 대출상품 심사에 연동할 예정이에요.">
+                    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;flex:1;min-width:0">
+                      <input type="checkbox" id="military-toggle">
+                      <span>군복무</span>
+                    </label>
+                    <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569;flex:none">
+                      <input type="number" name="militaryServiceMonths" id="military-input" placeholder="0" min="0" max="99" class="input" disabled style="width:72px; min-height:24px; padding:0 4px; font-size:12px; flex:none; text-align:center">
+                      개월
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1769,6 +1756,16 @@
   const submitBtn = document.getElementById("submit-btn");
   const netAssetDisplay = document.getElementById("net-asset-display");
 
+  // ---------- 군복무기간: 체크해야 개월 수 입력칸이 열리는 UX. militaryServiceMonths는 체크박스 자체가
+  // 아니라 개월 수(정수)라 이 체크박스는 다른 우대사항과 달리 preferentialStatuses에 값을 넣지 않고,
+  // 그냥 military-input을 활성화/비활성화하는 화면 토글일 뿐이다. 체크를 풀면 입력값도 지운다. ----------
+  const militaryToggle = document.getElementById("military-toggle");
+  const militaryInput = document.getElementById("military-input");
+  militaryToggle.addEventListener("change", () => {
+    militaryInput.disabled = !militaryToggle.checked;
+    if (!militaryToggle.checked) militaryInput.value = "";
+  });
+
   // ---------- 부가 우대사항(맞벌이부부/1자녀/2자녀/다자녀가구): "신혼부부(기혼자포함)" 체크 시에만 활성화되는
   // 화면 UX일 뿐, 백엔드 자격 판별 로직은 이 넷을 여전히 완전히 독립된 우대사항으로 본다. 1자녀/2자녀/다자녀가구는
   // 서로 배타적으로 하나만 고를 수 있다. ----------
@@ -1939,8 +1936,6 @@
 
     document.getElementById("sidebar-name").textContent = nickname || "회원";
     document.getElementById("sidebar-email").textContent = email || "로그인 계정";
-    document.getElementById("profile-avatar").textContent =
-      (nickname || email || "M").trim().charAt(0).toUpperCase();
 
     // 광고·마케팅 동의는 회원(User) 정보에 저장되므로 여기서 함께 초기화한다 (주거 조건과 무관).
     if (marketingConsentToggle) {
@@ -2262,8 +2257,8 @@
   function recalcNetAsset() {
     const num = name => Number(form[name].value) || 0;
 
-    const assets = num("realEstateAsset") + num("carAsset") + num("financialAsset") + num("otherAsset");
-    const debts = num("financialDebt") + num("otherDebt");
+    const assets = num("realEstateAsset") + num("carAsset") + num("financialAsset");
+    const debts = num("financialDebt");
 
     netAssetDisplay.textContent = (assets - debts).toLocaleString();
   }
@@ -2294,17 +2289,20 @@
           hubMatchEl.classList.remove("hidden");
         }
       }
+      form.deposit.value = condition.deposit ?? "";
       form.desiredDeposit.value = condition.desiredDeposit ?? "";
       form.desiredRent.value = condition.desiredRent ?? "";
       form.realEstateAsset.value = condition.realEstateAsset ?? 0;
       form.carAsset.value = condition.carAsset ?? 0;
       form.financialAsset.value = condition.financialAsset ?? 0;
-      form.otherAsset.value = condition.otherAsset ?? 0;
       form.financialDebt.value = condition.financialDebt ?? 0;
-      form.otherDebt.value = condition.otherDebt ?? 0;
       form.jobType.value = condition.jobType ?? "";
       form.noHouseholder.checked = !!condition.noHouseholder;
-      form.militaryServiceMonths.value = condition.militaryServiceMonths ?? "";
+      if (condition.militaryServiceMonths != null) {
+        form.militaryServiceMonths.value = condition.militaryServiceMonths;
+        militaryToggle.checked = true;
+        militaryInput.disabled = false;
+      }
       form.newbornAdditionalChildCount.value = condition.newbornAdditionalChildCount ?? "";
       form.minorChildOver2YearsCount.value = condition.minorChildOver2YearsCount ?? "";
 
@@ -2336,8 +2334,8 @@
     if (!form.workLocation.value) {
       return setMsg(msg, "직장 위치를 선택해주세요.", "error");
     }
-    if (form.desiredDeposit.value === "" || Number(form.desiredDeposit.value) < 0) {
-      return setMsg(msg, "희망 보증금을 입력해주세요.", "error");
+    if (form.desiredDeposit.value !== "" && Number(form.desiredDeposit.value) < 0) {
+      return setMsg(msg, "희망 보증금은 0 이상이어야 합니다.", "error");
     }
 
     setMsg(msg, "저장 중...");
@@ -2353,14 +2351,13 @@
       workAddress: fd.get("workAddress") || null,
       workLat: fd.get("workLat") ? Number(fd.get("workLat")) : null,
       workLon: fd.get("workLon") ? Number(fd.get("workLon")) : null,
-      desiredDeposit: Number(fd.get("desiredDeposit")),
+      deposit: fd.get("deposit") ? Number(fd.get("deposit")) : null,
+      desiredDeposit: fd.get("desiredDeposit") ? Number(fd.get("desiredDeposit")) : null,
       desiredRent: fd.get("desiredRent") ? Number(fd.get("desiredRent")) : null,
       realEstateAsset: Number(fd.get("realEstateAsset")) || 0,
       carAsset: Number(fd.get("carAsset")) || 0,
       financialAsset: Number(fd.get("financialAsset")) || 0,
-      otherAsset: Number(fd.get("otherAsset")) || 0,
       financialDebt: Number(fd.get("financialDebt")) || 0,
-      otherDebt: Number(fd.get("otherDebt")) || 0,
       jobType: fd.get("jobType") || null,
       noHouseholder: fd.get("noHouseholder") === "on",
       militaryServiceMonths: fd.get("militaryServiceMonths") ? Number(fd.get("militaryServiceMonths")) : null,
