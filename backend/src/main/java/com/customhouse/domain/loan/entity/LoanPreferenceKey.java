@@ -40,7 +40,7 @@ public enum LoanPreferenceKey {
      * 쓰고(최종 차감 = discount x 인원수), 아래 MINOR_CHILD_OVER_2YEARS와 둘을 합쳐서(sum) 우대사항 하나의
      * 후보값을 만든 뒤 다른 우대사항들과 다시 max()로 비교한다(loan_matcher._newborn_summed_discount,
      * 2026-10-02) - 입력은 따로 받지만 최종 반영은 둘이 합쳐진 값 하나로 경쟁한다. */
-    NEWBORN_ADDITIONAL_CHILD("대출접수일 기준 2년 내 추가 출산한 자녀"),
+    NEWBORN_ADDITIONAL_CHILD("대출접수일 기준 2년 내 출산한 자녀"),
     /** NEWBORN_ADDITIONAL_CHILD 참고 - 같은 방식(자녀 수 x 1명당 차감율)으로 판별하고 그 우대사항과 sum() 후
      * 다른 우대사항들과 max()로 경쟁한다. */
     MINOR_CHILD_OVER_2YEARS("대출접수일 기준 출생 후 2년 초과한 미성년 자녀");

@@ -95,7 +95,7 @@ public class HousingCondition extends BaseTimeEntity {
 
     // 2026-10-02: 신생아 특례 버팀목대출 "전용" 우대사항(NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS)
     // 판별용 자녀 수. 체크박스(PreferentialStatus)가 아니라 숫자라서 별도 컬럼으로 둔다.
-    private Integer newbornAdditionalChildCount; // 대출접수일 기준 2년 내 추가 출산한 자녀 수
+    private Integer newbornAdditionalChildCount; // 대출접수일 기준 2년 내 출산한 자녀 수
 
     private Integer minorChildOver2YearsCount; // 대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수
 

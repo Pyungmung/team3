@@ -306,7 +306,7 @@ _PREFERENCE_LABELS = {
     "ONE_CHILD": "1자녀", "TWO_CHILDREN": "2자녀", "MULTI_CHILD": "다자녀가구", "DISABLED": "장애인",
     "MULTICULTURAL": "다문화가구", "ELDERLY_DEPENDENT": "노인부양가구", "ELDERLY_HOUSEHOLD": "고령자가구",
     "NO_HOME": "무주택여부", "SME_EMPLOYED_YOUTH": "중소기업 취업청년", "AGE_UNDER_25": "만 25세 미만",
-    "AGE_25_OR_OLDER": "만 25세 이상", "NEWBORN_ADDITIONAL_CHILD": "대출접수일 기준 2년 내 추가 출산한 자녀",
+    "AGE_25_OR_OLDER": "만 25세 이상", "NEWBORN_ADDITIONAL_CHILD": "대출접수일 기준 2년 내 출산한 자녀",
     "MINOR_CHILD_OVER_2YEARS": "대출접수일 기준 출생 후 2년 초과한 미성년 자녀",
 }
 
