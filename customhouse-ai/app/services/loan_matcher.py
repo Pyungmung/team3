@@ -298,6 +298,68 @@ def _discount_cap_percent(loan, request) -> float | None:
     return None
 
 
+# 2026-10-03: 카드에서 "왜 이 금리/한도가 나왔는지" 보여주려고 우대사항 라벨을 AI 엔진에도 둔다
+# (관리자 화면 라벨 = backend LoanPreferenceKey.java와 같게 유지).
+_PREFERENCE_LABELS = {
+    "BASIC_LIVELIHOOD": "기초생활수급자", "NEAR_POOR": "차상위계층", "SINGLE_PARENT": "한부모가구",
+    "INDEPENDENT_YOUTH": "자립준비청년", "NEWLYWED": "신혼부부(기혼자포함)", "DUAL_INCOME": "맞벌이부부",
+    "ONE_CHILD": "1자녀", "TWO_CHILDREN": "2자녀", "MULTI_CHILD": "다자녀가구", "DISABLED": "장애인",
+    "MULTICULTURAL": "다문화가구", "ELDERLY_DEPENDENT": "노인부양가구", "ELDERLY_HOUSEHOLD": "고령자가구",
+    "NO_HOME": "무주택여부", "SME_EMPLOYED_YOUTH": "중소기업 취업청년", "AGE_UNDER_25": "만 25세 미만",
+    "AGE_25_OR_OLDER": "만 25세 이상", "NEWBORN_ADDITIONAL_CHILD": "대출접수일 기준 2년 내 추가 출산한 자녀",
+    "MINOR_CHILD_OVER_2YEARS": "대출접수일 기준 출생 후 2년 초과한 미성년 자녀",
+}
+
+
+def _preference_label(key: str) -> str:
+    return _PREFERENCE_LABELS.get(key, key)
+
+
+def _rate_details(loan, request, listing: dict, market_rate_percent: float) -> dict:
+    """최종 금리와 그 근거. _final_rate_percent의 계산을 그대로 하되, 카드에 보여줄 내역(기본금리, 해당하는
+    우대사항별 차감값과 실제 적용 여부, 상한)을 같이 돌려준다. 계산식은 _final_rate_percent 독스트링 참고."""
+    base_rate = _table_base_rate_percent(loan, request, listing)
+    if base_rate is None:
+        base_rate = market_rate_percent
+    normal = [
+        (key, setting.discount or 0.0)
+        for key, setting in loan.preferences.items()
+        if key not in _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD and _preference_satisfied(key, request)
+    ]
+    newborn_sum = _newborn_summed_discount(loan, request)
+    candidates = [d for _, d in normal] + [newborn_sum]
+    raw_discount = max(candidates, default=0.0)
+    # 동률이면 max()가 앞쪽(일반 우대사항)을 고르므로 신생아 합산은 "엄격하게 더 클 때"만 이긴다.
+    newborn_wins = newborn_sum > 0 and newborn_sum > max((d for _, d in normal), default=0.0)
+    first_normal_winner = None
+    if not newborn_wins:
+        first_normal_winner = next((k for k, d in normal if d == raw_discount and d > 0), None)
+    items = [
+        {"key": k, "label": _preference_label(k), "discount_percent": d, "count": None,
+         "applied": k == first_normal_winner}
+        for k, d in normal if d > 0
+    ]
+    for k in _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD:
+        setting = loan.preferences.get(k)
+        count = _newborn_child_count(k, request)
+        if setting is None or count <= 0 or not (setting.discount or 0.0) > 0:
+            continue
+        items.append({
+            "key": k, "label": _preference_label(k), "discount_percent": round(setting.discount * count, 2),
+            "count": count, "applied": newborn_wins,
+        })
+    cap = _discount_cap_percent(loan, request)
+    discount = raw_discount if cap is None else min(raw_discount, cap)
+    return {
+        "base_rate_percent": round(base_rate, 2),
+        "discount_items": items,
+        "discount_percent": round(discount, 2),
+        "discount_cap_percent": cap,
+        "discount_capped": cap is not None and raw_discount > cap,
+        "rate_percent": round(max(0.0, base_rate - discount), 2),
+    }
+
+
 def _final_rate_percent(loan, request, listing: dict, market_rate_percent: float) -> float:
     """기본금리(대출금리표가 있으면 그 표의 값, 없으면 market_rate_percent - 기준금리 API 값)에서, 사용자가
     해당하는 우대사항 중 "가장 큰 우대금리 차감 하나만" 뺀 최종 금리(연 %) - 여러 우대사항에 해당해도 중복으로
@@ -306,43 +368,67 @@ def _final_rate_percent(loan, request, listing: dict, market_rate_percent: float
     MINOR_CHILD_OVER_2YEARS 둘은 예외로 서로 sum()해서 "우대사항 하나"의 후보값으로 만든 뒤에 이 max() 풀에
     섞는다(_newborn_summed_discount, 2026-10-02) - 입력은 따로 받지만 최종 반영은 합쳐서 하나로 경쟁시킨다.
     그 값이 대출별 상한(cap)을 넘으면 상한으로 깎인다(_discount_cap_percent 참고, 2026-10-02). 0% 밑으로는
-    내려가지 않는다."""
-    base_rate = _table_base_rate_percent(loan, request, listing)
-    if base_rate is None:
-        base_rate = market_rate_percent
-    candidates = [
-        setting.discount or 0.0
-        for key, setting in loan.preferences.items()
-        if key not in _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD and _preference_satisfied(key, request)
-    ]
-    candidates.append(_newborn_summed_discount(loan, request))
-    discount = max(candidates, default=0.0)
-    cap = _discount_cap_percent(loan, request)
-    if cap is not None:
-        discount = min(discount, cap)
-    return round(max(0.0, base_rate - discount), 2)
+    내려가지 않는다. 내역이 필요하면 _rate_details를 쓴다."""
+    return _rate_details(loan, request, listing, market_rate_percent)["rate_percent"]
+
+
+# 2026-10-03: 우대 한도 재반영 내역 - (응답 키, 화면 라벨, 단위, 공통값 getter, 재반영 getter)
+_LIMIT_REFLECTION_FIELDS = (
+    ("max_listing_deposit", "매물 보증금 제한 (이하)", "만원", lambda l: l.max_listing_deposit, lambda s: s.override_max_listing_deposit),
+    ("max_loan_amount", "최대 대출금액", "만원", lambda l: l.max_loan_amount, lambda s: s.override_max_loan_amount),
+    ("max_loan_ratio_percent", "최대 대출금 비율한도", "%", lambda l: l.max_loan_ratio_percent, lambda s: s.override_max_loan_ratio_percent),
+    ("max_exclusive_area", "전용면적 (이하)", "㎡", lambda l: l.max_exclusive_area, lambda s: s.override_max_exclusive_area),
+    ("max_income_single", "연소득 (이하) - 개인", "만원", lambda l: l.max_income_single, lambda s: s.override_max_income_single),
+    ("max_income_couple", "연소득 (이하) - 부부합산", "만원", lambda l: l.max_income_couple, lambda s: s.override_max_income_couple),
+)
+
+
+def _limit_reflections(loan, request) -> list[dict]:
+    """사용자가 해당하는 우대사항이 공통 한도를 다른 값으로 재반영한 항목들(_effective_limit과 같은 규칙:
+    해당하는 재반영 값 중 가장 큰 값이 공통값을 대체한다). 값이 실제로 바뀐 항목만 돌려준다."""
+    out = []
+    for field, label, unit, base_getter, override_getter in _LIMIT_REFLECTION_FIELDS:
+        base = base_getter(loan)
+        effective = _effective_limit(loan, request, base, override_getter)
+        if base is None or effective == base:
+            continue
+        sources = [
+            _preference_label(key)
+            for key, setting in loan.preferences.items()
+            if override_getter(setting) == effective and _preference_satisfied(key, request)
+        ]
+        out.append({"field": field, "label": label, "unit": unit, "base": base, "effective": effective, "sources": sources})
+    return out
 
 
 # 2026-10-02: 월세대출 총 이자를 보여줄 기준 기간. 사용자가 실제로 얼마나 거주할지 알 방법이 없어서(전세
 # 계약 기간처럼 입력받는 값이 없음), 표준 임대 계약 기간인 "2년"을 고정값으로 가정한다 - 관리자가 대출마다
 # 바꿀 값이 아니라 코드에 고정해둔다(admin/loans.html에도 입력칸을 안 둔다).
 _RENT_LOAN_ASSUMED_TERM_MONTHS = 24
+# 2026-10-03: 월세대출 "월 한도" 입력칸을 없앴다(계산과 무관한 예시값이었음) - 대신 "대출 기간 중 최대 월세대출액"
+# 1200만원을 안내문 전용 고정값으로 카드에 보여준다(자격 판별/실질주거비 계산에는 안 쓴다).
+_RENT_LOAN_TOTAL_CAP_MANWON = 1200
 
 
 def _rent_loan_amount_manwon(loan, listing: dict) -> float:
-    """월세대출로 이번 달 충당되는 월세 금액(만원, 월 한도까지 - 무이자/유이자 구간 전부 포함한 전체 금액).
+    """월세대출로 이번 달 충당되는 월세 금액(만원 - 무이자/유이자 구간 전부 포함한 전체 월세).
     보증부월세대출은 이 금액을 집주인에게 대신 지급하는 구조라, 세입자는 매달 이 금액만큼 월세를 현금으로
-    안 내는 대신 대출 잔액이 쌓인다(실질주거비 "월세 대출 시" 계산에 쓴다 - _loan_result 참고). 설정이
-    미완성이면(한도/기준액/금리 중 하나라도 비어 있으면) 0이다."""
+    안 내는 대신 대출 잔액이 쌓인다(실질주거비 "월세 대출 시" 계산에 쓴다 - _loan_result 참고). 월 한도는
+    계산에 쓰지 않는다(2026-10-03, 입력칸 제거) - 설정이 미완성이면(기준액/금리 중 하나라도 비어 있으면) 0이다."""
     if loan.type != YOUTH_MONTHLY_RENT_LOAN_TYPE:
         return 0.0
-    cap = loan.monthly_rent_loan_cap_manwon
-    threshold = loan.monthly_rent_loan_free_threshold_manwon
-    rate = loan.monthly_rent_loan_rate_percent
-    if cap is None or threshold is None or rate is None:
+    if loan.monthly_rent_loan_free_threshold_manwon is None or loan.monthly_rent_loan_rate_percent is None:
         return 0.0
-    monthly_rent_manwon = (listing.get("listing_monthly_rent") or 0)
-    return min(monthly_rent_manwon, cap)
+    return float(listing.get("listing_monthly_rent") or 0)
+
+
+def _rent_loan_configured(loan) -> bool:
+    """월세대출 구조(무이자 기준액 + 초과분 금리)가 설정된 청년전용 보증부월세대출인지."""
+    return (
+        loan.type == YOUTH_MONTHLY_RENT_LOAN_TYPE
+        and loan.monthly_rent_loan_free_threshold_manwon is not None
+        and loan.monthly_rent_loan_rate_percent is not None
+    )
 
 
 def _rent_loan_total_interest_won(loan, listing: dict) -> float:
@@ -381,15 +467,16 @@ def _loan_result(loan, request, listing: dict, market_rate_percent: float) -> di
     수 있다 - effective_cost("월세 미대출 시")는 기존 그대로 두고, "월세 대출 시" 버전을 따로 추가로 담아
     보낸다. 월세대출로 충당되는 금액(rent_loan_amount_manwon)만큼은 매달 현금으로 안 내는 대신 대출 잔액이
     쌓이는 구조라, "월세 대출 시" 실질주거비는 그 금액을 월세에서 뺀 값 + 관리비 + 보증금대출이자(위와 동일,
-    보유 보증금 차감 그대로 유지) + 월세대출 이자(24개월 환산)로 계산한다. 월세대출 전체 한도(월 한도 x 2년,
+    보유 보증금 차감 그대로 유지) + 월세대출 이자(24개월 환산)로 계산한다. 월세대출 전체 한도(고정 1200만원,
     rent_loan_total_cap_manwon)는 자격 판별에는 안 쓰고 카드 안내문에 참고 정보로만 보낸다(2026-10-02)."""
-    rate = _final_rate_percent(loan, request, listing, market_rate_percent)
+    rate_details = _rate_details(loan, request, listing, market_rate_percent)
+    rate = rate_details["rate_percent"]
     listing_deposit = listing.get("listing_deposit") or 0
     loan_principal = max(0, listing_deposit - (request.deposit or 0))
     monthly_interest = round(loan_principal * rate / 100 / 12, 1)
     rent = listing.get("listing_monthly_rent") or 0
     maintenance = listing.get("maintenance_fee") or 0
-    cap = loan.monthly_rent_loan_cap_manwon if loan.type == YOUTH_MONTHLY_RENT_LOAN_TYPE else None
+    configured = _rent_loan_configured(loan)
     rent_loan_amount_manwon = _rent_loan_amount_manwon(loan, listing)
     rent_loan_monthly_interest_won = _rent_loan_monthly_interest_won(loan, listing)
     rent_after_rent_loan = max(0.0, rent - rent_loan_amount_manwon)
@@ -397,6 +484,22 @@ def _loan_result(loan, request, listing: dict, market_rate_percent: float) -> di
         "type": loan.type,
         "name": loan.name,
         "rate_percent": rate,
+        # 2026-10-03: 금리/한도가 왜 이렇게 나왔는지 카드에서 보여주는 근거 (기본금리, 우대사항별 차감, 한도 재반영)
+        "base_rate_percent": rate_details["base_rate_percent"],
+        "discount_percent": rate_details["discount_percent"],
+        "discount_cap_percent": rate_details["discount_cap_percent"],
+        "discount_capped": rate_details["discount_capped"],
+        "discount_items": rate_details["discount_items"],
+        "limit_reflections": _limit_reflections(loan, request),
+        # 기본금리가 어디서 왔는지: table=소득x보증금 금리표, fixed=관리자가 입력한 고정 보증금 대출 금리
+        # (청년전용 보증부월세대출), market=기준금리 API 임시값 (_has_real_rate와 같은 기준)
+        "base_rate_kind": (
+            "market" if not _has_real_rate(loan)
+            else "fixed" if loan.type == YOUTH_MONTHLY_RENT_LOAN_TYPE else "table"
+        ),
+        # 청년전용 보증부월세대출 월세대출 구조 (카드의 "월세 대출 시" 근거 표시용) - 다른 대출은 None
+        "rent_loan_free_threshold_manwon": loan.monthly_rent_loan_free_threshold_manwon if configured else None,
+        "rent_loan_rate_percent": loan.monthly_rent_loan_rate_percent if configured else None,
         # True면 이 대출에 실제 금리표가 없어(또는 아예 적용 대상이 아니라서) 기준금리 API 값을 "입력 대기"
         # 임시값으로 대신 쓴 것 - _has_real_rate 참고.
         "is_temporary_rate": not _has_real_rate(loan),
@@ -406,7 +509,7 @@ def _loan_result(loan, request, listing: dict, market_rate_percent: float) -> di
         # 청년전용 보증부월세대출 전용 - 다른 대출은 항상 0/None이다.
         "rent_loan_total_interest": _rent_loan_total_interest_won(loan, listing),
         "rent_loan_monthly_interest": rent_loan_monthly_interest_won,
-        "rent_loan_total_cap_manwon": cap * _RENT_LOAN_ASSUMED_TERM_MONTHS if cap is not None else None,
+        "rent_loan_total_cap_manwon": _RENT_LOAN_TOTAL_CAP_MANWON if configured else None,
         "rent_loan_amount_manwon": rent_loan_amount_manwon,  # 이번 달 월세대출로 충당되는 금액(만원)
         # "월세 대출 시" 실질주거비 = (월세 - 월세대출 충당액) + 관리비 + 보증금대출이자 + 월세대출이자(24개월 환산)
         "rent_loan_effective_cost": round(

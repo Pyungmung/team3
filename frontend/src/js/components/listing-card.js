@@ -44,6 +44,73 @@
     return Number(v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
   }
 
+  // 기본금리 -> 우대사항별 차감 -> 최종 금리 행들 (보증금 대출 금리 산출 근거 - 두 대출 박스가 같이 쓴다)
+  function _rateRowsHtml(l) {
+    const items = l.discount_items || [];
+    return `<div class="why-key">
+      <div class="why-row"><span>기본금리${l.base_rate_kind === "fixed" ? "(보증금 금리)" : l.is_temporary_rate ? "(기준금리 적용)" : "(소득/보증금 산정)"}</span><b>연 ${fmtRate(l.base_rate_percent)}%</b></div>
+      ${items.length
+        ? items.map((i) => `
+      <div class="why-row${i.applied ? " applied" : " dim"}"><span>${i.applied ? "✔ " : ""}${esc(i.label)}${i.count ? ` (${i.count}명)` : ""}${i.applied ? "" : " <em>중복 불가 · 가장 큰 1개만 적용</em>"}</span><b>−${fmtRate(i.discount_percent)}%p</b></div>`).join("")
+        : `<div class="why-row soft"><span>해당하는 우대금리 없음</span><b>−0%p</b></div>`}
+      ${l.discount_capped ? `<div class="why-note">우대금리 차감 상한 ${fmtRate(l.discount_cap_percent)}%p 적용 → 실제 −${fmtRate(l.discount_percent)}%p</div>` : ""}
+      <div class="why-row total"><span>최종 금리</span><b>연 ${fmtRate(l.rate_percent)}%</b></div>
+    </div>`;
+  }
+
+  // 비용 박스의 부가 설명을 항목마다 한 줄씩 금액과 함께 보여준다 (모든 항목 앞에 "+ ", note는 부호 없는 보충 줄).
+  function _subLines(terms, notes, flushNotes) {
+    const rows = terms.filter(Boolean).map((t) => `<div><span class="sub-plus">+</span>${t}</div>`);
+    // 부호가 없는 보충 줄은 "+" 뒤 글자 위치에 맞춰 들여쓴다 (sub-plus 너비 = sub-note 들여쓰기)
+    (notes || []).filter(Boolean).forEach((n) => rows.push(`<div class="sub-note">${n}</div>`));
+    // flushNotes: 들여쓰기 없이 왼쪽 끝에 붙는 별도 줄
+    (flushNotes || []).filter(Boolean).forEach((n) => rows.push(`<div>${n}</div>`));
+    return rows.join("");
+  }
+
+  // 2026-10-03: 대출 박스 안의 "금리 산출 근거 / 우대 한도 재반영" 펼침 영역 - 기본금리에서 어떤 우대사항으로
+  // 얼마를 깎았는지(여러 개에 해당해도 가장 큰 하나만 적용), 공통 한도가 어떤 우대사항으로 바뀌었는지 하나씩 보여준다.
+  function _loanWhyHtml(l) {
+    const refl = l.limit_reflections || [];
+    // 보증금 대출이 필요 없어도(보유 보증금 충분) 월세대출 구조가 있는 대출은 "대출이 필요해지면 적용될 금리"를 같이 보여준다.
+    const showRate = l.loan_principal > 0 || l.rent_loan_total_cap_manwon != null;
+    if (!showRate && !refl.length) return "";
+    const unitNum = (v, unit) => `${fmtNum(v)}${unit === "%" || unit === "㎡" ? unit : "만원"}`;
+    const rateSection = !showRate ? "" : `
+      <div class="why-title">금리 산출 근거</div>
+      ${l.loan_principal > 0 ? "" : `<div class="why-note soft">보유 보증금이 충분해 지금은 보증금 대출이 필요 없어요.<br />아래는 대출이 필요할 때 적용되는 금리예요.</div>`}
+      ${_rateRowsHtml(l)}`;
+    const reflSection = !refl.length ? "" : `
+      <div class="why-title">우대 한도 재반영</div>
+      <div class="why-key">${refl.map((x) => `
+      <div class="why-row"><span>${esc(x.label)}${x.sources && x.sources.length ? ` <em>${esc(x.sources.join(", "))}</em>` : ""}</span><b>${unitNum(x.base, x.unit)} → ${unitNum(x.effective, x.unit)}</b></div>`).join("")}</div>`;
+    return `<details class="loan-why"><summary>예상 금리·한도 근거 보기</summary>${rateSection}${reflSection}</details>`;
+  }
+
+  // 2026-10-03: 청년전용 보증부월세대출 "월세 대출 시" 박스의 근거 - 월세 중 얼마가 대출로 충당되고, 무이자 기준액을
+  // 넘는 금액에만 얼마의 금리가 붙어 2년 총 이자가 나왔는지 단계별로 보여준다.
+  function _rentLoanWhyHtml(l, r) {
+    const free = l.rent_loan_free_threshold_manwon;
+    const rate = l.rent_loan_rate_percent;
+    if (free == null || rate == null) return "";
+    const excess = Math.max(0, Number(l.rent_loan_amount_manwon || 0) - free);
+    return `<details class="loan-why"><summary>예상 금리·한도 근거 보기</summary>
+      <div class="why-title">보증금 대출 산정 근거</div>
+      ${l.loan_principal > 0
+        ? `<div class="why-row"><span>대출로 메우는 보증금 부족분<br /><em>매물 보증금 ${fmtNum(r.listing_deposit)}만 − 보유 보증금</em></span><b>${fmtNum(l.loan_principal)}만</b></div>
+      ${_rateRowsHtml(l)}
+      <div class="why-row"><span>월 이자 (부족분 × 연 ${fmtRate(l.rate_percent)}% ÷ 12)</span><b>${fmtNum(l.monthly_interest)}만/월</b></div>`
+        : `<div class="why-note soft">보유 보증금이 충분해 보증금 대출은 필요 없어요 (이자 0원)</div>`}
+      <div class="why-title">월세대출 산정 근거</div>
+      <div class="why-row"><span>월세 ${fmtNum(r.listing_monthly_rent)}만 전액을 월세대출로 충당</span><b>${fmtNum(l.rent_loan_amount_manwon)}만/월</b></div>
+      <div class="why-row"><span>이자 붙는 금액 (대출액 − 무이자 기준액)</span><b>${fmtNum(excess)}만/월</b></div>
+      <div class="why-row"><span>${fmtNum(free)}만 초과분 매달 누적 총 이자 (24개월기준)</span><b>${Number(l.rent_loan_total_interest || 0).toLocaleString()}원 (월 평균 ${Number(l.rent_loan_monthly_interest || 0).toLocaleString()}원)</b></div>
+      <div class="why-row soft" style="margin-top:4px"><span>무이자 기준액</span><b>${fmtNum(free)}만/월</b></div>
+      <div class="why-row soft"><span>기준액 초과분 금리</span><b>연 ${fmtRate(rate)}%</b></div>
+      <div class="why-row soft"><span>대출 기간 중 최대 월세대출액 ${fmtNum(l.rent_loan_total_cap_manwon)}만원 제한</span></div>
+    </details>`;
+  }
+
   // 실거래 참고 1건의 본문 (renderReferencePlaceholder가 만든 <details>를 펼칠 때 wireReferenceLazyLoad가 채운다).
   function _referenceItemHtml(ref) {
     const isJeonse = (ref.monthly_rent || 0) === 0;
@@ -210,10 +277,14 @@
 
     // 실질 주거비 = 월세 + 관리비 (교통비는 뺐다). 전세는 월세가 없어서, 매물 보증금 중 지금 가진 보증금으로
     // 못 채우는 부족분에 이자를 적용한 대출이자를 관리비에 더해 실제 부담을 보여준다(2026-09-29). 금리는 아래
-    // 보증금액 전환 이자기회비용과 같은 값(전환율=한국부동산원 수도권 전월세 전환율 API) - 원금만 다르다(부족분 vs 보증금 전체).
+    // 총보증금 전환 이자기회비용과 같은 값(전환율=한국부동산원 수도권 전월세 전환율 API) - 원금만 다르다(부족분 vs 보증금 전체).
+    const rentTxt = `월세 ${fmtNum(r.listing_monthly_rent)}만`;
+    const maintTxt = `관리비 ${fmtNum(r.maintenance_fee)}만`;
+    // 보증금 예금전환 이자기회비용에 실제로 쓴 이율 - 월세는 정기예금(1년) 금리, 전세는 전월세 전환율(2026-10-03). 옛 저장본엔 없어서 전환율로 대체한다.
+    const oppRate = r.deposit_opportunity_rate_percent ?? rate;
     const realCostSub = r.loan_interest > 0
-      ? `관리비 + 부족분(대출금액) ${fmtNum(r.deposit_shortfall)}만 대출이자 ${fmtNum(r.loan_interest)}만 (연 ${fmtRate(rate)}%)`
-      : isJeonse ? "관리비 (대출 없이 충분)" : "월세 + 관리비";
+      ? _subLines([maintTxt, `부족분(대출금액) ${fmtNum(r.deposit_shortfall)}만 대출이자 ${fmtNum(r.loan_interest)}만 (연 ${fmtRate(rate)}%)`])
+      : isJeonse ? _subLines([maintTxt], ["(대출 없이 충분)"]) : _subLines([rentTxt, maintTxt]);
     const realCostTitle = r.loan_interest > 0
       ? `관리비 + 부족분(매물 보증금 - 현재 보증금) ${fmtNum(r.deposit_shortfall)}만 x 연 ${fmtRate(rate)}% / 12`
       : isJeonse ? "관리비 (보유 보증금으로 충분해 대출이자 없음)" : "월세 + 관리비";
@@ -224,15 +295,17 @@
           <div class="val">${fmtNum(r.real_housing_cost)}만원/월</div>
           <div class="sub">${realCostSub}</div>
         </div>
-        <div class="cost-box conv" title="월세 + 관리비 + 보증금 기회비용(보증금 x 연 ${fmtRate(rate)}% / 12)">
-          <div class="lbl">보증금액 전환 이자기회비용</div>
+        <div class="cost-box conv" title="${isJeonse
+          ? `월세 + 관리비 + 보증금 기회비용(보증금 x 연 ${fmtRate(oppRate)}% / 12, 수도권 전월세 전환율)`
+          : `월세 + 관리비 + 보증금 기회비용(보증금 x 연 ${fmtRate(oppRate)}% / 12, 보증금을 예금에 넣었을 때의 이자 - 예금은행 정기예금 1년 금리)`}">
+          <div class="lbl">${isJeonse ? "총보증금 전환 이자기회비용" : "보증금 예금전환 이자기회비용"}</div>
           <div class="val">${fmtNum(r.deposit_converted_cost)}만원/월</div>
-          <div class="sub">월세 + 관리비 + 보증금 이자 ${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(rate)}%)</div>
+          <div class="sub">${_subLines([rentTxt, maintTxt, `보증금 이자 ${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(oppRate)}%)`])}</div>
         </div>
       </div>`;
 
     // 관리자 화면에서 저장한 대출 조건을 통과한 대출 (AI 엔진이 매물마다 판별) - "[대출이름] 실질주거비"를 다른 비용 박스와 같은 모양으로 보여준다.
-    // 2026-09-30: 대출별 실제 금리표(관리자 입력)가 있으면 그 금리를, 없으면 기준금리 API(보증금액 전환 이자기회비용과 같은 값)를
+    // 2026-09-30: 대출별 실제 금리표(관리자 입력)가 있으면 그 금리를, 없으면 기준금리 API(총보증금 전환 이자기회비용과 같은 값)를
     // 대신 쓰고 우대금리만 반영한다 - is_temporary_rate가 어느 쪽인지 나타낸다.
     // 2026-10-02: 청년전용 보증부월세대출은 보증금이 충분해 대출이 필요 없어도(loan_principal=0) 월세대출은
     // 별개로 받을 수 있어서, 같은 대출을 "(월세 미대출 시)"/"(월세 대출 시)" 두 박스로 나눠서 보여준다
@@ -248,25 +321,30 @@
               ? "입력하신 조건이 이 대출의 자격 조건을 충족해요. 이 대출은 아직 실제 금리표가 없어 기준금리(보증금 전환율 API)에서 우대금리만 반영한 참고용이며, 실제 금리·한도·신청 가능 여부는 금융기관 심사로 확정돼요."
               : "입력하신 조건이 이 대출의 자격 조건을 충족해요. 관리자가 등록한 이 대출의 실제 금리표에서 우대금리를 반영한 값이며, 실제 한도·신청 가능 여부는 금융기관 심사로 확정돼요."
           }">
-            <div class="lbl">${esc(l.name)} 실질주거비${hasRentLoan ? " (월세 미대출 시)" : ""}</div>
+            <div class="lbl">${esc(l.name)} 실질주거비${hasRentLoan ? "<br />(월세 미대출 시)" : ""}</div>
             <div class="val">${fmtNum(l.effective_cost)}만원/월</div>
             <div class="sub">${
               l.loan_principal > 0
-                ? `월세 + 관리비 + 부족분 ${fmtNum(l.loan_principal)}만 대출이자 ${fmtNum(l.monthly_interest)}만 (연 ${fmtRate(l.rate_percent)}%${l.is_temporary_rate ? ", 기준금리 적용" : ""})`
-                : "보유 보증금으로 충분해 대출이 필요 없어요 (이자 0원)"
+                ? _subLines([rentTxt, maintTxt, `부족분 ${fmtNum(l.loan_principal)}만 대출이자 ${fmtNum(l.monthly_interest)}만 (연 ${fmtRate(l.rate_percent)}%${l.is_temporary_rate ? ", 기준금리 적용" : ""})`])
+                : _subLines([rentTxt, maintTxt], ["(보유 보증금으로 충분해 대출이 필요 없어요, 이자 0원)"])
             }</div>
+            ${_loanWhyHtml(l)}
           </div>`;
         const rentLoanBox = !hasRentLoan || !(l.rent_loan_amount_manwon > 0) ? "" : `
           <div class="cost-box loan" title="월세 중 대출로 충당되는 금액(${fmtNum(l.rent_loan_amount_manwon)}만원)은 매달 현금으로 내지 않지만, 대출 잔액으로 쌓여서 만기(2년 가정)에 갚아야 해요.">
-            <div class="lbl" style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
-              <span>${esc(l.name)} 실질주거비 (월세 대출 시)</span>
-              <span class="warn-badge">월세에 대한 대출금은 누적되어 만기시 상환해야함</span>
-            </div>
+            <div class="lbl">${esc(l.name)} 실질주거비<br />(월세 대출 시)</div>
             <div class="val">${fmtNum(l.rent_loan_effective_cost)}만원/월</div>
-            <div class="sub">월세 ${fmtNum(r.listing_monthly_rent)}만 중 ${fmtNum(l.rent_loan_amount_manwon)}만 대출로 충당 + 관리비${
-              l.loan_principal > 0 ? ` + 보증금대출이자 ${fmtNum(l.monthly_interest)}만` : ""
-            } + 월세대출이자 ${Number(l.rent_loan_monthly_interest || 0).toLocaleString()}원(24개월 환산)</div>
-            <div class="sub">2년간 총 이자 ${Number(l.rent_loan_total_interest || 0).toLocaleString()}원 예상 · 월세대출 최대 ${fmtNum(l.rent_loan_total_cap_manwon)}만원까지 가능해요</div>
+            <div class="warn-badge">월세에 대한 대출금은 누적되어 만기시 상환해야함</div>
+            <div class="cap-line">대출 기간 중 최대 월세대출액 ${fmtNum(l.rent_loan_total_cap_manwon)}만원 제한</div>
+            <div class="sub">${_subLines([
+              `월세 ${fmtNum(Math.max(0, (r.listing_monthly_rent || 0) - (l.rent_loan_amount_manwon || 0)))}만 (${fmtNum(r.listing_monthly_rent)}만 중 ${fmtNum(l.rent_loan_amount_manwon)}만 대출로 충당)`,
+              maintTxt,
+              l.loan_principal > 0 ? `보증금대출이자 ${fmtNum(l.monthly_interest)}만` : "",
+              `월세대출이자 ${Number(l.rent_loan_monthly_interest || 0).toLocaleString()}원 (24개월 환산)`,
+            ], [
+              `2년간 총 이자 ${Number(l.rent_loan_total_interest || 0).toLocaleString()}원 예상`,
+            ])}</div>
+            ${_rentLoanWhyHtml(l, r)}
           </div>`;
         return depositBox + rentLoanBox;
       })
