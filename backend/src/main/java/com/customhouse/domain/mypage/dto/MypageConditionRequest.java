@@ -39,9 +39,11 @@ public record MypageConditionRequest(
 
         Double workLon, // 선택. workAddress의 정확한 경도
 
-        @NotNull(message = "희망 보증금(desiredDeposit)은 필수입니다.")
+        @Min(value = 0, message = "현재 사용가능 보증금은 0 이상이어야 합니다.")
+        Integer deposit, // 선택. 지금 수중에 있는 현금 기준 - AI 진단 폼의 deposit과 같은 값, 저장해두면 다음 진단 시 자동으로 불러온다
+
         @Min(value = 0, message = "희망 보증금은 0 이상이어야 합니다.")
-        Integer desiredDeposit,
+        Integer desiredDeposit, // 선택. AI 진단 폼과 마찬가지로 미입력 시 연소득 기준으로 자동 계산됨
 
         @Min(value = 0, message = "희망 월세는 0 이상이어야 합니다.")
         Integer desiredRent,
@@ -55,18 +57,22 @@ public record MypageConditionRequest(
         @Min(value = 0, message = "금융자산은 0 이상이어야 합니다.")
         Integer financialAsset,
 
-        @Min(value = 0, message = "일반자산은 0 이상이어야 합니다.")
-        Integer otherAsset,
-
         @Min(value = 0, message = "금융부채는 0 이상이어야 합니다.")
         Integer financialDebt,
-
-        @Min(value = 0, message = "일반부채는 0 이상이어야 합니다.")
-        Integer otherDebt,
 
         JobType jobType,
 
         Boolean noHouseholder,
+
+        @Min(value = 0, message = "병역이행기간은 0 이상이어야 합니다.")
+        Integer militaryServiceMonths, // 개월 단위, 선택. 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) -
+        // 추후 특정 대출상품에 연동 예정(12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식)
+
+        @Min(value = 0, message = "대출접수일 기준 2년 내 추가 출산한 자녀 수는 0 이상이어야 합니다.")
+        Integer newbornAdditionalChildCount, // 선택. 신생아 특례 버팀목대출 전용 우대사항 판별용
+
+        @Min(value = 0, message = "대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수는 0 이상이어야 합니다.")
+        Integer minorChildOver2YearsCount, // 선택. 신생아 특례 버팀목대출 전용 우대사항 판별용
 
         Set<PreferentialStatus> preferentialStatuses,
 

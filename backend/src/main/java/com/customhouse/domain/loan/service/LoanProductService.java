@@ -41,9 +41,14 @@ public class LoanProductService {
     };
     private static final TypeReference<List<List<Double>>> RATE_TABLE_TYPE = new TypeReference<>() {
     };
-    /** 대출금리표 크기: 부부합산 연소득 4구간(행) x 임차보증금 3구간(열) - loan_matcher.py의 구간 정의와 짝을 맞춰야 한다. */
-    private static final int RATE_TABLE_ROWS = 4;
-    private static final int RATE_TABLE_COLS = 3;
+    /** 대출금리표 크기(행=연소득 구간 수, 열=임차보증금 구간 수)는 대출마다 다르다 - AI 엔진
+     * (customhouse-ai/app/services/loan_matcher.py의 RATE_TABLE_BRACKETS_BY_LOAN_TYPE)과 숫자를 맞춰야 한다.
+     * 목록에 없는 대출은 금리표 자체를 지원하지 않는다(그 대출로 rateTable을 보내면 저장 시 막는다). */
+    private static final Map<LoanType, int[]> RATE_TABLE_SHAPE_BY_TYPE = Map.of(
+            LoanType.GENERAL_BEOTIMMOK, new int[]{4, 3},
+            LoanType.YOUTH_BEOTIMMOK, new int[]{4, 1},
+            LoanType.NEWBORN_BEOTIMMOK, new int[]{9, 4}
+    );
 
     private final LoanProductRepository loanProductRepository;
     private final LoanReferenceLinkRepository loanReferenceLinkRepository;
@@ -74,13 +79,15 @@ public class LoanProductService {
     @Transactional
     public LoanProductResponse save(String typeCode, LoanProductRequest request) {
         LoanType type = parseType(typeCode);
-        validate(request);
+        validate(type, request);
 
         LoanProduct product = loanProductRepository.findByLoanType(type.name()).orElseGet(() -> LoanProduct.of(type));
         product.update(request.minAge(), request.maxAge(), request.maxIncomeSingle(), request.maxIncomeCouple(),
                 request.maxAsset(), request.maxListingDeposit(), request.maxExclusiveArea(),
-                request.maxLoanRatioPercent(), request.maxLoanAmount(), serialize(request.preferences()),
-                serializeRateTable(request.rateTable()));
+                request.maxLoanRatioPercent(), request.maxLoanAmount(), request.maxListingMonthlyRent(),
+                request.depositLoanRatePercent(), request.monthlyRentLoanCapManwon(),
+                request.monthlyRentLoanFreeThresholdManwon(), request.monthlyRentLoanRatePercent(),
+                serialize(request.preferences()), serializeRateTable(request.rateTable()));
         LoanProduct saved = loanProductRepository.save(product);
         String url = loanReferenceLinkRepository.findByLoanType(type.name()).map(LoanReferenceLink::getReferenceUrl).orElse(null);
         return toResponse(type, saved, url);
@@ -122,7 +129,7 @@ public class LoanProductService {
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "알 수 없는 대출 종류입니다."));
     }
 
-    private static void validate(LoanProductRequest request) {
+    private static void validate(LoanType type, LoanProductRequest request) {
         if (request.minAge() != null && request.maxAge() != null && request.minAge() > request.maxAge()) {
             throw new CustomException(ErrorCode.VALIDATION_ERROR, "최소 나이는 최대 나이보다 클 수 없습니다.");
         }
@@ -134,13 +141,17 @@ public class LoanProductService {
             }
         }
         if (request.rateTable() != null) {
+            int[] shape = RATE_TABLE_SHAPE_BY_TYPE.get(type);
+            if (shape == null) {
+                throw new CustomException(ErrorCode.VALIDATION_ERROR, "이 대출은 대출금리표를 지원하지 않습니다.");
+            }
             List<List<Double>> table = request.rateTable();
-            if (table.size() != RATE_TABLE_ROWS) {
-                throw new CustomException(ErrorCode.VALIDATION_ERROR, "대출금리표는 연소득 구간 4행이어야 합니다.");
+            if (table.size() != shape[0]) {
+                throw new CustomException(ErrorCode.VALIDATION_ERROR, "대출금리표는 연소득 구간 " + shape[0] + "행이어야 합니다.");
             }
             for (List<Double> row : table) {
-                if (row == null || row.size() != RATE_TABLE_COLS) {
-                    throw new CustomException(ErrorCode.VALIDATION_ERROR, "대출금리표는 임차보증금 구간 3열이어야 합니다.");
+                if (row == null || row.size() != shape[1]) {
+                    throw new CustomException(ErrorCode.VALIDATION_ERROR, "대출금리표는 임차보증금 구간 " + shape[1] + "열이어야 합니다.");
                 }
                 for (Double rate : row) {
                     if (rate == null || rate < 0 || rate > 15) {
@@ -169,7 +180,8 @@ public class LoanProductService {
                     ? LoanPreference.EMPTY
                     : new LoanPreference(p.required(), p.discount() == null ? 0.0 : p.discount(),
                             p.overrideMaxListingDeposit(), p.overrideMaxIncomeSingle(),
-                            p.overrideMaxIncomeCouple(), p.overrideMaxLoanAmount(), p.overrideMaxLoanRatioPercent()));
+                            p.overrideMaxIncomeCouple(), p.overrideMaxLoanAmount(), p.overrideMaxLoanRatioPercent(),
+                            p.overrideMaxExclusiveArea()));
         }
         return result;
     }
@@ -213,12 +225,14 @@ public class LoanProductService {
     private static LoanProductResponse toResponse(LoanType type, LoanProduct p, String referenceUrl) {
         return new LoanProductResponse(type.name(), type.getLabel(), type.getLeaseType(), true, p.getMinAge(), p.getMaxAge(),
                 p.getMaxIncomeSingle(), p.getMaxIncomeCouple(), p.getMaxAsset(), p.getMaxListingDeposit(), p.getMaxExclusiveArea(),
-                p.getMaxLoanRatioPercent(), p.getMaxLoanAmount(), deserialize(p.getPreferences()), deserializeRateTable(p.getRateTable()),
+                p.getMaxLoanRatioPercent(), p.getMaxLoanAmount(), p.getMaxListingMonthlyRent(), p.getDepositLoanRatePercent(),
+                p.getMonthlyRentLoanCapManwon(), p.getMonthlyRentLoanFreeThresholdManwon(),
+                p.getMonthlyRentLoanRatePercent(), deserialize(p.getPreferences()), deserializeRateTable(p.getRateTable()),
                 p.getUpdatedAt(), referenceUrl);
     }
 
     private static LoanProductResponse emptyResponse(LoanType type, String referenceUrl) {
         return new LoanProductResponse(type.name(), type.getLabel(), type.getLeaseType(), false, null, null, null, null, null, null, null,
-                null, null, normalize(null), null, null, referenceUrl);
+                null, null, null, null, null, null, null, normalize(null), null, null, referenceUrl);
     }
 }

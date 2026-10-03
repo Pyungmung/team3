@@ -109,15 +109,26 @@
 | financial_debt / other_debt | INT | | 부채 구성(금융부채/일반부채, 만원) — 총자산액(순자산) = 자산 합 - 부채 합, 저장 안 하고 매번 계산 |
 | job_type | VARCHAR | | 직업종류 (GOVERNMENT/SME/MID_SIZED/LARGE_CORP) |
 | no_householder | BOOLEAN | | 무주택여부 |
+| military_service_months | INT | | 병역이행기간(개월, 선택) — 2026-10-01 추가. 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집), 추후 특정 대출상품에 연동 예정 |
 | notification_enabled | BOOLEAN | NOT NULL | ⭐ WatchList 알림 발송 여부를 여기서 최종 판단함 (9-2 참고) |
 
 우대사항(preferentialStatuses, 다중 선택)은 별도 테이블 `housing_condition_preferences`
-(id PK, `housing_condition_id` FK, `preferential_status` VARCHAR, UNIQUE(housing_condition_id, preferential_status))에
+(id PK, `housing_condition_id` FK, `preferential_status` UNIQUE(housing_condition_id, preferential_status))에
 사용자당 0~N건으로 저장된다. 2026-09-22 이전엔 JPA `@ElementCollection`(자체 기본키 없는 값 컬렉션)이었는데,
 Aiven 등 관리형 클라우드 MySQL은 `sql_require_primary_key`가 켜져 있어 기본키 없는 테이블 생성 자체가
 거부돼(`Unable to create or change a table without a primary key`) 실전 연동 중 발견했다. board 도메인의
 PostMeta처럼 자체 id를 가진 진짜 엔티티(`HousingConditionPreference`)로 바꿔서 어떤 MySQL 설정에서도
 동작하게 했다 (H2/로컬 MySQL은 원래도 문제없었음).
+
+`preferential_status` 컬럼의 실제 타입 정정(2026-10-01): 엔티티 코드는 `@Enumerated(EnumType.STRING) @Column(length=30)`로
+VARCHAR를 의도했지만, 실제 Aiven 운영 DB를 열어보니 Hibernate가 MySQL 네이티브 `ENUM(...)` 컬럼으로 생성해뒀다 - 이 문서가
+그동안 VARCHAR로 잘못 적어둔 부분이다. 그래서 `PreferentialStatus`(마이페이지)/`LoanPreferenceKey`(전세자금대출) enum에
+새 값을 추가할 때마다 이 컬럼의 ENUM 정의도 함께 넓혀야 한다 - `ddl-auto=update`(dev/local-mysql)는 자동으로
+`ALTER TABLE ... MODIFY COLUMN ... ENUM(...)`을 실행해 넓혀주지만(기존 값은 유지, 순수 추가라 안전), `ddl-auto=validate`를
+쓰는 실제 배포(application-prod.yml)는 그 DB에 이미 이 ENUM 정의가 반영돼 있어야 기동에 성공한다.
+2026-10-01에 DUAL_INCOME/ONE_CHILD/TWO_CHILDREN/DISABLED/MULTICULTURAL/ELDERLY_DEPENDENT/ELDERLY_HOUSEHOLD 7종을
+추가하면서, 로컬에서 `local-mysql` 프로필로 이 Aiven DB에 접속해 이미 위 ENUM 확장과 `military_service_months` 컬럼
+추가를 적용해뒀다 - 배포가 이 Aiven 인스턴스를 그대로 쓴다면 별도 수동 반영 없이도 `validate`를 통과한다.
 
 ### payments (단건 결제)
 | 컬럼 | 타입 | 제약 | 설명 |
@@ -244,7 +255,7 @@ PostMeta처럼 자체 id를 가진 진짜 엔티티(`HousingConditionPreference`
 > 회원 탈퇴 시 `listing_favorites`는 함께 지우고, `listing_reports`는 신고 누적 집계를 위해 남깁니다.
 
 #### loan_products (전세자금대출 조건, 관리자 수정)
-대출 5종(`GENERAL_BEOTIMMOK`, `YOUTH_BEOTIMMOK`, `SME_YOUTH_BEOTIMMOK`, `NEWBORN_BEOTIMMOK`, `YOUTH_MONTHLY_RENT`)은 코드(`LoanType`)에 고정이고, 저장된 조건만 행으로 있다(삭제하면 행이 지워져 "미설정").
+대출 4종(`GENERAL_BEOTIMMOK`, `YOUTH_BEOTIMMOK`, `NEWBORN_BEOTIMMOK`, `YOUTH_MONTHLY_RENT`)은 코드(`LoanType`)에 고정이고, 저장된 조건만 행으로 있다(삭제하면 행이 지워져 "미설정"). 중소기업 청년 버팀목 전세대출(`SME_YOUTH_BEOTIMMOK`)은 상품이 없어져 코드에서 제거됨 - 저장된 행이 있었어도 더는 조회되지 않는다.
 값이 NULL이면 그 조건은 "제한 없음"이다. 이후 이자 계산식이 이 조건으로 자격 판별과 우대금리 차감을 한다.
 
 | 컬럼 | 타입 | 제약 | 설명 |
@@ -258,7 +269,7 @@ PostMeta처럼 자체 id를 가진 진짜 엔티티(`HousingConditionPreference`
 | max_exclusive_area | DOUBLE | | 전용면적 이하(㎡) |
 | max_loan_ratio_percent | DOUBLE | | 최대 대출금 비율한도(%) — 매물 보증금 중 이 비율까지만 대출 가능 (2026-09-29) |
 | max_loan_amount | INT | | 최대 대출금액(만원) — 매물과 무관한 대출 절대 상한. 비율한도와 절대 상한을 둘 다 넣으면 더 낮은 쪽이 실제 한도 (2026-09-29) |
-| preferences | TEXT | | 우대사항(8종: 기초생활수급자·차상위계층·한부모가족·자립준비청년·신혼부부·다자녀가구·무주택여부·중소기업 취업청년) JSON: `{"NEWLYWED": {"required": false, "discount": 0.2}, ...}` (필수 여부 + 우대금리 차감 %p) |
+| preferences | TEXT | | 우대사항(기초생활수급자·차상위계층·한부모가구·자립준비청년·신혼부부(기혼자포함)·맞벌이부부·1자녀·2자녀·다자녀가구·장애인·다문화가구·노인부양가구·고령자가구·무주택여부·중소기업 취업청년, LoanPreferenceKey 참고) JSON: `{"NEWLYWED": {"required": false, "discount": 0.2}, ...}` (필수 여부 + 우대금리 차감 %p) |
 
 #### loan_reference_links (전세자금대출 참고 확인 페이지 주소, 관리자 수정)
 대출별 "참고 확인 페이지" 주소만 보관한다(2026-09-29). 자격 조건·계산 로직과는 전혀 무관하고, 관리자가 그 대출을 조사할 때

@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <!-- [담당: 양혜승] AI 주거비 절약 진단 - 조건 입력 폼 (핵심 기능 화면)
      1단계(3초 간편 진단) / 2단계(정밀 맞춤 진단)로 나뉜 단계형 화면. 한 개의 <form> 안에서 두 단계를 전환한다.
-     서버로 보내는 name 속성/스크립트가 쓰는 id는 백엔드(RecommendRequest)·AI 엔진 계약이라 바꾸면 안 된다. -->
+     서버로 보내는 name 속성/스크립트가 쓰는 id는 백엔드(RecommendRequest)·AI 엔진 계약이라 바꾸면 안 된다.
+     2026-10-02: 디자인은 팀원이 새로 작업한 버전(별도 파일)을 반영했다 - 레이아웃/색상/카드 스타일만
+     바뀌었고, 입력 필드/name/id/제출 로직은 전부 기존 그대로다(새 디자인 초안에서 빠져 있던 군복무기간,
+     장애인/다문화가구/노인부양가구/고령자가구, 신혼부부 전용 박스(맞벌이부부·자녀 수·신생아 특례)는
+     기존 구조 그대로 복원해서 새 디자인 톤에 맞게 다시 입혔다). -->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -26,14 +30,22 @@
   <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 
   <style>
-    /* 진단 페이지 전용 스타일. 색상은 전역 브랜드 토큰(--brand-*, main.css)을 따른다. */
+    /*
+      진단 페이지 전용 UI
+      - 공통 header / hero / footer는 기존 구조 유지
+      - 색상은 main.css의 --brand-* 토큰을 중심으로 사용
+      - 폼 입력부만 더 선명한 카드/필드 구조로 재디자인
+    */
     :root {
       --navy: var(--brand-600);
       --blue: var(--brand-500);
-      --ink: #10213a;
+      --ink: var(--ink-900);
       --muted: #64748b;
-      --line: #e7edf4;
-      --bg: #f6f8fb;
+      --soft-muted: #94a3b8;
+      --line: var(--brand-100);
+      --surface: #ffffff;
+      --surface-soft: var(--brand-50);
+      --page-bg: var(--off-white);
     }
 
     * { box-sizing: border-box; }
@@ -41,19 +53,27 @@
     body {
       margin: 0;
       color: var(--ink);
-      background: var(--bg) !important;
+      /* 2026-10-02: 배너(.hero)에만 있던 배경 사진을 폼 영역 뒤까지 페이지 전체로 확장 - 톤(오버레이
+         색/투명도)은 기존 .home-intro-bg(main.css)와 완전히 동일, 적용 범위만 body 전체로 바꿨다.
+         main-card가 불투명한 흰 카드라 로그인/회원가입 화면과 같은 느낌으로 그 위에 떠 있는 모양이 된다. */
+      background-image:
+        linear-gradient(rgba(247, 248, 250, 0.86), rgba(247, 248, 250, 0.94)),
+        url("https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=2000&q=80");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
     }
 
-    /* ===== HERO: 메인 홈 배너(.home-intro-bg, main.css)와 같은 배경/톤 ===== */
+    /* ===== HERO: 기존 배너 구조/배경 유지 ===== */
     .hero {
       position: relative;
-      color: var(--ink, #0f172a);
+      color: var(--ink);
     }
 
     .hero-inner {
       max-width: 1040px;
       margin: auto;
-      padding: 72px 24px 72px;
+      padding: 40px 24px;
     }
 
     .hero-label {
@@ -65,348 +85,639 @@
       color: var(--brand-700);
       font-size: 13px;
       font-weight: 700;
-      letter-spacing: 0;
     }
 
     .hero-title {
       margin: 0;
+      color: var(--ink-900);
       font-size: clamp(32px, 4.4vw, 48px);
-      line-height: 1.3;
       font-weight: 800;
       letter-spacing: -.02em;
-      color: #0f172a;
+      line-height: 1.3;
     }
 
     .hero-title .accent { color: var(--brand-600); }
 
     .hero-desc {
-      max-width: 38rem;
       margin-top: 18px;
+      color: #4b5563;
       font-size: 17px;
       line-height: 1.75;
-      color: #4b5563;
+      white-space: nowrap;
     }
 
-    /* ===== MAIN CARD ===== */
+    @media (max-width: 700px) {
+      .hero-desc { white-space: normal; }
+    }
+
+    /* ===== FORM SHELL ===== */
     .shell {
-      max-width: 1040px;
-      margin: 8px auto 70px;
-      padding: 0 24px;
       position: relative;
+      max-width: 1040px;
+      margin: 18px auto 80px;
+      padding: 0 24px;
     }
 
     .main-card {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      box-shadow: 0 14px 40px rgba(15, 23, 42, .07);
       overflow: hidden;
+      border: 1px solid var(--brand-100);
+      border-radius: 24px;
+      background: var(--surface);
+      box-shadow:
+        0 24px 60px rgba(15, 23, 42, .08),
+        0 4px 14px rgba(15, 23, 42, .04);
     }
 
-    /* ===== STEP 표시 ===== */
+    /* ===== STEP NAV ===== */
     .step-head {
-      padding: 28px 34px 22px;
-      border-bottom: 1px solid #edf1f5;
+      padding: 26px 34px;
+      border-bottom: 1px solid var(--brand-100);
+      background: var(--brand-50);
     }
 
     .steps {
       display: flex;
       align-items: center;
-      max-width: 560px;
+      width: 100%;
+      max-width: 620px;
     }
 
     .step-item {
       display: flex;
       align-items: center;
       gap: 11px;
-      color: #a0a9b6;
-      font-size: 15px;
+      color: var(--soft-muted);
+      font-size: 14px;
       font-weight: 800;
+      white-space: nowrap;
+      transition: color .2s ease;
     }
 
     .step-circle {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
       display: grid;
       place-items: center;
-      background: #edf1f5;
-      color: #8491a4;
-      font-size: 15px;
+      width: 36px;
+      height: 36px;
+      flex: none;
+      border: 1px solid var(--brand-100);
+      border-radius: 50%;
+      background: #fff;
+      color: var(--soft-muted);
+      font-size: 14px;
+      box-shadow: 0 2px 7px rgba(15, 23, 42, .04);
+      transition: .2s ease;
     }
 
-    .step-item.active { color: var(--navy); }
+    .step-item.active { color: var(--brand-600); }
 
     .step-item.active .step-circle {
-      background: var(--navy);
+      border-color: var(--brand-600);
+      background: var(--brand-600);
       color: #fff;
+      box-shadow: 0 7px 16px rgba(27, 42, 74, .18);
     }
 
     .step-line {
       height: 1px;
       flex: 1;
-      background: #e1e6ed;
-      margin: 0 13px;
+      margin: 0 16px;
+      background: var(--brand-100);
     }
 
     /* ===== INTRO ===== */
-    .intro { padding: 32px 34px 4px; }
+    .intro {
+      padding: 34px 38px 8px;
+    }
 
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 7px 13px;
+      min-height: 30px;
+      padding: 6px 12px;
+      border: 1px solid var(--brand-100);
       border-radius: 999px;
       background: var(--brand-50);
       color: var(--brand-600);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
+      letter-spacing: .02em;
     }
 
     .intro h2 {
       margin: 14px 0 0;
-      font-size: 30px;
-      font-weight: 900;
-      letter-spacing: -.035em;
+      color: var(--ink-900);
+      font-size: 29px;
+      font-weight: 850;
+      letter-spacing: -.04em;
+      line-height: 1.35;
     }
 
     .intro p {
-      margin: 8px 0 0;
-      font-size: 16px;
+      margin: 9px 0 0;
       color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
     }
 
     .prefill {
-      margin: 20px 34px 0;
+      margin: 20px 38px 0;
       padding: 14px 16px;
-      border-radius: 10px;
+      border: 1px solid var(--brand-100);
+      border-radius: 12px;
       background: var(--brand-50);
       color: var(--brand-600);
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
+      line-height: 1.6;
     }
 
     /* ===== STAGE ===== */
     .stage {
       display: none;
-      padding: 30px 34px 34px;
+      padding: 30px 38px 40px;
     }
 
     .stage.active { display: block; }
 
     .section-title {
-      font-size: 19px;
-      font-weight: 900;
-      margin-bottom: 18px;
+      position: relative;
+      margin-bottom: 20px;
+      padding-left: 13px;
+      color: var(--ink-900);
+      font-size: 18px;
+      font-weight: 850;
+      letter-spacing: -.025em;
+    }
+
+    .section-title::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      left: 0;
+      width: 4px;
+      border-radius: 999px;
+      background: var(--brand-600);
     }
 
     .grid2 {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 22px;
+      gap: 22px 20px;
     }
 
     .grid3 {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 22px;
+      gap: 20px;
     }
 
     .full { grid-column: 1 / -1; }
-
-    .stack { display: grid; gap: 18px; }
+    .stack { display: grid; gap: 16px; }
 
     /* ===== FIELD ===== */
     .flabel {
       display: block;
       margin-bottom: 9px;
-      font-size: 15px;
-      font-weight: 800;
       color: #1e293b;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -.01em;
     }
 
-    .req { color: #ef4444; }
+    .req { color: var(--brand-600); }
 
     .input,
     .select {
       width: 100%;
-      height: 54px;
-      padding: 0 15px;
-      border: 1px solid #dfe6ee;
+      height: 56px;
+      padding: 0 16px;
+      border: 1px solid var(--brand-100);
       border-radius: 12px;
+      outline: none;
       background: #fff;
-      font-size: 16px;
+      color: var(--ink-900);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      transition:
+        border-color .18s ease,
+        box-shadow .18s ease,
+        background-color .18s ease;
+    }
+
+    .select {
+      appearance: auto;
+      cursor: pointer;
+    }
+
+    .input::placeholder { color: var(--soft-muted); font-weight: 500; }
+
+    .input:hover,
+    .select:hover {
+      border-color: #cbd5e1;
+      background: #fcfdff;
     }
 
     .input:focus,
     .select:focus {
-      outline: 0;
       border-color: var(--brand-500);
-      box-shadow: 0 0 0 3px rgba(51, 65, 85, .12);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(51, 65, 85, .10);
     }
 
     .input[readonly] {
-      background: #f6f8fa;
-      color: #758195;
+      background: var(--brand-50);
+      color: var(--muted);
+      cursor: default;
     }
 
     .hint {
       margin-top: 7px;
-      font-size: 13px;
-      line-height: 1.5;
-      color: #64748b;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
     }
 
     .divider {
       height: 1px;
-      background: #edf1f5;
-      margin: 30px 0;
+      margin: 34px 0;
+      background: var(--brand-100);
     }
 
-    /* ===== 버튼 ===== */
+    /* ===== SECONDARY / ADDRESS BUTTON ===== */
     .secondary {
-      height: 54px;
-      border: 1px solid #dce3eb;
-      border-radius: 10px;
+      height: 56px;
       padding: 0 20px;
-      background: #fff;
-      color: #34435a;
-      font-size: 15px;
+      border: 1px solid var(--brand-100);
+      border-radius: 12px;
+      background: var(--brand-50);
+      color: var(--brand-600);
+      font-family: inherit;
+      font-size: 14px;
       font-weight: 800;
       white-space: nowrap;
       cursor: pointer;
+      transition: .18s ease;
     }
 
-    .secondary:hover { background: #f8fafc; }
+    .secondary:hover {
+      border-color: var(--brand-500);
+      background: var(--brand-100);
+      transform: translateY(-1px);
+    }
 
+    /* ===== GROUP TITLE ===== */
+    .group-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+      color: var(--brand-600);
+      font-size: 18px;
+      font-weight: 850;
+      letter-spacing: -.025em;
+    }
+
+    .group-title > span:first-child {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      flex: none;
+      border: 1px solid var(--brand-100);
+      border-radius: 10px;
+      background: var(--brand-50);
+      font-size: 17px;
+    }
+
+    /* ===== CHECKBOX CARDS ===== */
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 11px;
+    }
+
+    .check-grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .check-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 54px;
+      padding: 14px 15px;
+      border: 1px solid var(--brand-100);
+      border-radius: 12px;
+      background: #fff;
+      color: #334155;
+      font-size: 14px;
+      font-weight: 650;
+      cursor: pointer;
+      transition:
+        border-color .16s ease,
+        background-color .16s ease,
+        box-shadow .16s ease,
+        transform .16s ease;
+    }
+
+    .check-card:hover {
+      border-color: #cbd5e1;
+      background: var(--brand-50);
+      transform: translateY(-1px);
+    }
+
+    .check-card:has(input:checked) {
+      border-color: var(--brand-500);
+      background: var(--brand-50);
+      box-shadow: inset 0 0 0 1px rgba(51, 65, 85, .06);
+      color: var(--brand-600);
+    }
+
+    .check-card input {
+      width: 18px;
+      height: 18px;
+      flex: none;
+      accent-color: var(--brand-600);
+    }
+
+    .check-card.tall { min-height: 58px; }
+
+    .check-card .sub {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    /* 신혼부부(기혼자포함) 우대사항 박스 - 신혼부부 체크박스 자체는 항상 또렷하게, 그 아래 딸린
+       맞벌이부부/자녀 수(.gated-item)만 체크 전엔 흐리게 비활성 표시한다. */
+    .sub-pref-group {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fafbfc;
+      transition: background-color .15s, border-color .15s;
+    }
+
+    .sub-pref-group.enabled {
+      border-color: var(--brand-100);
+      background: var(--brand-50);
+    }
+
+    .sub-pref-main-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .sub-pref-main-row .check-card { flex: 1; min-width: 160px; }
+
+    .gated-item { transition: opacity .15s; }
+
+    .sub-pref-group.disabled .gated-item { opacity: .5; }
+
+    .sub-pref-group .check-card:has(input:disabled) { cursor: not-allowed; background: #f1f5f9; }
+
+    /* 자녀 수(1자녀/2자녀/다자녀가구) - 체크박스 셋을 하나로 이어붙인 세그먼트 컨트롤처럼 보이게 묶는다 */
+    .child-count-row { margin-top: 12px; }
+
+    .child-count-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+
+    .child-count-options {
+      display: flex;
+      border: 1px solid var(--brand-100);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .chip-option { flex: 1; position: relative; }
+
+    .chip-option input { position: absolute; opacity: 0; pointer-events: none; }
+
+    .chip-option span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #475569;
+      cursor: pointer;
+      border-right: 1px solid var(--brand-100);
+      transition: .15s;
+    }
+
+    .chip-option:last-child span { border-right: none; }
+
+    .chip-option input:checked + span { background: var(--navy); color: #fff; }
+
+    .chip-option input:disabled + span { cursor: not-allowed; color: #cbd5e1; background: #f8fafc; }
+
+    .chip-option input:not(:disabled) + span:hover { background: #eef2f7; }
+
+    /* ===== ERROR ===== */
+    #form-error {
+      border: 1px solid #fecaca;
+      border-radius: 12px;
+      background: #fff7f7;
+      padding: 13px 15px;
+    }
+
+    /* ===== ACTION BAR ===== */
     .actions {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 24px 34px;
-      background: #fbfcfe;
-      border-top: 1px solid #edf1f5;
+      gap: 20px;
+      padding: 22px 38px;
+      border-top: 1px solid var(--brand-100);
+      background: var(--brand-50);
     }
 
     .action-note {
-      font-size: 14px;
-      color: #64748b;
+      max-width: 410px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
     }
 
     .button-row {
       display: flex;
+      align-items: center;
+      justify-content: flex-end;
       gap: 9px;
     }
 
     .back-btn,
     .next-btn,
     .submit-btn {
+      min-height: 50px;
+      padding: 0 22px;
       border-radius: 12px;
-      padding: 15px 28px;
-      font-size: 16px;
-      font-weight: 900;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 850;
       cursor: pointer;
-      transition: .18s;
+      transition:
+        background-color .18s ease,
+        border-color .18s ease,
+        box-shadow .18s ease,
+        transform .18s ease;
     }
 
     .back-btn {
-      border: 1px solid #dce3eb;
+      border: 1px solid var(--brand-100);
       background: #fff;
-      color: #526075;
+      color: #475569;
     }
 
-    .back-btn:hover { background: #f8fafc; }
+    .back-btn:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+      transform: translateY(-1px);
+    }
 
     .next-btn,
     .submit-btn {
-      border: 0;
-      background: var(--navy);
+      border: 1px solid var(--brand-600);
+      background: var(--brand-600);
       color: #fff;
+      box-shadow: 0 8px 18px rgba(27, 42, 74, .16);
     }
 
     .next-btn:hover,
-    .submit-btn:hover { background: var(--brand-700); }
+    .submit-btn:hover {
+      border-color: var(--brand-700);
+      background: var(--brand-700);
+      box-shadow: 0 10px 22px rgba(2, 6, 23, .20);
+      transform: translateY(-1px);
+    }
+
+    .quick-result-btn {
+      border-color: var(--brand-100);
+      background: #fff;
+      color: var(--brand-600);
+    }
+
+    .quick-result-btn:hover {
+      border-color: var(--brand-500);
+      background: var(--brand-100);
+    }
 
     .submit-btn:disabled,
     .back-btn:disabled,
-    .next-btn:disabled { opacity: .5; cursor: not-allowed; }
-
-    /* 3초 진단 결과 바로 보기 */
-    .quick-result-btn {
-      border-color: var(--brand-100);
-      color: var(--brand-600);
-      background: var(--brand-50);
+    .next-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
-    .quick-result-btn:hover { background: var(--brand-100); }
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 820px) {
+      .actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
 
-    /* ===== 체크박스 ===== */
-    .check-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .check-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-    .check-card {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 15px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      font-size: 15px;
-      color: #334155;
-      cursor: pointer;
-      transition: .15s;
-    }
-
-    .check-card:hover { background: #f8fafc; }
-
-    .check-card input { accent-color: var(--brand-600); width: 18px; height: 18px; flex: none; }
-
-    .check-card.tall { min-height: 54px; }
-
-    .check-card .sub {
-      display: block;
-      margin-top: 4px;
-      font-size: 13px;
-      color: #64748b;
-    }
-
-    .group-title {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 18px;
-      font-weight: 900;
-      color: var(--brand-600);
-      margin-bottom: 18px;
-    }
-
-    /* ===== 모바일 ===== */
-    @media (max-width: 700px) {
-      .hero-inner { padding: 48px 20px 50px; }
-      .hero-title { font-size: 28px; }
-      .shell { margin: 8px auto 50px; padding: 0 14px; }
-      .step-head, .intro, .stage { padding-left: 20px; padding-right: 20px; }
-      .hero-title { font-size: 32px; }
-      .intro h2 { font-size: 24px; }
-      .prefill { margin-left: 20px; margin-right: 20px; }
-      .actions { padding: 18px 20px; }
-      .grid2, .grid3 { grid-template-columns: 1fr; }
-      .full { grid-column: auto; }
-      .check-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .actions { padding: 18px 20px; align-items: stretch; flex-direction: column; }
+      .action-note { max-width: none; }
       .button-row { width: 100%; }
       .button-row button { flex: 1; }
     }
 
-    @media (max-width: 460px) {
-      .check-grid { grid-template-columns: 1fr; }
-      .button-row { flex-direction: column; }
+    @media (max-width: 700px) {
+      .hero-inner { padding: 28px 20px 30px; }
+      .hero-title { font-size: 32px; }
+
+      .shell {
+        margin: 12px auto 54px;
+        padding: 0 14px;
+      }
+
+      .main-card { border-radius: 18px; }
+
+      .step-head {
+        padding: 20px;
+      }
+
+      .step-item {
+        gap: 7px;
+        font-size: 12px;
+      }
+
+      .step-circle {
+        width: 31px;
+        height: 31px;
+        font-size: 12px;
+      }
+
+      .step-line { margin: 0 9px; }
+
+      .intro,
+      .stage {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .intro { padding-top: 27px; }
+      .intro h2 { font-size: 24px; }
+
+      .prefill {
+        margin-left: 20px;
+        margin-right: 20px;
+      }
+
+      .grid2,
+      .grid3 {
+        grid-template-columns: 1fr;
+      }
+
+      .full { grid-column: auto; }
+
+      .check-grid,
+      .check-grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .actions { padding: 18px 20px; }
+    }
+
+    @media (max-width: 520px) {
+      .check-grid,
+      .check-grid.two {
+        grid-template-columns: 1fr;
+      }
+
+      .button-row {
+        flex-direction: column;
+      }
+
+      .button-row button {
+        width: 100%;
+      }
+
+      .group-title {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .input,
+      .select,
+      .secondary {
+        height: 54px;
+      }
     }
   </style>
 </head>
@@ -416,10 +727,10 @@
   <div id="app-header"></div>
 
   <!-- HERO -->
-  <section class="hero home-intro-bg">
+  <section class="hero">
     <div class="hero-inner">
       <div class="hero-label">AI HOUSING DIAGNOSIS</div>
-      <h1 class="hero-title">AI 주거비<br /><span class="accent">절약 진단</span></h1>
+      <h1 class="hero-title">AI 주거비 <span class="accent">절약 진단</span></h1>
       <p class="hero-desc">
         간단한 조건부터 입력하고, 필요하면 상세 조건까지 추가해 더 정확하게 진단해보세요.
       </p>
@@ -454,7 +765,8 @@
 
       <!-- 마이페이지 자동 프리필 안내 -->
       <p id="prefill-msg" class="prefill hidden">
-        ✨ 마이페이지에 저장된 프로필 정보로 진단 폼을 자동으로 채웠어요. 필요한 부분만 수정 후 진단하세요.
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:2px"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.3 2.3 4.7-5.1"/></svg>
+        마이페이지에 저장된 프로필 정보로 진단 폼을 자동으로 채웠어요. 필요한 부분만 수정 후 진단하세요.
       </p>
 
       <!-- =========================================================
@@ -544,13 +856,13 @@
 
         <div class="grid3">
           <div>
-            <label class="flabel">현재 보증금 (만원) <span class="req">*</span></label>
+            <label class="flabel">현재 사용가능 보증금 (만원) <span class="req">*</span></label>
             <input type="number" name="deposit" placeholder="예: 1000" min="0" class="input" />
             <div class="hint">지금 수중에 있는 현금 기준</div>
           </div>
           <div>
-            <label class="flabel">희망 보증금 (만원)</label>
-            <input type="number" name="desiredDeposit" placeholder="선택 (미입력 시 현재 보증금)" min="0" class="input" />
+            <label class="flabel">희망 보증금 (만원) <span class="req">*</span></label>
+            <input type="number" name="desiredDeposit" placeholder="예: 1000" min="0" class="input" />
             <div class="hint">입력한 금액 이하 매물만 검색</div>
           </div>
           <div>
@@ -567,7 +879,7 @@
       <div class="stage" id="page-step-2">
 
         <!-- 그룹 1: 기본 인적 & 자산 정보 -->
-        <div class="group-title"><span>👤</span> 기본 인적 &amp; 자산 정보</div>
+        <div class="group-title"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span> 기본 인적 &amp; 자산 정보</div>
         <div class="grid2">
           <div>
             <label class="flabel">만 나이</label>
@@ -600,7 +912,7 @@
         <div class="divider"></div>
 
         <!-- 그룹 2: 주거 이동 & 금융 플랜 (한 줄씩 나눠서 표시) -->
-        <div class="group-title"><span>🏡</span> 주거 이동 &amp; 금융 플랜</div>
+        <div class="group-title"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-9"/></svg></span> 주거 이동 &amp; 금융 플랜</div>
         <div class="stack">
           <div>
             <label class="flabel">희망 이사 일정</label>
@@ -623,7 +935,7 @@
         <div class="divider"></div>
 
         <!-- 그룹 3: 이동 수단 & 주거 우선순위 -->
-        <div class="group-title"><span>🚗</span> 이동 수단 &amp; 주거 우선순위</div>
+        <div class="group-title"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 16.5 5 11a2 2 0 0 1 2-1.5h10a2 2 0 0 1 2 1.5l1.5 5.5"/><path d="M3 16.5h18v2a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1V18H6.5v.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2Z"/></svg></span> 이동 수단 &amp; 주거 우선순위</div>
         <div class="stack">
           <div>
             <label class="flabel">주요 통근 수단</label>
@@ -663,7 +975,7 @@
         <div class="divider"></div>
 
         <!-- 그룹 4: 정부 지원 우대사항 -->
-        <div class="group-title"><span>🎁</span> 정부 주거지원 정책 우대사항
+        <div class="group-title"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M4 13h16"/><path d="M12 9v11"/><path d="M12 9C9 9 7.5 7.5 7.5 6A2 2 0 0 1 9.5 4c1.8 0 2.5 2 2.5 5Z"/><path d="M12 9c3 0 4.5-1.5 4.5-3A2 2 0 0 0 14.5 4c-1.8 0-2.5 2-2.5 5Z"/></svg></span> 정부 주거지원 정책 우대사항
           <span style="font-weight:400;color:#64748b">(중복 선택 가능)</span>
         </div>
         <div class="check-grid">
@@ -677,20 +989,89 @@
           </label>
           <label class="check-card">
             <input type="checkbox" name="preferentialStatuses" value="SINGLE_PARENT" />
-            한부모가족
+            한부모가구
           </label>
           <label class="check-card">
             <input type="checkbox" name="preferentialStatuses" value="INDEPENDENT_YOUTH" />
             자립준비청년
           </label>
           <label class="check-card">
-            <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" />
-            신혼부부
+            <input type="checkbox" name="preferentialStatuses" value="DISABLED" />
+            장애인
           </label>
           <label class="check-card">
-            <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" />
-            다자녀가구
+            <input type="checkbox" name="preferentialStatuses" value="MULTICULTURAL" />
+            다문화가구
           </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="ELDERLY_DEPENDENT" />
+            노인부양가구
+          </label>
+          <label class="check-card">
+            <input type="checkbox" name="preferentialStatuses" value="ELDERLY_HOUSEHOLD" />
+            고령자가구
+          </label>
+          <div class="check-card" style="justify-content:space-between; gap:8px" title="지금은 값만 저장해두고, 추후 특정 대출상품 심사에 연동할 예정이에요.">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0">
+              <input type="checkbox" id="military-toggle" />
+              <span>군복무</span>
+            </label>
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#475569;flex:none">
+              <input type="number" name="militaryServiceMonths" id="military-input" placeholder="0" min="0" max="99" class="input" disabled style="width:80px; height:24px; padding:0 4px; font-size:12px; flex:none; text-align:center" />
+              개월
+            </span>
+          </div>
+        </div>
+
+        <!-- 신혼부부(기혼자포함) 우대사항 한 박스: 맞벌이부부는 신혼부부 바로 옆에, 1자녀/2자녀/다자녀가구는 자녀 수 선택
+             하나로 묶었다. 맞벌이부부/1자녀/2자녀/다자녀는 여전히 각각 독립적으로 체크/판별되는 별개 우대사항이고,
+             "신혼부부(기혼자포함)"를 체크해야 활성화되는 건 화면 UX일 뿐 백엔드 판별 로직과는 무관하다. -->
+        <div class="group-title" style="margin-top:18px;font-size:15px">
+          <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9Z"/></svg></span> 신혼부부(기혼자포함) 우대사항
+        </div>
+        <div class="sub-pref-group" data-sub-pref-group>
+          <div class="sub-pref-main-row">
+            <label class="check-card">
+              <input type="checkbox" name="preferentialStatuses" value="NEWLYWED" />
+              신혼부부(기혼자포함)
+            </label>
+            <label class="check-card gated-item">
+              <input type="checkbox" name="preferentialStatuses" value="DUAL_INCOME" data-gated disabled />
+              맞벌이부부
+            </label>
+          </div>
+          <div class="child-count-row gated-item">
+            <span class="child-count-label">자녀 수 <span style="font-weight:400;color:#94a3b8">(하나만 선택)</span></span>
+            <div class="child-count-options">
+              <label class="chip-option">
+                <input type="checkbox" name="preferentialStatuses" value="ONE_CHILD" data-gated data-child-count disabled />
+                <span>1자녀</span>
+              </label>
+              <label class="chip-option">
+                <input type="checkbox" name="preferentialStatuses" value="TWO_CHILDREN" data-gated data-child-count disabled />
+                <span>2자녀</span>
+              </label>
+              <label class="chip-option">
+                <input type="checkbox" name="preferentialStatuses" value="MULTI_CHILD" data-gated data-child-count disabled />
+                <span>다자녀가구</span>
+              </label>
+            </div>
+          </div>
+          <!-- 신생아 특례 버팀목대출 "전용" 우대사항 - 체크박스가 아니라 자녀 "수"다. 위 자녀 수 칩과 마찬가지로
+               "신혼부부(기혼자포함)"를 체크해야 입력 가능하다(gated-item). -->
+          <div class="child-count-row gated-item" style="margin-top:14px">
+            <span class="child-count-label">신생아 특례 버팀목대출 전용 <span style="font-weight:400;color:#94a3b8">(해당 대출에만 반영돼요)</span></span>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+              <label style="flex:1;min-width:220px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:#475569;font-weight:600;border:1px solid var(--brand-100);border-radius:10px;padding:10px 12px;background:var(--brand-50)">
+                <span>대출접수일 기준 2년 내 추가 출산한 자녀 수</span>
+                <input type="number" name="newbornAdditionalChildCount" data-gated disabled min="0" step="1" placeholder="0" class="input" style="width:40px; height:32px; padding:0 6px; font-size:13px; flex:none" />
+              </label>
+              <label style="flex:1;min-width:220px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:#475569;font-weight:600;border:1px solid var(--brand-100);border-radius:10px;padding:10px 12px;background:var(--brand-50)">
+                <span>대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수</span>
+                <input type="number" name="minorChildOver2YearsCount" data-gated disabled min="0" step="1" placeholder="0" class="input" style="width:40px; height:32px; padding:0 6px; font-size:13px; flex:none" />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -706,13 +1087,13 @@
           <button type="button" id="btn-prev-to-step1" class="back-btn hidden">← 이전</button>
 
           <!-- 1단계: 2단계 입력 없이 바로 결과 확인 -->
-          <button type="button" id="btn-skip-to-result" class="back-btn quick-result-btn">⚡ 3초 진단결과 먼저 보기</button>
+          <button type="button" id="btn-skip-to-result" class="back-btn quick-result-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>3초 진단결과 먼저 보기</button>
 
           <!-- 1단계: 다음 -->
           <button type="button" id="btn-next-to-step2" class="next-btn">상세 조건 입력하기 →</button>
 
           <!-- 2단계: 최종 진단 -->
-          <button type="submit" id="submit-btn" class="submit-btn hidden">🚀 정밀 진단 결과 보기</button>
+          <button type="submit" id="submit-btn" class="submit-btn hidden"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:inline-block;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg>정밀 진단 결과 보기</button>
         </div>
       </div>
     </form>
@@ -737,8 +1118,10 @@
     const quickBtn = document.getElementById("btn-skip-to-result");
     const nextBtn = document.getElementById("btn-next-to-step2");
     const prevBtn = document.getElementById("btn-prev-to-step1");
-    const SUBMIT_LABEL = submitBtn.textContent;
-    const QUICK_LABEL = quickBtn.textContent;
+    // innerHTML로 저장/복원 - 버튼 안에 아이콘 SVG가 있어서(textContent로는 아이콘이 날아간다) 로딩 문구를
+    // 보여준 뒤 되돌릴 때 아이콘까지 그대로 복원해야 한다.
+    const SUBMIT_LABEL = submitBtn.innerHTML;
+    const QUICK_LABEL = quickBtn.innerHTML;
     const pageStep1 = document.getElementById("page-step-1");
     const pageStep2 = document.getElementById("page-step-2");
     const indicator1 = document.getElementById("step-indicator-1");
@@ -792,7 +1175,8 @@
     function validateStep1() {
       if (!form.workLocation.value) return "직장 위치를 입력해주세요.";
       if (form.annualIncome.value === "" || Number(form.annualIncome.value) < 0) return "연소득을 입력해주세요.";
-      if (form.deposit.value === "" || Number(form.deposit.value) < 0) return "현재 보증금을 입력해주세요.";
+      if (form.deposit.value === "" || Number(form.deposit.value) < 0) return "(필수사항) 현재 사용가능한 보증금액을 입력해주세요.";
+      if (form.desiredDeposit.value === "" || Number(form.desiredDeposit.value) < 0) return "희망 보증금을 입력해주세요.";
       return null;
     }
 
@@ -808,6 +1192,44 @@
     quickBtn.addEventListener("click", () => {
       quickMode = true;
       form.requestSubmit();
+    });
+
+    // ---------- 군복무기간: 체크해야 개월 수 입력칸이 열리는 UX. militaryServiceMonths는 체크박스 자체가
+    // 아니라 개월 수(정수)라 이 체크박스는 다른 우대사항과 달리 preferentialStatuses에 값을 넣지 않고,
+    // 그냥 military-input을 활성화/비활성화하는 화면 토글일 뿐이다. 체크를 풀면 입력값도 지운다. ----------
+    const militaryToggle = document.getElementById("military-toggle");
+    const militaryInput = document.getElementById("military-input");
+    militaryToggle.addEventListener("change", () => {
+      militaryInput.disabled = !militaryToggle.checked;
+      if (!militaryToggle.checked) militaryInput.value = "";
+    });
+
+    // ---------- 부가 우대사항(맞벌이부부/1자녀/2자녀/다자녀가구): "신혼부부(기혼자포함)" 체크 시에만 활성화되는
+    // 화면 UX일 뿐, 백엔드 자격 판별 로직은 이 넷을 여전히 완전히 독립된 우대사항으로 본다. 1자녀/2자녀/다자녀가구는
+    // 서로 배타적으로 하나만 고를 수 있다. ----------
+    const newlywedBox = form.querySelector('input[name="preferentialStatuses"][value="NEWLYWED"]');
+    const subPrefGroup = document.querySelector("[data-sub-pref-group]");
+    const subPrefBoxes = subPrefGroup.querySelectorAll("[data-gated]"); // NEWLYWED 자신은 게이팅 대상이 아니라 제외
+
+    function syncSubPrefGroup() {
+      const enabled = newlywedBox.checked;
+      subPrefGroup.classList.toggle("enabled", enabled);
+      subPrefGroup.classList.toggle("disabled", !enabled);
+      subPrefBoxes.forEach((cb) => {
+        cb.disabled = !enabled;
+        if (!enabled) cb.checked = false;
+      });
+    }
+    newlywedBox.addEventListener("change", syncSubPrefGroup);
+    syncSubPrefGroup();
+
+    subPrefGroup.querySelectorAll("[data-child-count]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        if (!cb.checked) return;
+        subPrefGroup.querySelectorAll("[data-child-count]").forEach((other) => {
+          if (other !== cb) other.checked = false;
+        });
+      });
     });
 
     // ---------- 마이페이지에 저장된 프로필 자동 프리필 (로그인 사용자) ----------
@@ -840,18 +1262,24 @@
           document.getElementById("work-address-display").value = `${condition.workLocation} (마이페이지 저장 위치)`;
         }
       }
-      if (condition.desiredDeposit != null) {
-        form.desiredDeposit.value = condition.desiredDeposit;
-        if (form.deposit.value === "") form.deposit.value = condition.desiredDeposit;
-      }
+      if (condition.deposit != null) form.deposit.value = condition.deposit;
+      if (condition.desiredDeposit != null) form.desiredDeposit.value = condition.desiredDeposit;
       if (condition.desiredRent != null) form.desiredRent.value = condition.desiredRent;
       if (condition.netAsset != null) form.assets.value = condition.netAsset;
       if (condition.jobType) form.jobType.value = condition.jobType;
       if (condition.noHouseholder != null) form.noHouseholder.checked = condition.noHouseholder;
+      if (condition.militaryServiceMonths != null) {
+        form.militaryServiceMonths.value = condition.militaryServiceMonths;
+        militaryToggle.checked = true;
+        militaryInput.disabled = false;
+      }
+      if (condition.newbornAdditionalChildCount != null) form.newbornAdditionalChildCount.value = condition.newbornAdditionalChildCount;
+      if (condition.minorChildOver2YearsCount != null) form.minorChildOver2YearsCount.value = condition.minorChildOver2YearsCount;
       (condition.preferentialStatuses || []).forEach((value) => {
         const box = form.querySelector(`input[name="preferentialStatuses"][value="${value}"]`);
         if (box) box.checked = true;
       });
+      syncSubPrefGroup(); // 신혼부부 체크 여부에 맞춰 부가 우대사항 활성화 상태를 다시 맞춘다 (위 루프가 디스에이블된 input도 체크해뒀을 수 있어서)
 
       document.getElementById("prefill-msg").classList.remove("hidden");
     })();
@@ -936,14 +1364,6 @@
       if (hubMatchEl) hubMatchEl.classList.add("hidden");
     });
 
-    // 희망 보증금을 입력하면, 아직 비어있는 현재 보증금에 그 값을 기본값으로 채워준다
-    // (사용자가 현재 보증금을 직접 입력/수정했으면 덮어쓰지 않는다).
-    form.desiredDeposit.addEventListener("input", () => {
-      if (form.deposit.value === "") {
-        form.deposit.value = form.desiredDeposit.value;
-      }
-    });
-
     // ---------- 제출 ----------
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -969,7 +1389,7 @@
         annualIncome: Number(fd.get("annualIncome")),
         coupleAnnualIncome: fd.get("coupleAnnualIncome") ? Number(fd.get("coupleAnnualIncome")) : null,
         deposit: Number(fd.get("deposit")),
-        desiredDeposit: fd.get("desiredDeposit") ? Number(fd.get("desiredDeposit")) : null,
+        desiredDeposit: Number(fd.get("desiredDeposit")),
         desiredRent: fd.get("desiredRent") ? Number(fd.get("desiredRent")) : null,
         workLocation: fd.get("workLocation"),
         workAddress: fd.get("workAddress") || null,
@@ -979,6 +1399,9 @@
         age: fd.get("age") ? Number(fd.get("age")) : null,
         assets: fd.get("assets") ? Number(fd.get("assets")) : null,
         noHouseholder: form.noHouseholder.checked,
+        militaryServiceMonths: fd.get("militaryServiceMonths") ? Number(fd.get("militaryServiceMonths")) : null,
+        newbornAdditionalChildCount: fd.get("newbornAdditionalChildCount") ? Number(fd.get("newbornAdditionalChildCount")) : null,
+        minorChildOver2YearsCount: fd.get("minorChildOver2YearsCount") ? Number(fd.get("minorChildOver2YearsCount")) : null,
         jobType: fd.get("jobType") || null,
         preferentialStatuses: fd.getAll("preferentialStatuses"),
         moveSchedule: fd.get("moveSchedule"),
@@ -1003,8 +1426,8 @@
       } catch (err) {
         showError(err.message || "진단 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = false));
-        submitBtn.textContent = SUBMIT_LABEL;
-        quickBtn.textContent = QUICK_LABEL;
+        submitBtn.innerHTML = SUBMIT_LABEL;
+        quickBtn.innerHTML = QUICK_LABEL;
       }
     });
   </script>

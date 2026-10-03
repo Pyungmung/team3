@@ -16,7 +16,7 @@ function renderHeader(activeMenu = "") {
   const menus = [
     { key: "diagnosis", label: "AI 주거비 진단", href: computeHref("diagnosis/input-form.html") },
     { key: "community", label: "커뮤니티", href: computeHref("community/list.html") },
-    { key: "watchlist", label: "관심 매물", href: computeHref("watchlist/list.html") },
+    { key: "watchlist", label: "관심매물", href: computeHref("watchlist/list.html") },
     { key: "mypage", label: "마이페이지", href: computeHref("mypage/index.html") },
   ];
   // 관리자 계정에게만 "관리자 수정" 탭이 보인다 (표시용일 뿐, 실제 접근 제한은 백엔드 /api/admin/** 가 한다)

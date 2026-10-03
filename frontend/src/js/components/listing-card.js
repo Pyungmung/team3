@@ -6,6 +6,17 @@
  */
 (function () {
   const PHOTO_PLACEHOLDER = "PHOTO_PLACEHOLDER";
+  // 통근시간 옆에 보여줄 교통수단 라벨. 리포트 화면은 opts.transportLabel로 직접 넘겨주고(condition.transportType),
+  // 마이페이지 관심 매물처럼 그 값이 없으면 즐겨찾기에 같이 저장해둔 r._transport_type(diagnosis/report-listings.html의
+  // toggleFavorite 참고)으로 대신 찾는다 - 둘 다 없으면(옛 저장값 등) 교통수단 표시는 생략한다.
+  const TRANSPORT_TYPE_LABELS = { CAR: "자동차", WALK: "도보", PUBLIC: "대중교통" };
+  // 지도 핀 클릭(scrollToBuildingCard)이 목표 카드까지 전부 렌더링하면서(loadAll) 그 배치만큼 실거래가 +
+  // 통근 정확값을 한꺼번에 자동 조회해 과부하가 났다(2026-10-01, 예: 1000번째 매물 핀 클릭 시 999개 카드가
+  // 한 틱에 렌더링되며 두 API를 1000번 가까이씩 부름) - 추천 30위 밖은 둘 다 자동 조회를 끈다.
+  // 실거래가는 버튼을 눌러야 조회되고(renderReferencePlaceholder), 통근 정확값은 data-commute-listing-id
+  // 자체를 안 붙여서(renderBody) wireCommuteAutoLoad가 아예 건너뛴다 - 대신 추천 응답의 직선거리 추정치가
+  // 그대로 보인다(별도 조회 버튼은 없음, 추정치 자체가 이미 유효한 표시라 필요 없다고 판단).
+  const AUTO_REF_RANK_LIMIT = 30;
 
   function esc(value) {
     return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -54,8 +65,19 @@
   // 실거래가는 카드 맨 아래 "실거래 참고"에 이전 실거래 내역처럼 보조로만 보여준다. 더미 CSV 고정값이
   // 아니라 국토부 API를 실시간 조회하되, 펼쳐야 보이던 것과 달리(2026-10-01) 카드가 뜨자마자 바로
   // 보이도록 처음부터 펼쳐둔다(open) - wireReferenceAutoLoad가 렌더 직후 바로 채운다.
-  function renderReferencePlaceholder(listingId) {
+  // autoLoad=false(추천 30위 밖)면 펼쳐두지 않고, 눌러야 조회되는 버튼만 보여준다 - wireReferenceAutoLoad의
+  // 위임 클릭 핸들러가 data-ref-manual-btn을 받는다.
+  function renderReferencePlaceholder(listingId, autoLoad) {
     if (!listingId) return "";
+    if (!autoLoad) {
+      return `
+        <details class="listing-details" data-ref-manual-listing-id="${esc(listingId)}">
+          <summary>📊 실거래 참고 (국토부 · 이 건물의 최근 계약, 최근 2년)</summary>
+          <div class="body" data-ref-body>
+            <button type="button" class="underline text-gray-600" data-ref-manual-btn>실거래 조회하기</button>
+          </div>
+        </details>`;
+    }
     return `
       <details class="listing-details" open data-ref-listing-id="${esc(listingId)}">
         <summary>📊 실거래 참고 (국토부 · 이 건물의 최근 계약, 최근 2년)</summary>
@@ -95,11 +117,29 @@
    * 조회했다 - 무한스크롤이 10건씩 끊어 그리는 덕에 한 번에 나가는 호출이 10개로 묶여 있고,
    * fetch_by_signature(단독다가구 경로)에도 캐시가 생겨 자치구+유형+계약월이 겹치면 호출을
    * 나눠 써서 감당할 만하다).
+   * 단, 지도 핀 클릭(scrollToBuildingCard)이 목표 카드까지 loadAll()로 한 번에 다 렌더링하면
+   * 이 배치 단위 가정이 깨져서 30위 밖은 애초에 자동조회 placeholder 자체를 안 만든다
+   * (renderReferencePlaceholder의 autoLoad=false) - 그 카드들은 data-ref-manual-listing-id로만
+   * 그려지고, 아래 위임 클릭 핸들러가 "실거래 조회하기" 버튼을 눌렀을 때만 조회한다.
    * @param rootEl 카드들이 들어있는 컨테이너 (예: 목록 <ul>)
    */
   function wireReferenceAutoLoad(rootEl) {
     rootEl.querySelectorAll("details[data-ref-listing-id]:not([data-ref-wired])").forEach((el) => {
       el.dataset.refWired = "1";
+      _loadReference(el);
+    });
+    // 30위 밖(data-ref-manual-listing-id) "실거래 조회하기" 버튼 - 컨테이너당 한 번만 위임 연결한다
+    // (매 배치마다 wireReferenceAutoLoad가 다시 불려도 rootEl.dataset로 중복 연결을 막는다).
+    if (rootEl.dataset.refManualWired) return;
+    rootEl.dataset.refManualWired = "1";
+    rootEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-ref-manual-btn]");
+      if (!btn) return;
+      const el = btn.closest("details[data-ref-manual-listing-id]");
+      if (!el || el.dataset.refWired) return;
+      el.dataset.refWired = "1";
+      el.dataset.refListingId = el.dataset.refManualListingId;
+      el.querySelector("[data-ref-body]").innerHTML = `<div class="text-gray-400">불러오는 중…</div>`;
       _loadReference(el);
     });
   }
@@ -120,6 +160,8 @@
   /**
    * renderBody로 카드를 그린 뒤 호출한다(이미 연결한 요소는 data-commute-wired로 건너뛴다).
    * 직장 좌표가 없으면(마이페이지 관심 매물처럼 통근 기준이 따로 없는 화면) 아무 것도 하지 않는다.
+   * 추천 30위 밖 카드는 renderBody가 애초에 data-commute-listing-id를 안 붙여서 여기 셀렉터에
+   * 걸리지 않는다 - 그 카드들은 직선거리 추정치가 갱신 없이 그대로 보인다(AUTO_REF_RANK_LIMIT 참고).
    * @param rootEl 카드들이 들어있는 컨테이너 (예: 목록 <ul>)
    */
   function wireCommuteAutoLoad(rootEl, workLat, workLon, transportType) {
@@ -152,6 +194,9 @@
    */
   function renderBody(r, opts = {}) {
     const idx = opts.idx;
+    // 실거래가/통근 정확값 둘 다 같은 기준으로 자동조회를 제한한다(마이페이지는 idx가 없어 그대로 자동조회, 리포트는 30위까지만) -
+    // loadAll()이 목표 카드까지 한 번에 렌더링할 때 두 API를 수백~천 번씩 동시에 부르던 과부하 원인(2026-10-01).
+    const autoLoadRef = idx == null || idx < AUTO_REF_RANK_LIMIT;
     const rate = opts.conversionRate ?? r._conversion_rate;
     const isJeonse = r.lease_type === "전세";
     const hasPhoto = r.photo && r.photo !== PHOTO_PLACEHOLDER;
@@ -189,23 +234,42 @@
     // 관리자 화면에서 저장한 대출 조건을 통과한 대출 (AI 엔진이 매물마다 판별) - "[대출이름] 실질주거비"를 다른 비용 박스와 같은 모양으로 보여준다.
     // 2026-09-30: 대출별 실제 금리표(관리자 입력)가 있으면 그 금리를, 없으면 기준금리 API(보증금액 전환 이자기회비용과 같은 값)를
     // 대신 쓰고 우대금리만 반영한다 - is_temporary_rate가 어느 쪽인지 나타낸다.
+    // 2026-10-02: 청년전용 보증부월세대출은 보증금이 충분해 대출이 필요 없어도(loan_principal=0) 월세대출은
+    // 별개로 받을 수 있어서, 같은 대출을 "(월세 미대출 시)"/"(월세 대출 시)" 두 박스로 나눠서 보여준다
+    // (rent_loan_total_cap_manwon이 있으면 = 이 대출에 월세대출 구조가 설정돼 있다는 뜻). 월세 대출 시는
+    // 월세 중 대출로 충당되는 금액만큼 매달 현금으로 안 내지만 대출 잔액이 쌓여 만기에 갚아야 한다 - 빨간
+    // 경고를 박스 라벨 옆에 같이 보여준다.
     const loanBoxes = (r.eligible_loans || [])
-      .map(
-        (l) => `
+      .map((l) => {
+        const hasRentLoan = l.rent_loan_total_cap_manwon != null;
+        const depositBox = `
           <div class="cost-box loan" title="${
             l.is_temporary_rate
               ? "입력하신 조건이 이 대출의 자격 조건을 충족해요. 이 대출은 아직 실제 금리표가 없어 기준금리(보증금 전환율 API)에서 우대금리만 반영한 참고용이며, 실제 금리·한도·신청 가능 여부는 금융기관 심사로 확정돼요."
               : "입력하신 조건이 이 대출의 자격 조건을 충족해요. 관리자가 등록한 이 대출의 실제 금리표에서 우대금리를 반영한 값이며, 실제 한도·신청 가능 여부는 금융기관 심사로 확정돼요."
           }">
-            <div class="lbl">${esc(l.name)} 실질주거비</div>
+            <div class="lbl">${esc(l.name)} 실질주거비${hasRentLoan ? " (월세 미대출 시)" : ""}</div>
             <div class="val">${fmtNum(l.effective_cost)}만원/월</div>
             <div class="sub">${
               l.loan_principal > 0
                 ? `월세 + 관리비 + 부족분 ${fmtNum(l.loan_principal)}만 대출이자 ${fmtNum(l.monthly_interest)}만 (연 ${fmtRate(l.rate_percent)}%${l.is_temporary_rate ? ", 기준금리 적용" : ""})`
                 : "보유 보증금으로 충분해 대출이 필요 없어요 (이자 0원)"
             }</div>
-          </div>`
-      )
+          </div>`;
+        const rentLoanBox = !hasRentLoan || !(l.rent_loan_amount_manwon > 0) ? "" : `
+          <div class="cost-box loan" title="월세 중 대출로 충당되는 금액(${fmtNum(l.rent_loan_amount_manwon)}만원)은 매달 현금으로 내지 않지만, 대출 잔액으로 쌓여서 만기(2년 가정)에 갚아야 해요.">
+            <div class="lbl" style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
+              <span>${esc(l.name)} 실질주거비 (월세 대출 시)</span>
+              <span class="warn-badge">월세에 대한 대출금은 누적되어 만기시 상환해야함</span>
+            </div>
+            <div class="val">${fmtNum(l.rent_loan_effective_cost)}만원/월</div>
+            <div class="sub">월세 ${fmtNum(r.listing_monthly_rent)}만 중 ${fmtNum(l.rent_loan_amount_manwon)}만 대출로 충당 + 관리비${
+              l.loan_principal > 0 ? ` + 보증금대출이자 ${fmtNum(l.monthly_interest)}만` : ""
+            } + 월세대출이자 ${Number(l.rent_loan_monthly_interest || 0).toLocaleString()}원(24개월 환산)</div>
+            <div class="sub">2년간 총 이자 ${Number(l.rent_loan_total_interest || 0).toLocaleString()}원 예상 · 월세대출 최대 ${fmtNum(l.rent_loan_total_cap_manwon)}만원까지 가능해요</div>
+          </div>`;
+        return depositBox + rentLoanBox;
+      })
       .join("");
 
     const facts = [
@@ -221,19 +285,36 @@
 
     const nameHtml =
       idx == null
-        ? `<span class="font-bold ml-2">${esc(r.building_name)}</span>`
-        : `<button type="button" class="font-bold ml-2 building-name-link" data-idx="${idx}" title="지도에서 이 매물 위치 보기">${esc(r.building_name)}</button>`;
+        ? `<span class="font-bold">${esc(r.building_name)}</span>`
+        : `<button type="button" class="font-bold building-name-link" data-idx="${idx}" title="지도에서 이 매물 위치 보기">${esc(r.building_name)}</button>`;
+
+    // 전세형/월세형은 항상 보여주고(반전세형은 그 중 월세형의 특수한 경우라 따로 추가로 붙는다),
+    // 줄바꿈된 태그 줄(badge-row)에 모아서 매물명·통근시간과 겹치지 않게 분리한다.
+    const leaseTypeBadge = isJeonse
+      ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full lease-badge lease-jeonse">전세형</span>`
+      : `<span class="text-xs font-semibold px-2 py-0.5 rounded-full lease-badge lease-wolse">월세형</span>`;
+
+    const transportLabel = opts.transportLabel ?? TRANSPORT_TYPE_LABELS[r._transport_type] ?? null;
 
     return `
-      <div class="listing-photo">${hasPhoto ? `<img src="${esc(r.photo)}" alt="${esc(r.building_name)} 내부 사진" loading="lazy" />` : "📷 내부 사진 준비 중"}</div>
+      <div class="listing-photo${hasPhoto ? "" : " empty"}">${hasPhoto ? `<img src="${esc(r.photo)}" alt="${esc(r.building_name)} 내부 사진" loading="lazy" />` : ""}</div>
       <div class="flex items-start justify-between mb-2">
-        <div>
-          ${idx == null ? "" : `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:var(--brand-100);color:var(--brand-700)">#${idx + 1}</span>`}
-          ${nameHtml}
-          ${r.property_type ? `<span class="text-xs px-2 py-0.5 rounded-full ml-1 bg-gray-100 text-gray-600 whitespace-nowrap inline-block">${esc(r.property_type)}</span>` : ""}
-          ${r.is_semi_jeonse ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ml-1" style="background:#fef3c7;color:#92400e" title="보증금 ÷ 월세가 100 이상인 반전세형 매물이에요. 보증금이 부담되면 희망 보증금 조건으로 제외할 수 있어요.">반전세형</span>` : ""}
-          ${r.jeonse_loan_available === false ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ml-1" style="background:#fee2e2;color:#991b1b" title="등록자가 이 매물은 전세자금대출이 불가능하다고 표시했어요.">전세대출 불가</span>` : ""}
-          <span class="text-xs text-gray-400 ml-1" data-commute-listing-id="${esc(r.listing_id)}" title="${esc(r.commute_source || "직선거리 추정")}">통근 약 ${r.commute_minutes}분</span>
+        <div class="min-w-0">
+          <div class="flex items-center flex-wrap gap-1">
+            ${idx == null ? "" : `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:var(--brand-100);color:var(--brand-700)">#${idx + 1}</span>`}
+            ${nameHtml}
+          </div>
+          <div class="badge-row">
+            ${r.property_type ? `<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap inline-block">${esc(r.property_type)}</span>` : ""}
+            ${leaseTypeBadge}
+            ${r.is_semi_jeonse ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:#fef3c7;color:#92400e" title="보증금 ÷ 월세가 100 이상인 반전세형 매물이에요. 보증금이 부담되면 희망 보증금 조건으로 제외할 수 있어요.">반전세형</span>` : ""}
+            ${r.jeonse_loan_available === false ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:#fee2e2;color:#991b1b" title="등록자가 이 매물은 전세자금대출이 불가능하다고 표시했어요.">전세대출 불가</span>` : ""}
+          </div>
+          <div class="commute-time">
+            <span aria-hidden="true">🚇</span>
+            <span${autoLoadRef ? ` data-commute-listing-id="${esc(r.listing_id)}"` : ""} title="${esc(r.commute_source || "직선거리 추정")}">통근 약 ${r.commute_minutes}분</span>
+            ${transportLabel ? `<span class="transport-tag">${esc(transportLabel)}</span>` : ""}
+          </div>
         </div>
         <div class="text-right">${headerRight}</div>
       </div>
@@ -248,7 +329,7 @@
       ${loanBoxes}
       ${r.description ? `<details class="listing-details"><summary>📝 상세 설명</summary><div class="body">${esc(r.description)}</div></details>` : ""}
       ${renderBroker(r.broker)}
-      ${renderReferencePlaceholder(r.listing_id)}`;
+      ${renderReferencePlaceholder(r.listing_id, autoLoadRef)}`;
   }
 
   window.CustomHouseListingCard = { PHOTO_PLACEHOLDER, esc, fmtMoney, fmtNum, fmtRate, renderBody, wireReferenceAutoLoad, wireCommuteAutoLoad };
