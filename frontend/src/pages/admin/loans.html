@@ -20,6 +20,10 @@
     .adm-field span.lbl { display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 5px; }
     .adm-field input[type=number], .adm-field input[type=url], .adm-field input[type=text] { width: 100%; font-size: 14px; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 11px; background: #fff; }
     .adm-field input[type=number]:focus, .adm-field input[type=url]:focus, .adm-field input[type=text]:focus { outline: 2px solid #93c5fd; border-color: #3b82f6; }
+    /* 관리자가 입력한 값은 볼드 + 밝은 파랑으로 눈에 띄게 (placeholder는 그대로 연하게) */
+    .adm-field input[type=number], .adm-field input[type=url], .adm-field input[type=text],
+    .adm-pref-table input[type=number], .adm-pref-override input[type=number], .adm-rate-table input[type=number] { font-weight: 800 !important; color: #2563eb !important; }
+    .adm-field input::placeholder, .adm-pref-override input::placeholder, .adm-pref-table input::placeholder, .adm-rate-table input::placeholder { font-weight: 400; color: #94a3b8; }
     .adm-range { display: flex; align-items: center; gap: 8px; }
     .adm-range em { font-style: normal; color: #94a3b8; }
     .adm-unit { font-size: 11px; color: #94a3b8; margin-top: 3px; }
@@ -302,9 +306,9 @@
           <label>매물 보증금 제한 (이하)<input type="number" min="0" step="1" data-pref-override-deposit="${esc(key)}" value="${p.overrideMaxListingDeposit ?? ""}" placeholder="공통값 그대로" /></label>
           <label>최대 대출금액<input type="number" min="0" step="1" data-pref-override-loan-amount="${esc(key)}" value="${p.overrideMaxLoanAmount ?? ""}" placeholder="공통값 그대로" /></label>
           <label>최대 대출금 비율한도 (%)<input type="number" min="0" max="100" step="0.1" data-pref-override-loan-ratio="${esc(key)}" value="${p.overrideMaxLoanRatioPercent ?? ""}" placeholder="공통값 그대로" /></label>
+          <label>전용면적 (이하, ㎡)<input type="number" min="0" step="0.01" data-pref-override-area="${esc(key)}" value="${p.overrideMaxExclusiveArea ?? ""}" placeholder="공통값 그대로" /></label>
           <label>연소득 (이하) - 개인<input type="number" min="0" step="1" data-pref-override-income-single="${esc(key)}" value="${p.overrideMaxIncomeSingle ?? ""}" placeholder="공통값 그대로" /></label>
           <label>연소득 (이하) - 부부합산<input type="number" min="0" step="1" data-pref-override-income-couple="${esc(key)}" value="${p.overrideMaxIncomeCouple ?? ""}" placeholder="공통값 그대로" /></label>
-          <label>전용면적 (이하, ㎡)<input type="number" min="0" step="0.01" data-pref-override-area="${esc(key)}" value="${p.overrideMaxExclusiveArea ?? ""}" placeholder="공통값 그대로" /></label>
         </div>`;
       // NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS는 체크 여부가 아니라 "자녀 수"로 판별되고,
       // discount는 1명당 차감율이다(최종 차감 = discount x 인원수, 둘을 sum() 후 다른 우대사항과 max() 경쟁
