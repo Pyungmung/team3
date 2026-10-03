@@ -64,11 +64,13 @@ public class HousingCondition extends BaseTimeEntity {
 
     private Double workLon;          // 위 workAddress의 정확한 경도 (선택, workLat과 함께 옴)
 
+    private Integer deposit;         // 현재 사용가능 보증금 (만원) - 지금 수중에 있는 현금 기준
+
     private Integer desiredDeposit;  // 희망 보증금 (만원)
 
     private Integer desiredRent;     // 희망 월세 (만원)
 
-    // --- 자산 구성 (만원). 총자산액 = (부동산+자동차+금융자산+일반자산) - (금융부채+일반부채).
+    // --- 자산 구성 (만원). 총자산액 = (부동산+자동차+금융자산) - 금융부채.
     // 값 어긋남을 막기 위해 합계를 별도 컬럼으로 저장하지 않고 getNetAsset()으로 매번 계산한다. ---
     @Builder.Default
     private Integer realEstateAsset = 0; // 부동산
@@ -80,13 +82,7 @@ public class HousingCondition extends BaseTimeEntity {
     private Integer financialAsset = 0; // 금융자산
 
     @Builder.Default
-    private Integer otherAsset = 0; // 일반자산
-
-    @Builder.Default
     private Integer financialDebt = 0; // 금융부채
-
-    @Builder.Default
-    private Integer otherDebt = 0; // 일반부채
 
     @Enumerated(EnumType.STRING)
     private JobType jobType; // 직업종류 (공무원/중소기업/중견기업/대기업)
@@ -128,8 +124,8 @@ public class HousingCondition extends BaseTimeEntity {
 
     /** 총자산액 (만원). null인 구성요소는 0으로 취급한다. */
     public int getNetAsset() {
-        int assets = nz(realEstateAsset) + nz(carAsset) + nz(financialAsset) + nz(otherAsset);
-        int debts = nz(financialDebt) + nz(otherDebt);
+        int assets = nz(realEstateAsset) + nz(carAsset) + nz(financialAsset);
+        int debts = nz(financialDebt);
         return assets - debts;
     }
 

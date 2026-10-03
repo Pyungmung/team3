@@ -40,14 +40,13 @@ public class MypageService {
         condition.setWorkAddress(request.workAddress());
         condition.setWorkLat(request.workLat());
         condition.setWorkLon(request.workLon());
+        condition.setDeposit(request.deposit());
         condition.setDesiredDeposit(request.desiredDeposit());
         condition.setDesiredRent(request.desiredRent());
         condition.setRealEstateAsset(request.realEstateAsset());
         condition.setCarAsset(request.carAsset());
         condition.setFinancialAsset(request.financialAsset());
-        condition.setOtherAsset(request.otherAsset());
         condition.setFinancialDebt(request.financialDebt());
-        condition.setOtherDebt(request.otherDebt());
         condition.setJobType(request.jobType());
         condition.setNoHouseholder(request.noHouseholder());
         condition.setMilitaryServiceMonths(request.militaryServiceMonths());
