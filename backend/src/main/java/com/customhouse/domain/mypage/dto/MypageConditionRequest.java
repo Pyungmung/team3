@@ -68,7 +68,7 @@ public record MypageConditionRequest(
         Integer militaryServiceMonths, // 개월 단위, 선택. 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) -
         // 추후 특정 대출상품에 연동 예정(12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식)
 
-        @Min(value = 0, message = "대출접수일 기준 2년 내 추가 출산한 자녀 수는 0 이상이어야 합니다.")
+        @Min(value = 0, message = "대출접수일 기준 2년 내 출산한 자녀 수는 0 이상이어야 합니다.")
         Integer newbornAdditionalChildCount, // 선택. 신생아 특례 버팀목대출 전용 우대사항 판별용
 
         @Min(value = 0, message = "대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수는 0 이상이어야 합니다.")

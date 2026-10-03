@@ -6,13 +6,33 @@
 .cost-box .val { font-size: 16px; font-weight: 800; color: #0f172a; line-height: 1.3; }
 .cost-box.conv .val { color: #1d4ed8; }
 .cost-box .sub { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+.cost-box .sub .sub-plus { display: inline-block; width: 12px; }
+.cost-box .sub .sub-note { padding-left: 12px; }
+.cost-box .sub .sub-dark { color: #0f172a; }
 
 /* 조건을 충족한 대출의 "[대출이름] 실질주거비" - 기존 두 비용 박스와 같은 자리에 이어서 나온다 (같은 .cost-boxes 그리드) */
 .cost-box.loan { background: #ecfdf5; border-color: #a7f3d0; margin-top: 8px; }
 .cost-box.loan .val { color: #047857; }
 
+/* 대출 박스 안 "금리·한도 근거 보기" 펼침 - 기본금리, 우대사항별 차감, 한도 재반영을 한 줄씩 */
+/* 대출 박스(연초록 배경)와 구분되도록 흰 배경 + 연한 테두리의 안쪽 상자로 보여준다 */
+.loan-why { margin-top: 8px; background: #fff; border: 1px solid #bbf7d0; border-radius: 8px; padding: 6px 9px 8px; }
+.loan-why summary { cursor: pointer; font-size: 11px; font-weight: 700; color: #047857; }
+/* 근거 영역 글씨는 일단 전부 진한색(#0f172a) - 회색으로 연하게 할 범위는 하나씩 정해서 아래에 추가한다 */
+.loan-why .why-title { font-size: 11px; font-weight: 700; color: #0f172a; margin: 8px 0 3px; }
+.loan-why .why-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #0f172a; line-height: 1.4; padding: 1px 0; }
+.loan-why .why-row span { font-weight: 400; color: #0f172a; }
+.loan-why .why-row b { text-align: right; white-space: nowrap; font-weight: 700; color: #0f172a; }
+.loan-why .why-row em { font-style: normal; font-size: 11px; color: #0f172a; }
+.loan-why .why-row.total { border-top: 1px solid #a7f3d0; margin-top: 3px; padding-top: 3px; }
+.loan-why .why-row.total span, .loan-why .why-row.total b { font-weight: 700; }
+.loan-why .why-note { font-size: 11px; line-height: 1.4; color: #0f172a; margin: 2px 0; }
+/* 연하게(회색) 보여줄 범위 - 사용자가 지정한 줄만 soft를 붙인다 */
+.loan-why .why-soft, .loan-why .soft, .loan-why .soft span, .loan-why .soft b { color: #94a3b8; font-weight: 400; }
+
 /* "월세 대출 시" 박스의 경고 문구 - 대출 잔액이 쌓여서 만기에 갚아야 한다는 걸 라벨 옆에 눈에 띄게 표시 */
-.warn-badge { font-size: 10px; font-weight: 800; color: #dc2626; white-space: nowrap; }
+.warn-badge { font-size: 11px; line-height: 1.4; font-weight: 800; color: #dc2626; margin: 1px 0 0; }
+.cost-box .cap-line { font-size: 11px; line-height: 1.4; color: #0f172a; margin: 0 0 2px; }
 
 /* 매물 사진 자리: 사진이 있으면 16:10 비율, 사진 연결 전(PHOTO_PLACEHOLDER)에는 글자 높이 정도의 얇은 회색 바 */
 .listing-photo {

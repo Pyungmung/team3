@@ -85,3 +85,88 @@ if __name__ == "__main__":
                 raise
     print("failures:", failed)
     sys.exit(1 if failed else 0)
+
+
+# 2026-10-03: 월세 매물의 예금 전환 이자기회비용은 전환율이 아니라 예금은행 정기예금(1년) 금리를 쓴다
+DEPOSIT_RATE = 3.39
+
+
+def test_월세_매물은_예금_전환_이자기회비용에_정기예금_금리를_쓴다():
+    r = listing_recommender._to_result(
+        listing(lease_type="월세", deposit=1000, monthly_rent=50, maintenance_fee=5), 30, "카카오 API", RATE, 0, DEPOSIT_RATE)
+    assert r["deposit_opportunity_rate_percent"] == DEPOSIT_RATE
+    assert r["deposit_opportunity_cost"] == round(1000 * DEPOSIT_RATE / 100 / 12, 1)
+    assert r["deposit_converted_cost"] == round(50 + 5 + r["deposit_opportunity_cost"], 1)
+
+
+def test_전세_매물은_정기예금_금리를_넘겨도_전환율을_그대로_쓴다():
+    r = listing_recommender._to_result(
+        listing(lease_type="전세", deposit=20000), 30, "카카오 API", RATE, 10000, DEPOSIT_RATE)
+    assert r["deposit_opportunity_rate_percent"] == RATE
+    assert r["deposit_opportunity_cost"] == round(20000 * RATE / 100 / 12, 1)
+    assert r["loan_interest"] == round(10000 * RATE / 100 / 12)  # 부족분 대출이자도 전환율
+
+
+def test_정기예금_금리를_안_넘기면_월세도_기존_전환율을_쓴다():
+    r = result(current_deposit=0, lease_type="월세", deposit=1000, monthly_rent=50)
+    assert r["deposit_opportunity_rate_percent"] == RATE
+
+
+def test_순위_기준값도_월세만_정기예금_금리를_쓴다():
+    wolse = listing(lease_type="월세", deposit=1000, monthly_rent=50, maintenance_fee=5)
+    jeonse = listing(lease_type="전세", deposit=20000, maintenance_fee=5)
+    assert listing_recommender._rank_cost(wolse, RATE, DEPOSIT_RATE) == round(55 + 1000 * DEPOSIT_RATE / 100 / 12, 1)
+    assert listing_recommender._rank_cost(jeonse, RATE, DEPOSIT_RATE) == round(5 + 20000 * RATE / 100 / 12, 1)
+
+
+# --- 정기예금(1년) 금리 조회 모듈 (R-ONE 응답은 가짜로 대체) ---
+from app.services import deposit_interest_rate  # noqa: E402
+
+
+def _reset_rate_module(monkeypatch, tmp_path):
+    monkeypatch.setattr(deposit_interest_rate, "_memory", None)
+    monkeypatch.setattr(deposit_interest_rate, "_last_fail_at", 0.0)
+    monkeypatch.setattr(deposit_interest_rate, "CACHE_FILE", tmp_path / "deposit_interest_rate.json")
+    monkeypatch.setattr(deposit_interest_rate.settings, "reb_api_key", "TESTKEY", raising=False)
+
+
+class _FakeResp:
+    def __init__(self, body):
+        self._body = body
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._body
+
+
+def _rows(*pairs):
+    return {"SttsApiTblData": [{"head": [{"RESULT": {"CODE": "INFO-000"}}]}, {"row": [{"CLS_NM": n, "DTA_VAL": v} for n, v in pairs]}]}
+
+
+def test_가장_최근_월의_정기예금_1년_행만_고른다(monkeypatch, tmp_path):
+    _reset_rate_module(monkeypatch, tmp_path)
+    no_data = {"RESULT": {"CODE": "INFO-200", "MESSAGE": "no data"}}
+    calls = []
+
+    def fake_get(url, params, timeout):
+        calls.append(params["WRTTIME_IDTFR_ID"])
+        return _FakeResp(no_data if len(calls) == 1 else _rows(("정기예금", 3.14), ("정기예금(1년)", 3.39), ("저축성수신", 3.21)))
+
+    monkeypatch.setattr(deposit_interest_rate.requests, "get", fake_get)
+    r = deposit_interest_rate.get_one_year_deposit_rate()
+    assert r.rate_percent == 3.39 and r.is_fallback is False
+    assert len(calls) == 2 and "정기예금(1년)" in r.label
+
+
+def test_조회가_실패하면_기본값으로_대체하고_예외를_던지지_않는다(monkeypatch, tmp_path):
+    _reset_rate_module(monkeypatch, tmp_path)
+
+    def boom(url, params, timeout):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(deposit_interest_rate.requests, "get", boom)
+    r = deposit_interest_rate.get_one_year_deposit_rate()
+    assert r.is_fallback is True
+    assert r.rate_percent == deposit_interest_rate.DEFAULT_RATE_PERCENT
