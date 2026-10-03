@@ -4,11 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>맞집 | 관심 매물</title>
+  <title>맞집 | 관심매물</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
-  <link rel="stylesheet" href="../../css/listing-card.css?v=20260928b" />
+  <link rel="stylesheet" href="../../css/listing-card.css?v=20261002a" />
 
   <style>
     * {
@@ -28,9 +28,9 @@
     }
 
     .hero-inner {
-      width: min(1180px, calc(100% - 40px));
-      margin: 0 auto;
-      padding: 72px 0 72px;
+      max-width: 1180px;
+      margin: auto;
+      padding: 72px 24px 72px;
       position: relative;
       z-index: 2;
     }
@@ -73,7 +73,7 @@
       display: grid;
       grid-template-columns: 250px minmax(0, 1fr);
       gap: 28px;
-      padding: 38px 0 80px;
+      padding: 32px 0 80px;
     }
 
     .sidebar {
@@ -91,19 +91,6 @@
       padding: 10px 8px 21px;
       border-bottom: 1px solid #edf0f5;
       margin-bottom: 13px;
-    }
-
-    .sidebar-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #eef2f8;
-      color: #16233a;
-      font-size: 21px;
-      margin-bottom: 14px;
     }
 
     .sidebar-title {
@@ -205,71 +192,6 @@
       font-size: 12px;
       line-height: 1.6;
       margin-top: 4px;
-    }
-
-    /* FORM */
-    .form-label {
-      display: block;
-      font-size: 12px;
-      font-weight: 750;
-      color: #5f6978;
-      margin: 0 0 7px 2px;
-    }
-
-    .field {
-      width: 100%;
-      border: 1px solid #dfe5ed;
-      background: #fff;
-      border-radius: 11px;
-      padding: 12px 13px;
-      font-size: 13px;
-      color: #202a3a;
-      outline: none;
-      transition: .18s;
-    }
-
-    .field::placeholder {
-      color: #b0b7c2;
-    }
-
-    .field:focus {
-      border-color: #788ba9;
-      box-shadow: 0 0 0 3px rgba(52, 75, 111, .07);
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    .register-button {
-      width: 100%;
-      border: 0;
-      background: var(--brand-600);
-      color: white;
-      border-radius: 11px;
-      padding: 13px 20px;
-      font-weight: 800;
-      font-size: 13px;
-      cursor: pointer;
-      transition: .18s;
-      margin-top: 4px;
-    }
-
-    .register-button:hover {
-      background: var(--brand-500);
-      transform: translateY(-1px);
-    }
-
-    .register-button:disabled {
-      opacity: .55;
-      cursor: not-allowed;
-      transform: none;
     }
 
     /* PROPERTY LIST */
@@ -556,7 +478,7 @@
       .watch-shell {
         display: block;
         width: min(100% - 28px, 700px);
-        padding-top: 22px;
+        padding-top: 20px;
       }
 
       .sidebar {
@@ -582,13 +504,7 @@
       }
 
       .hero-inner {
-        width: min(100% - 30px, 700px);
-        padding: 51px 0 54px;
-      }
-
-      .form-grid {
-        grid-template-columns: 1fr;
-        gap: 0;
+        padding: 48px 20px;
       }
 
       .panel {
@@ -676,8 +592,7 @@
       <!-- LEFT SIDEBAR -->
       <aside class="sidebar">
         <div class="sidebar-head">
-          <div class="sidebar-icon">♡</div>
-          <div class="sidebar-title">관심 매물</div>
+          <div class="sidebar-title">관심매물</div>
 
           <div class="sidebar-desc">
             저장한 매물과 가격 변동을<br />
@@ -687,15 +602,11 @@
 
         <nav class="side-nav">
           <button type="button" class="side-btn active" onclick="scrollToArea('list-area', this)">
-            ♡ 내가 등록한 매물
-          </button>
-
-          <button type="button" class="side-btn" onclick="scrollToArea('register-area', this)">
-            ＋ 관심 매물 등록
+            내가 등록한 매물
           </button>
 
           <button type="button" class="side-btn" onclick="scrollToArea('notification-area', this)">
-            ◉ 알림함
+            알림함
           </button>
         </nav>
       </aside>
@@ -705,15 +616,14 @@
 
         <!-- 모바일 메뉴 -->
         <div class="mobile-tabs">
-          <button type="button" class="mobile-tab" onclick="scrollToArea('list-area')">♡ 관심 매물</button>
-          <button type="button" class="mobile-tab" onclick="scrollToArea('register-area')">＋ 매물 등록</button>
-          <button type="button" class="mobile-tab" onclick="scrollToArea('notification-area')">◉ 알림함</button>
+          <button type="button" class="mobile-tab" onclick="scrollToArea('list-area')">관심매물</button>
+          <button type="button" class="mobile-tab" onclick="scrollToArea('notification-area')">알림함</button>
         </div>
 
         <!-- 제목 -->
         <div class="content-title-row">
           <div>
-            <h2 class="content-title">관심 매물</h2>
+            <h2 class="content-title">관심매물</h2>
             <p class="content-subtitle">관심 있는 매물을 등록하고 변화를 확인해보세요.</p>
           </div>
         </div>
@@ -737,62 +647,7 @@
           <ul id="watchlist-items"></ul>
         </section>
 
-        <!-- 2. 새 관심 매물 등록 -->
-        <section id="register-area" class="panel">
-          <div class="panel-head">
-            <div>
-              <div class="panel-title">새 관심 매물 등록</div>
-              <div class="panel-description">
-                아직 실제 매물 연동 전이라 직접 등록한 정보로
-                시세 변동 알림을 테스트할 수 있어요.
-              </div>
-            </div>
-          </div>
-
-          <form id="add-form">
-
-            <div class="form-group">
-              <label class="form-label">매물 주소</label>
-              <input type="text" name="address" required placeholder="예: 서울시 관악구 신림동 123-45" class="field" />
-            </div>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label class="form-label">지역</label>
-                <input type="text" name="region" required placeholder="예: 관악구" class="field" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">관리비</label>
-                <input type="number" name="maintenanceFee" min="0" placeholder="만원" class="field" />
-              </div>
-            </div>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label class="form-label">보증금</label>
-                <input type="number" name="deposit" required min="0" placeholder="만원" class="field" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">월세</label>
-                <input type="number" name="monthlyRent" required min="0" placeholder="만원" class="field" />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">출처 URL</label>
-              <input type="text" name="sourceUrl" placeholder="선택 사항 (https://...)" class="field" />
-            </div>
-
-            <p id="add-msg" class="text-xs text-gray-400 mb-3"></p>
-
-            <button type="submit" class="register-button">관심 매물로 등록</button>
-
-          </form>
-        </section>
-
-        <!-- 3. 알림함 -->
+        <!-- 2. 알림함 -->
         <section id="notification-area" class="panel">
           <div class="panel-head">
             <div>
@@ -822,7 +677,7 @@
 
   <script src="../../js/components/header.js?v=20260921a"></script>
   <script src="../../js/components/footer.js?v=20260928c"></script>
-  <script src="../../js/components/listing-card.js?v=20261001a"></script>
+  <script src="../../js/components/listing-card.js?v=20261002b"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/watchlist.js?v=20261001b"></script>
 
@@ -871,39 +726,6 @@
 
     async function init() {
       await Promise.all([loadWatchlist(), loadNotifications()]);
-
-      document.getElementById("add-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const msg = document.getElementById("add-msg");
-        const submit = e.target.querySelector("button[type=submit]");
-        msg.classList.remove("text-red-500", "text-green-600");
-        msg.textContent = "등록 중...";
-        submit.disabled = true;
-
-        const fd = new FormData(e.target);
-        const property = {
-          address: fd.get("address"),
-          region: fd.get("region"),
-          deposit: Number(fd.get("deposit")),
-          monthlyRent: Number(fd.get("monthlyRent")),
-          maintenanceFee: fd.get("maintenanceFee") ? Number(fd.get("maintenanceFee")) : null,
-          sourceUrl: fd.get("sourceUrl") || null,
-        };
-
-        try {
-          await CustomHouseWatchlistApi.addToWatchlist(property);
-          msg.classList.add("text-green-600");
-          msg.textContent = "등록되었습니다!";
-          e.target.reset();
-          await loadWatchlist();
-        } catch (err) {
-          msg.classList.add("text-red-500");
-          msg.textContent = err.message;
-        } finally {
-          submit.disabled = false;
-        }
-      });
     }
 
     async function loadWatchlist() {

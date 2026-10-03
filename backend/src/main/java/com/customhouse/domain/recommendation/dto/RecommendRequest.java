@@ -47,6 +47,10 @@ public record RecommendRequest(
 
         Boolean noHouseholder, // 선택, 무주택 세대주 여부 (버팀목 대출 자격 판별용)
 
+        @Min(value = 0, message = "병역이행기간은 0 이상이어야 합니다.")
+        Integer militaryServiceMonths, // 개월 단위, 선택. 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) -
+        // 추후 특정 대출상품에 연동 예정(12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식)
+
         @Min(value = 0, message = "자산은 0 이상이어야 합니다.")
         Integer assets, // 만원 단위, 선택. 정책의 자산(순자산) 기준 판별용
 
@@ -54,6 +58,12 @@ public record RecommendRequest(
 
         List<String> preferentialStatuses, // 선택. BASIC_LIVELIHOOD/NEAR_POVERTY/SINGLE_PARENT/
         // INDEPENDENT_YOUTH/NEWLYWED/MULTI_CHILD 중 다중 선택 - 일부 정책의 우대사항 자격 판별용
+
+        @Min(value = 0, message = "대출접수일 기준 2년 내 추가 출산한 자녀 수는 0 이상이어야 합니다.")
+        Integer newbornAdditionalChildCount, // 선택. 신생아 특례 버팀목대출 전용 우대사항(NEWBORN_ADDITIONAL_CHILD) 판별용
+
+        @Min(value = 0, message = "대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수는 0 이상이어야 합니다.")
+        Integer minorChildOver2YearsCount, // 선택. 신생아 특례 버팀목대출 전용 우대사항(MINOR_CHILD_OVER_2YEARS) 판별용
 
         String moveSchedule, // 선택. IMMEDIATE/WITHIN_3M/WITHIN_6M/EXPLORING - 아직 로직에 안 쓰고 AI 엔진으로 전달만 함 (추후 데이터 활용)
 

@@ -40,16 +40,18 @@ public class MypageService {
         condition.setWorkAddress(request.workAddress());
         condition.setWorkLat(request.workLat());
         condition.setWorkLon(request.workLon());
+        condition.setDeposit(request.deposit());
         condition.setDesiredDeposit(request.desiredDeposit());
         condition.setDesiredRent(request.desiredRent());
         condition.setRealEstateAsset(request.realEstateAsset());
         condition.setCarAsset(request.carAsset());
         condition.setFinancialAsset(request.financialAsset());
-        condition.setOtherAsset(request.otherAsset());
         condition.setFinancialDebt(request.financialDebt());
-        condition.setOtherDebt(request.otherDebt());
         condition.setJobType(request.jobType());
         condition.setNoHouseholder(request.noHouseholder());
+        condition.setMilitaryServiceMonths(request.militaryServiceMonths());
+        condition.setNewbornAdditionalChildCount(request.newbornAdditionalChildCount());
+        condition.setMinorChildOver2YearsCount(request.minorChildOver2YearsCount());
 
         // 먼저 비우고 flush로 삭제(orphanRemoval)를 physical하게 반영한 뒤에 새로 채운다. 그래야
         // "체크한 항목이 이전과 똑같은" 흔한 경우(폼은 매번 현재 선택 전체를 보내므로)에도 삭제 전

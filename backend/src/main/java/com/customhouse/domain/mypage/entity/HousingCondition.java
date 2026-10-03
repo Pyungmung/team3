@@ -64,11 +64,13 @@ public class HousingCondition extends BaseTimeEntity {
 
     private Double workLon;          // 위 workAddress의 정확한 경도 (선택, workLat과 함께 옴)
 
+    private Integer deposit;         // 현재 사용가능 보증금 (만원) - 지금 수중에 있는 현금 기준
+
     private Integer desiredDeposit;  // 희망 보증금 (만원)
 
     private Integer desiredRent;     // 희망 월세 (만원)
 
-    // --- 자산 구성 (만원). 총자산액 = (부동산+자동차+금융자산+일반자산) - (금융부채+일반부채).
+    // --- 자산 구성 (만원). 총자산액 = (부동산+자동차+금융자산) - 금융부채.
     // 값 어긋남을 막기 위해 합계를 별도 컬럼으로 저장하지 않고 getNetAsset()으로 매번 계산한다. ---
     @Builder.Default
     private Integer realEstateAsset = 0; // 부동산
@@ -80,18 +82,22 @@ public class HousingCondition extends BaseTimeEntity {
     private Integer financialAsset = 0; // 금융자산
 
     @Builder.Default
-    private Integer otherAsset = 0; // 일반자산
-
-    @Builder.Default
     private Integer financialDebt = 0; // 금융부채
-
-    @Builder.Default
-    private Integer otherDebt = 0; // 일반부채
 
     @Enumerated(EnumType.STRING)
     private JobType jobType; // 직업종류 (공무원/중소기업/중견기업/대기업)
 
     private Boolean noHouseholder; // 무주택여부
+
+    // 병역이행기간(개월). 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) - 추후 특정 대출상품에
+    // 연동 예정(12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식).
+    private Integer militaryServiceMonths;
+
+    // 2026-10-02: 신생아 특례 버팀목대출 "전용" 우대사항(NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS)
+    // 판별용 자녀 수. 체크박스(PreferentialStatus)가 아니라 숫자라서 별도 컬럼으로 둔다.
+    private Integer newbornAdditionalChildCount; // 대출접수일 기준 2년 내 추가 출산한 자녀 수
+
+    private Integer minorChildOver2YearsCount; // 대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수
 
     // 우대사항(다중 선택). 예전엔 @ElementCollection(값 컬렉션)이라 자체 기본키가 없는 테이블로 생성됐는데,
     // Aiven 등 관리형 클라우드 MySQL은 `sql_require_primary_key`가 켜져 있어 그런 테이블 생성 자체가
@@ -118,8 +124,8 @@ public class HousingCondition extends BaseTimeEntity {
 
     /** 총자산액 (만원). null인 구성요소는 0으로 취급한다. */
     public int getNetAsset() {
-        int assets = nz(realEstateAsset) + nz(carAsset) + nz(financialAsset) + nz(otherAsset);
-        int debts = nz(financialDebt) + nz(otherDebt);
+        int assets = nz(realEstateAsset) + nz(carAsset) + nz(financialAsset);
+        int debts = nz(financialDebt);
         return assets - debts;
     }
 

@@ -30,6 +30,9 @@ class LoanPreferenceSetting(BaseModel):
     override_max_income_couple: int | None = Field(None, alias="overrideMaxIncomeCouple")
     override_max_loan_amount: int | None = Field(None, alias="overrideMaxLoanAmount")
     override_max_loan_ratio_percent: float | None = Field(None, alias="overrideMaxLoanRatioPercent")
+    # 2026-10-01: 전용면적도 재반영할 수 있다 - 청년전용 버팀목 전세대출은 공통 조건 자체를 25세 미만 기준값
+    # (더 좁은 쪽)으로 두고, "만 25세 이상" 우대사항이 이 값으로 넓혀주는 식으로 쓴다.
+    override_max_exclusive_area: float | None = Field(None, alias="overrideMaxExclusiveArea")
 
     class Config:
         populate_by_name = True
@@ -70,11 +73,20 @@ class LoanProductCondition(BaseModel):
     max_exclusive_area: float | None = Field(None, alias="maxExclusiveArea")
     max_loan_ratio_percent: float | None = Field(None, alias="maxLoanRatioPercent")  # 매물 보증금의 이 비율(%)까지만 대출 가능
     max_loan_amount: int | None = Field(None, alias="maxLoanAmount")  # 만원, 매물과 무관한 대출 절대 상한
+    # 매물 월세 제한(이하, 만원) - 공통 조건이 아니라 이 대출만의 별도 조건(청년전용 보증부월세대출처럼 월세
+    # 매물을 대상으로 하는 대출에서만 쓴다). None이면 제한 없음.
+    max_listing_monthly_rent: int | None = Field(None, alias="maxListingMonthlyRent")
     preferences: dict[str, LoanPreferenceSetting] = Field(default_factory=dict)
-    # 대출금리표: [행(부부합산 연소득 4구간)][열(임차보증금 3구간)] = 연 금리(%). None이면 아직 실제 금리표가 없어
-    # loan_matcher.DEFAULT_BASE_RATE_PERCENT(임시 고정금리)를 쓴다 - loan_matcher.RATE_TABLE_INCOME_BRACKETS_MANWON/
-    # RATE_TABLE_DEPOSIT_BRACKETS_MANWON이 행/열의 구간 정의다.
+    # 대출금리표: [행(부부합산 연소득 N구간)][열(임차보증금 M구간)] = 연 금리(%). 구간 수는 대출마다 다르다
+    # (loan_matcher.RATE_TABLE_BRACKETS_BY_LOAN_TYPE). None이면 아직 실제 금리표가 없어
+    # loan_matcher.DEFAULT_BASE_RATE_PERCENT(임시 고정금리)를 쓴다.
     rate_table: list[list[float]] | None = Field(None, alias="rateTable")
+    # 2026-10-02: 청년전용 보증부월세대출 "전용" 금리 구조 - 다른 대출은 전부 None이다(loan_matcher 참고).
+    deposit_loan_rate_percent: float | None = Field(None, alias="depositLoanRatePercent")  # 보증금 대출 금리(연 %, 고정값)
+    # 월세대출 월 한도(만원) - 2년(24개월) 고정 가정 하에 총 한도(카드 안내용, loan_matcher 참고)도 이 값에서 나온다.
+    monthly_rent_loan_cap_manwon: int | None = Field(None, alias="monthlyRentLoanCapManwon")
+    monthly_rent_loan_free_threshold_manwon: int | None = Field(None, alias="monthlyRentLoanFreeThresholdManwon")  # 무이자 기준액(만원)
+    monthly_rent_loan_rate_percent: float | None = Field(None, alias="monthlyRentLoanRatePercent")  # 기준액 초과분 금리(연 %)
 
     class Config:
         populate_by_name = True
@@ -116,6 +128,9 @@ class DiagnosisRequest(BaseModel):
     max_commute_minutes: int = Field(30, ge=10, description="희망 최대 통근시간(분)", alias="maxCommuteMinutes")
     age: int | None = Field(None, ge=0, le=120, description="나이 (정책 자격 판별용)", alias="age")
     no_householder: bool | None = Field(None, description="무주택 세대주 여부 (버팀목 대출 자격 판별용)", alias="noHouseholder")
+    # 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) - 추후 특정 대출상품에 연동 예정
+    # (12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식).
+    military_service_months: int | None = Field(None, ge=0, description="병역이행기간 (개월, 선택). 아직 매칭 로직에 쓰지 않음.", alias="militaryServiceMonths")
     assets: int | None = Field(None, ge=0, description="총자산 (만원, 정책 자격의 자산 기준 판별용)", alias="assets")
     job_type: str | None = Field(
         None, description="직업종류 (GOVERNMENT/SME/MID_SIZED/LARGE_CORP, 선택). 정책의 "
@@ -123,9 +138,21 @@ class DiagnosisRequest(BaseModel):
     )
     preferential_statuses: list[str] = Field(
         default_factory=list,
-        description="우대사항 (BASIC_LIVELIHOOD/NEAR_POVERTY/SINGLE_PARENT/INDEPENDENT_YOUTH/"
-        "NEWLYWED/MULTI_CHILD 중 다중 선택, 선택). 정책의 required_preferential_status 조건 판별용.",
+        description="우대사항 (BASIC_LIVELIHOOD/NEAR_POVERTY/SINGLE_PARENT/INDEPENDENT_YOUTH/NEWLYWED/"
+        "DUAL_INCOME/ONE_CHILD/TWO_CHILDREN/MULTI_CHILD/DISABLED/MULTICULTURAL/ELDERLY_DEPENDENT/"
+        "ELDERLY_HOUSEHOLD 중 다중 선택, 선택). 정책의 required_preferential_status 조건 판별용.",
         alias="preferentialStatuses",
+    )
+    # 2026-10-02: 신생아 특례 버팀목대출 "전용" 우대사항 - 체크박스가 아니라 자녀 "수"다. loan_matcher의
+    # NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS 두 우대사항이 각각 이 수를 읽어
+    # (1명당 차감율 x 인원수)를 계산하고, 둘을 sum()해 하나의 후보로 다른 우대사항들과 다시 max() 비교한다.
+    newborn_additional_child_count: int | None = Field(
+        None, ge=0, description="대출접수일 기준 2년 내 추가 출산한 자녀 수 (선택)",
+        alias="newbornAdditionalChildCount",
+    )
+    minor_child_over_2years_count: int | None = Field(
+        None, ge=0, description="대출접수일 기준 출생 후 2년 초과한 미성년 자녀 수 (선택)",
+        alias="minorChildOver2YearsCount",
     )
 
     move_schedule: str | None = Field(
