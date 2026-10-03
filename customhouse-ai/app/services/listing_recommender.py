@@ -21,7 +21,8 @@ docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실�
      못 채우는 부족분에 이자를 적용해 더한다. 금리는 아래 "보증금 기회비용"과 같은 값(전환율 API)을 그대로 쓴다
      (당초 임시 3% 고정값을 썼다가, 같은 API 값으로 통일했다 - 원금(부족분 vs 보증금 전체)만 다르다).
      월세는 대출이자 0 - 월세 자체가 이미 실제 부담을 보여준다)
-   - 보증금 기회비용(월) = 보증금 x 연 전환율% / 12                 (보증금 전체를 월 비용으로 환산한 값 - 위 대출이자와 원금만 다른 같은 금리)
+   - 보증금 기회비용(월) = 보증금 x 연 전환율% / 12                 (보증금 전체를 월 비용으로 환산한 값 - 위 대출이자와 원금만 다른 같은 금리.
+     2026-10-03: 월세 매물만 전환율 대신 예금은행 정기예금(1년) 금리를 쓴다 - "예금 전환 이자기회비용", deposit_interest_rate.py)
    - 보증금액 전환 이자기회비용 = 월세 + 관리비 + 보증금 기회비용   (보증금 크기까지 월 비용으로 환산해 비교)
    전환율은 한국부동산원(R-ONE) 수도권 전월세 전환율(종합주택)의 가장 최근 월 값이다 (reb_conversion_rate.py,
    2026-09-28: 예전 고정값 연 4.5%에서 변경. 이 앱은 수도권만 다루므로 수도권 값 하나만 쓴다)
@@ -42,7 +43,8 @@ import time
 from datetime import date
 
 from app.services import (
-    calculator, data_analysis, listing_repository, listing_schema, loan_matcher, policy_matcher, reb_conversion_rate, rir_stats,
+    calculator, data_analysis, deposit_interest_rate, listing_repository, listing_schema, loan_matcher, policy_matcher,
+    reb_conversion_rate, rir_stats,
 )
 
 logger = logging.getLogger(__name__)
@@ -147,7 +149,17 @@ def _resolve_rir(request, effective_monthly_income: float) -> tuple[float, float
     return rir, round(effective_monthly_income * rir / 100, 1), {}
 
 
-def _rank_cost(listing: dict, deposit_rate_percent: float) -> float:
+def _opportunity_rate_percent(listing: dict, deposit_rate_percent: float, monthly_deposit_rate_percent: float | None) -> float:
+    """보증금 기회비용(예금 전환 이자기회비용)에 쓰는 이율. 월세 매물은 "그 보증금을 예금에 넣었다면 받았을 이자"라서
+    예금은행 정기예금(1년) 금리(monthly_deposit_rate_percent)를 쓰고(2026-10-03), 전세(와 값을 안 넘긴 호출)는
+    기존대로 수도권 전월세 전환율(deposit_rate_percent)을 쓴다. 전세의 부족분 대출이자/대출 기본금리는 이 함수와
+    무관하게 항상 전환율이다."""
+    if listing["lease_type"] == "월세" and monthly_deposit_rate_percent is not None:
+        return monthly_deposit_rate_percent
+    return deposit_rate_percent
+
+
+def _rank_cost(listing: dict, deposit_rate_percent: float, monthly_deposit_rate_percent: float | None = None) -> float:
     """_to_result()의 deposit_converted_cost(순위 기준값, RANK_COST_KEY)만 떼어낸 가벼운 버전.
     후보 전체(자치구 통근권 안 매물 전부, 많으면 수만 건)에 매번 _to_result()의 나머지 20여 개
     필드(브로커, 참고 실거래, 통근시간 재계산용 좌표 등)까지 만들면 순위에서 떨어질 후보에도
@@ -158,11 +170,13 @@ def _rank_cost(listing: dict, deposit_rate_percent: float) -> float:
     rent = listing["monthly_rent"] or 0
     deposit = listing["deposit"] or 0
     maintenance_fee = listing["maintenance_fee"] or 0
-    deposit_opportunity_cost = round(deposit * deposit_rate_percent / 100 / 12, 1)
+    opportunity_rate = _opportunity_rate_percent(listing, deposit_rate_percent, monthly_deposit_rate_percent)
+    deposit_opportunity_cost = round(deposit * opportunity_rate / 100 / 12, 1)
     return round(rent + maintenance_fee + deposit_opportunity_cost, 1)
 
 
-def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_rate_percent: float, current_deposit: int) -> dict:
+def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_rate_percent: float, current_deposit: int,
+               monthly_deposit_rate_percent: float | None = None) -> dict:
     rent = listing["monthly_rent"] or 0
     deposit = listing["deposit"] or 0
     maintenance_fee = listing["maintenance_fee"] or 0
@@ -181,7 +195,9 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_
         loan_interest = 0
     real_housing_cost = rent + maintenance_fee + loan_interest  # 교통비는 뺐다
     # 보증금 기회비용(월) = 보증금 x 연 전환율% / 12 (한국부동산원 수도권 전월세 전환율), 보증금전환 실질거주비 = 월세 + 관리비 + 보증금 기회비용 (만원, 소수 첫째 자리)
-    deposit_opportunity_cost = round(deposit * deposit_rate_percent / 100 / 12, 1)
+    # 2026-10-03: 월세 매물은 전환율이 아니라 예금은행 정기예금(1년) 금리로 환산한다(_opportunity_rate_percent).
+    opportunity_rate = _opportunity_rate_percent(listing, deposit_rate_percent, monthly_deposit_rate_percent)
+    deposit_opportunity_cost = round(deposit * opportunity_rate / 100 / 12, 1)
     deposit_converted_cost = round(rent + maintenance_fee + deposit_opportunity_cost, 1)
     return {
         # --- 기존 BuildingRecommendation 필드 (지도/차트/카드 공용) ---
@@ -208,6 +224,7 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_
         "government_support": 0,
         "real_housing_cost": real_housing_cost,
         "deposit_opportunity_cost": deposit_opportunity_cost,
+        "deposit_opportunity_rate_percent": opportunity_rate,  # 이 매물의 예금 전환 이자기회비용에 실제로 쓴 연 %
         "deposit_converted_cost": deposit_converted_cost,
         "baseline_cost": real_housing_cost,  # 비교할 별도 기준이 없다 (월세/전세 모두 절감액 0)
         "monthly_savings": 0,
@@ -260,6 +277,8 @@ def run_listing_diagnosis(request) -> dict:
 
     # 보증금을 월 비용으로 환산하는 이율: 한국부동산원 수도권 전월세 전환율(종합주택) 최신 월 값 (12시간 캐시, 조회 실패 시 대체값)
     deposit_rate = reb_conversion_rate.get_metro_conversion_rate()
+    # 월세 매물의 예금 전환 이자기회비용 전용 이율: 예금은행 정기예금(1년) 금리 (deposit_interest_rate.py, 2026-10-03)
+    monthly_deposit_rate = deposit_interest_rate.get_one_year_deposit_rate()
 
     # 보증금 한도: 희망 보증금/전세액이 있으면 그 금액, 없으면 현재 보유 보증금. 이를 넘는 매물은 추천하지 않는다.
     deposit_limit = request.desired_deposit if request.desired_deposit is not None else request.deposit
@@ -327,7 +346,7 @@ def run_listing_diagnosis(request) -> dict:
             lightweight = {
                 "listing_id": listing_id,
                 "region": listing["region"],
-                RANK_COST_KEY: _rank_cost(listing, deposit_rate.rate_percent),
+                RANK_COST_KEY: _rank_cost(listing, deposit_rate.rate_percent, monthly_deposit_rate.rate_percent),
                 "monthly_savings": 0,  # rank_by_real_cost의 동점자 2차 기준. 여기선 항상 0(_to_result와 동일).
                 "commute_minutes": estimated_minutes,
                 "commute_source": calculator.ESTIMATE_SOURCE_LABEL,
@@ -342,7 +361,7 @@ def run_listing_diagnosis(request) -> dict:
     def _expand(ranked: list[dict]) -> list[dict]:
         return [
             _to_result(listing_by_id[r["listing_id"]], r["commute_minutes"], r["commute_source"],
-                       deposit_rate.rate_percent, request.deposit)
+                       deposit_rate.rate_percent, request.deposit, monthly_deposit_rate.rate_percent)
             for r in ranked
         ]
 
@@ -394,5 +413,9 @@ def run_listing_diagnosis(request) -> dict:
         "deposit_conversion_rate_base": deposit_rate.base_month,
         "deposit_conversion_rate_label": deposit_rate.label,
         "deposit_conversion_rate_is_fallback": deposit_rate.is_fallback,
+        "monthly_deposit_rate": monthly_deposit_rate.rate_percent,
+        "monthly_deposit_rate_base": monthly_deposit_rate.base_month,
+        "monthly_deposit_rate_label": monthly_deposit_rate.label,
+        "monthly_deposit_rate_is_fallback": monthly_deposit_rate.is_fallback,
         **rir_fields,
     }

@@ -147,7 +147,7 @@ class DiagnosisRequest(BaseModel):
     # NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS 두 우대사항이 각각 이 수를 읽어
     # (1명당 차감율 x 인원수)를 계산하고, 둘을 sum()해 하나의 후보로 다른 우대사항들과 다시 max() 비교한다.
     newborn_additional_child_count: int | None = Field(
-        None, ge=0, description="대출접수일 기준 2년 내 추가 출산한 자녀 수 (선택)",
+        None, ge=0, description="대출접수일 기준 2년 내 출산한 자녀 수 (선택)",
         alias="newbornAdditionalChildCount",
     )
     minor_child_over_2years_count: int | None = Field(

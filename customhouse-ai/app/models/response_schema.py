@@ -111,6 +111,28 @@ class ListingCommuteResponse(BaseModel):
     commute_source: str
 
 
+class RateDiscountItem(BaseModel):
+    """사용자가 해당하는 우대사항 1개와 그 우대금리 차감값. applied=True가 실제로 최종 금리에 반영된 것
+    (여러 개에 해당해도 가장 큰 하나만 반영 - loan_matcher._rate_details)."""
+
+    key: str
+    label: str
+    discount_percent: float       # %p. 신생아 특례 자녀 수 기반 항목은 (1명당 차감율 x 인원수)
+    count: int | None = None      # 자녀 수 기반 우대사항의 인원수, 아니면 None
+    applied: bool = False
+
+
+class LimitReflection(BaseModel):
+    """우대 한도 재반영 1건 - 공통 한도(base)가 해당 우대사항(sources)의 재반영 값(effective)으로 바뀐 내역."""
+
+    field: str
+    label: str
+    unit: str
+    base: float
+    effective: float
+    sources: list[str] = Field(default_factory=list)
+
+
 class EligibleLoan(BaseModel):
     """이 매물에 신청할 수 있는 대출 (관리자 화면의 조건을 통과한 대출) + "[대출이름] 실질주거비".
     2026-09-30: 관리자가 대출별 실제 금리표(대출금리, 소득 x 보증금 구간표)를 저장해두면 그 표의 금리를 쓴다.
@@ -121,6 +143,15 @@ class EligibleLoan(BaseModel):
     type: str   # 대출 코드 (GENERAL_BEOTIMMOK 등)
     name: str   # 화면에 보여줄 대출 이름
     rate_percent: float = 0.0      # 우대금리 반영한 최종 금리 (연 %)
+    # 2026-10-03: 금리/한도 근거 - 카드의 "금리 산출 근거 / 우대 한도 재반영" 펼침 영역이 쓴다.
+    base_rate_percent: float = 0.0
+    discount_percent: float = 0.0              # 실제 반영된 우대금리 차감 (%p, 상한 적용 후)
+    discount_cap_percent: float | None = None  # 이 대출·사용자 조합의 차감 상한 (%p), 없으면 None
+    discount_capped: bool = False              # 상한 때문에 차감이 깎였는지
+    rate_floor_applied: bool = False           # 우대 적용 후 1.0% 미만이라 최종금리 하한(연 1.0%)이 적용됐는지
+    base_rate_kind: str = "market"             # table(소득/보증금 금리표) / fixed(고정 보증금 대출 금리) / market(기준금리 API 임시값)
+    discount_items: list[RateDiscountItem] = Field(default_factory=list)
+    limit_reflections: list[LimitReflection] = Field(default_factory=list)
     is_temporary_rate: bool = True  # True면 이 대출에 아직 실제 금리표가 없어 임시 기본금리를 쓴 것
     loan_principal: float = 0.0    # 만원, 대출로 메우는 부족분 = 매물 보증금 - 보유 보증금(0 이상)
     monthly_interest: float = 0.0  # 만원/월 = loan_principal x 연 rate_percent% / 12
@@ -129,10 +160,12 @@ class EligibleLoan(BaseModel):
     # 다른 대출 타입은 항상 0/None (loan_matcher._loan_result).
     rent_loan_total_interest: float = 0.0       # 원, 2년 총 이자 (등차수열 합)
     rent_loan_monthly_interest: float = 0.0     # 원, 위 총 이자를 24개월로 나눈 월 환산 평균값
-    rent_loan_total_cap_manwon: float | None = None  # 만원, 월세대출 월 한도 x 24개월 (자격 판별에는 안 씀, 안내용)
+    rent_loan_free_threshold_manwon: float | None = None     # 만원, 이 금액까지는 이자 없음(초과분에만 이자)
+    rent_loan_rate_percent: float | None = None              # 연 %, 무이자 기준액 초과분 금리
+    rent_loan_total_cap_manwon: float | None = None  # 만원, 대출 기간 중 최대 월세대출액(안내용 고정값, 자격 판별에는 안 씀)
     # 2026-10-02: 보증금이 충분해 대출이 필요 없어도(loan_principal=0) 월세대출은 별개로 받을 수 있어서 추가.
     # effective_cost는 "월세 미대출 시"(기존 그대로) 값이고, 아래 둘은 "월세 대출 시" 버전이다.
-    rent_loan_amount_manwon: float = 0.0        # 만원, 이번 달 월세대출로 충당되는 금액(월세 중 월 한도까지)
+    rent_loan_amount_manwon: float = 0.0        # 만원, 이번 달 월세대출로 충당되는 금액(월세 전액)
     rent_loan_effective_cost: float = 0.0       # 만원/월, (월세 - rent_loan_amount_manwon) + 관리비 + 보증금대출이자 + 월세대출이자
 
 
@@ -153,6 +186,7 @@ class ListingRecommendation(BuildingRecommendation):
     matched_policies: list[MatchedPolicy] = Field(default_factory=list, exclude=True)
     deposit_shortfall: int = 0  # 만원, 부족분(대출금액) = 매물 보증금 - 현재 보증금 (전세만, 월세는 0). loan_interest의 원금.
     deposit_opportunity_cost: float = 0  # 만원/월 = 보증금 x 연 전환율% / 12 (전환율은 응답의 deposit_conversion_rate)
+    deposit_opportunity_rate_percent: float = 0  # 연 %, deposit_opportunity_cost에 실제로 쓴 이율 (월세=정기예금 1년, 전세=전월세 전환율)
     deposit_converted_cost: float = 0    # 만원/월 = 월세 + 관리비 + 보증금 기회비용 (보증금전환 실질거주비)
 
     listing_id: str = ""             # 매물등록번호 (예: SEOCHO-202609-0001)
@@ -239,6 +273,11 @@ class ListingDiagnosisResponse(BaseModel):
     deposit_conversion_rate_base: str = ""      # 통계 기준 월 "2026-07"
     deposit_conversion_rate_label: str = ""     # 출처 문구
     deposit_conversion_rate_is_fallback: bool = False  # True면 조회 실패로 대체값(이전 조회값/저장값/기본값)을 쓴 것
+    # 월세 매물의 "예금 전환 이자기회비용" 이율 = 예금은행 정기예금(1년) 금리 최신 월 값 (deposit_interest_rate.py, 2026-10-03)
+    monthly_deposit_rate: float = 0             # 연 %, 예: 3.39
+    monthly_deposit_rate_base: str = ""         # 통계 기준 월 "2026-08"
+    monthly_deposit_rate_label: str = ""        # 출처 문구
+    monthly_deposit_rate_is_fallback: bool = False
     # 소득 대비 주택임대료 비율(RIR) 통계 (docs/RIR.csv, rir_stats.py). 파일이 없으면 비어 있다.
     rir_year: int | None = None                        # 통계 연도 (예: 2024)
     rir_source: str = ""                               # 출처
