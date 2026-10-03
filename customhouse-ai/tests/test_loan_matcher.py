@@ -465,6 +465,33 @@ def test_다른_대출은_월세대출_총_이자가_항상_0이고_전체_한�
     assert r["rent_loan_total_interest"] == 0
     assert r["rent_loan_monthly_interest"] == 0
     assert r["rent_loan_total_cap_manwon"] is None
+    assert r["rent_loan_amount_manwon"] == 0
+    assert r["rent_loan_effective_cost"] == 0
+
+
+def test_보증금이_충분해도_월세대출_대출시_실질주거비는_따로_계산된다():
+    # 보유 보증금(1000)이 매물 보증금(1000)과 같아 대출이 필요 없다(loan_principal=0, monthly_interest=0).
+    # 그래도 월세대출은 별개로 받을 수 있어서, rent_loan_amount_manwon/rent_loan_effective_cost는 0이 아니다.
+    loans = [_youth_monthly_rent_loan()]
+    listing = {**WOLSE, "listing_deposit": 1000, "listing_monthly_rent": 50, "maintenance_fee": 5}
+    r = loan_matcher.match_eligible_loans(req(loans, deposit=1000), listing)[0]
+    assert r["loan_principal"] == 0
+    assert r["monthly_interest"] == 0
+    assert r["effective_cost"] == 55  # "월세 미대출 시" - 기존 그대로 (월세 50 + 관리비 5)
+    assert r["rent_loan_amount_manwon"] == 50  # 월세 전액이 한도(50) 안에 들어와 대출로 충당
+    # "월세 대출 시" = (월세 50 - 대출충당 50) + 관리비 5 + 보증금대출이자 0 + 월세대출이자 3125원(0.3125만원 환산)
+    assert r["rent_loan_effective_cost"] == 5.3
+
+
+def test_월세대출_대출시_실질주거비는_보증금_대출분_차감을_그대로_유지한다():
+    # 보유 보증금(0)이 모자라 보증금 대출이 필요한 경우에도, "월세 대출 시" 실질주거비는 그 보증금대출
+    # 이자를 그대로 더해서 계산한다(보증금 차감 로직은 바뀌지 않는다).
+    loans = [_youth_monthly_rent_loan()]
+    listing = {**WOLSE, "listing_deposit": 3000, "listing_monthly_rent": 50, "maintenance_fee": 5}
+    r = loan_matcher.match_eligible_loans(req(loans, deposit=0), listing, market_rate_percent=6.35)[0]
+    assert r["loan_principal"] == 3000  # 매물 보증금 - 보유 보증금(0), 그대로 유지
+    assert r["monthly_interest"] == round(3000 * 1.3 / 100 / 12, 1)
+    assert r["rent_loan_effective_cost"] == round(0 + 5 + r["monthly_interest"] + 3125 / 10000, 1)
 
 
 def test_기본금리가_기준금리_API_값이어도_우대금리_차감은_그대로_적용된다():

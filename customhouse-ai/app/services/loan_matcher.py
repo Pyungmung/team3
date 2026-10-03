@@ -329,13 +329,11 @@ def _final_rate_percent(loan, request, listing: dict, market_rate_percent: float
 _RENT_LOAN_ASSUMED_TERM_MONTHS = 24
 
 
-def _rent_loan_total_interest_won(loan, listing: dict) -> float:
-    """청년전용 보증부월세대출 "전용" - 월세대출(무이자 기준액 초과분)의 2년(_RENT_LOAN_ASSUMED_TERM_MONTHS)
-    총 이자(원). 월세대출은 매달 (월세 중 무이자 기준액을 초과하는 금액)만큼 추가로 빌리는 구조라, k번째 달의
-    누적 대출 잔액은 "초과금액 x k"이고 그 달 이자는 "잔액 x 연금리/12"다 - 이걸 2년 동안 합산한 닫힌 형태가
-    "초과금액(원) x 연금리 x 24 x 25/2/12"다(등차수열 합). 월 단위 실질주거비(effective_cost)와는 별개의
-    "총 이자" 수치라 월 단위로 나누지 않고 그대로 보여준다. 설정이 미완성이면(한도/기준액/금리 중 하나라도
-    비어 있으면) 0이다."""
+def _rent_loan_amount_manwon(loan, listing: dict) -> float:
+    """월세대출로 이번 달 충당되는 월세 금액(만원, 월 한도까지 - 무이자/유이자 구간 전부 포함한 전체 금액).
+    보증부월세대출은 이 금액을 집주인에게 대신 지급하는 구조라, 세입자는 매달 이 금액만큼 월세를 현금으로
+    안 내는 대신 대출 잔액이 쌓인다(실질주거비 "월세 대출 시" 계산에 쓴다 - _loan_result 참고). 설정이
+    미완성이면(한도/기준액/금리 중 하나라도 비어 있으면) 0이다."""
     if loan.type != YOUTH_MONTHLY_RENT_LOAN_TYPE:
         return 0.0
     cap = loan.monthly_rent_loan_cap_manwon
@@ -344,7 +342,20 @@ def _rent_loan_total_interest_won(loan, listing: dict) -> float:
     if cap is None or threshold is None or rate is None:
         return 0.0
     monthly_rent_manwon = (listing.get("listing_monthly_rent") or 0)
-    loan_amount_manwon = min(monthly_rent_manwon, cap)
+    return min(monthly_rent_manwon, cap)
+
+
+def _rent_loan_total_interest_won(loan, listing: dict) -> float:
+    """청년전용 보증부월세대출 "전용" - 월세대출(무이자 기준액 초과분)의 2년(_RENT_LOAN_ASSUMED_TERM_MONTHS)
+    총 이자(원). 월세대출은 매달 (월세 중 무이자 기준액을 초과하는 금액)만큼 추가로 빌리는 구조라, k번째 달의
+    누적 대출 잔액은 "초과금액 x k"이고 그 달 이자는 "잔액 x 연금리/12"다 - 이걸 2년 동안 합산한 닫힌 형태가
+    "초과금액(원) x 연금리 x 24 x 25/2/12"다(등차수열 합). 월 단위 실질주거비(effective_cost)와는 별개의
+    "총 이자" 수치라 월 단위로 나누지 않고 그대로 보여준다."""
+    loan_amount_manwon = _rent_loan_amount_manwon(loan, listing)
+    if loan_amount_manwon <= 0:
+        return 0.0
+    threshold = loan.monthly_rent_loan_free_threshold_manwon
+    rate = loan.monthly_rent_loan_rate_percent
     excess_manwon = max(0.0, loan_amount_manwon - threshold)
     if excess_manwon <= 0:
         return 0.0
@@ -366,10 +377,12 @@ def _loan_result(loan, request, listing: dict, market_rate_percent: float) -> di
     이자는 매물 보증금 전체가 아니라 "매물 보증금 - 사용자가 지금 가진 보증금(request.deposit)"만큼, 즉 대출로
     메워야 하는 부족분에 대해서만 계산한다(자기 돈으로 낼 수 있는 만큼은 대출이 필요 없다).
     보유 보증금이 매물 보증금과 같거나 더 많으면(대출이 필요 없으면) 부족분이 0이라 이자도 0이 된다.
-    청년전용 보증부월세대출은 보증금 쪽(위 계산)과 별개로 월세대출 2년 총 이자(rent_loan_total_interest)도
-    추가로 담아 보낸다 - effective_cost(월 단위)에는 섞지 않는다(기간 기준이 다른 별개의 수치라서). 월세대출
-    전체 한도(월 한도 x 2년, rent_loan_total_cap_manwon)는 자격 판별에는 안 쓰고 카드 안내문에 참고 정보로만
-    보낸다(월세대출 최대한도를 제한해서 떨어뜨리는 로직 자체가 없다 - 2026-10-02)."""
+    청년전용 보증부월세대출은 보증금이 충분해 대출이 필요 없어도(loan_principal=0) 월세대출은 별개로 받을
+    수 있다 - effective_cost("월세 미대출 시")는 기존 그대로 두고, "월세 대출 시" 버전을 따로 추가로 담아
+    보낸다. 월세대출로 충당되는 금액(rent_loan_amount_manwon)만큼은 매달 현금으로 안 내는 대신 대출 잔액이
+    쌓이는 구조라, "월세 대출 시" 실질주거비는 그 금액을 월세에서 뺀 값 + 관리비 + 보증금대출이자(위와 동일,
+    보유 보증금 차감 그대로 유지) + 월세대출 이자(24개월 환산)로 계산한다. 월세대출 전체 한도(월 한도 x 2년,
+    rent_loan_total_cap_manwon)는 자격 판별에는 안 쓰고 카드 안내문에 참고 정보로만 보낸다(2026-10-02)."""
     rate = _final_rate_percent(loan, request, listing, market_rate_percent)
     listing_deposit = listing.get("listing_deposit") or 0
     loan_principal = max(0, listing_deposit - (request.deposit or 0))
@@ -377,6 +390,9 @@ def _loan_result(loan, request, listing: dict, market_rate_percent: float) -> di
     rent = listing.get("listing_monthly_rent") or 0
     maintenance = listing.get("maintenance_fee") or 0
     cap = loan.monthly_rent_loan_cap_manwon if loan.type == YOUTH_MONTHLY_RENT_LOAN_TYPE else None
+    rent_loan_amount_manwon = _rent_loan_amount_manwon(loan, listing)
+    rent_loan_monthly_interest_won = _rent_loan_monthly_interest_won(loan, listing)
+    rent_after_rent_loan = max(0.0, rent - rent_loan_amount_manwon)
     return {
         "type": loan.type,
         "name": loan.name,
@@ -386,11 +402,16 @@ def _loan_result(loan, request, listing: dict, market_rate_percent: float) -> di
         "is_temporary_rate": not _has_real_rate(loan),
         "loan_principal": loan_principal,  # 대출로 메우는 부족분 (매물 보증금 - 보유 보증금, 0 이상)
         "monthly_interest": monthly_interest,
-        "effective_cost": round(rent + maintenance + monthly_interest, 1),
+        "effective_cost": round(rent + maintenance + monthly_interest, 1),  # "월세 미대출 시" (기존 그대로)
         # 청년전용 보증부월세대출 전용 - 다른 대출은 항상 0/None이다.
         "rent_loan_total_interest": _rent_loan_total_interest_won(loan, listing),
-        "rent_loan_monthly_interest": _rent_loan_monthly_interest_won(loan, listing),
+        "rent_loan_monthly_interest": rent_loan_monthly_interest_won,
         "rent_loan_total_cap_manwon": cap * _RENT_LOAN_ASSUMED_TERM_MONTHS if cap is not None else None,
+        "rent_loan_amount_manwon": rent_loan_amount_manwon,  # 이번 달 월세대출로 충당되는 금액(만원)
+        # "월세 대출 시" 실질주거비 = (월세 - 월세대출 충당액) + 관리비 + 보증금대출이자 + 월세대출이자(24개월 환산)
+        "rent_loan_effective_cost": round(
+            rent_after_rent_loan + maintenance + monthly_interest + rent_loan_monthly_interest_won / 10000, 1
+        ) if rent_loan_amount_manwon > 0 else 0.0,
     }
 
 

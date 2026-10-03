@@ -130,6 +130,10 @@ class EligibleLoan(BaseModel):
     rent_loan_total_interest: float = 0.0       # 원, 2년 총 이자 (등차수열 합)
     rent_loan_monthly_interest: float = 0.0     # 원, 위 총 이자를 24개월로 나눈 월 환산 평균값
     rent_loan_total_cap_manwon: float | None = None  # 만원, 월세대출 월 한도 x 24개월 (자격 판별에는 안 씀, 안내용)
+    # 2026-10-02: 보증금이 충분해 대출이 필요 없어도(loan_principal=0) 월세대출은 별개로 받을 수 있어서 추가.
+    # effective_cost는 "월세 미대출 시"(기존 그대로) 값이고, 아래 둘은 "월세 대출 시" 버전이다.
+    rent_loan_amount_manwon: float = 0.0        # 만원, 이번 달 월세대출로 충당되는 금액(월세 중 월 한도까지)
+    rent_loan_effective_cost: float = 0.0       # 만원/월, (월세 - rent_loan_amount_manwon) + 관리비 + 보증금대출이자 + 월세대출이자
 
 
 class ListingRecommendation(BuildingRecommendation):

@@ -11,6 +11,9 @@
 .cost-box.loan { background: #ecfdf5; border-color: #a7f3d0; margin-top: 8px; }
 .cost-box.loan .val { color: #047857; }
 
+/* "월세 대출 시" 박스의 경고 문구 - 대출 잔액이 쌓여서 만기에 갚아야 한다는 걸 라벨 옆에 눈에 띄게 표시 */
+.warn-badge { font-size: 10px; font-weight: 800; color: #dc2626; white-space: nowrap; }
+
 /* 매물 사진 자리: 사진이 있으면 16:10 비율, 사진 연결 전(PHOTO_PLACEHOLDER)에는 글자 높이 정도의 얇은 회색 바 */
 .listing-photo {
   width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; margin-bottom: 12px; overflow: hidden;
