@@ -148,6 +148,7 @@ class EligibleLoan(BaseModel):
     discount_percent: float = 0.0              # 실제 반영된 우대금리 차감 (%p, 상한 적용 후)
     discount_cap_percent: float | None = None  # 이 대출·사용자 조합의 차감 상한 (%p), 없으면 None
     discount_capped: bool = False              # 상한 때문에 차감이 깎였는지
+    rate_floor_applied: bool = False           # 우대 적용 후 1.0% 미만이라 최종금리 하한(연 1.0%)이 적용됐는지
     base_rate_kind: str = "market"             # table(소득/보증금 금리표) / fixed(고정 보증금 대출 금리) / market(기준금리 API 임시값)
     discount_items: list[RateDiscountItem] = Field(default_factory=list)
     limit_reflections: list[LimitReflection] = Field(default_factory=list)

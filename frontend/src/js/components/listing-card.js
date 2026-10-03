@@ -54,6 +54,7 @@
       <div class="why-row${i.applied ? " applied" : " dim"}"><span>${i.applied ? "✔ " : ""}${esc(i.label)}${i.count ? ` (${i.count}명)` : ""}${i.applied ? "" : " <em>중복 불가 · 가장 큰 1개만 적용</em>"}</span><b>−${fmtRate(i.discount_percent)}%p</b></div>`).join("")
         : `<div class="why-row soft"><span>해당하는 우대금리 없음</span><b>−0%p</b></div>`}
       ${l.discount_capped ? `<div class="why-note">우대금리 차감 상한 ${fmtRate(l.discount_cap_percent)}%p 적용 → 실제 −${fmtRate(l.discount_percent)}%p</div>` : ""}
+      ${l.rate_floor_applied ? `<div class="why-note">우대금리 적용 후 1.0% 미만이라 최종금리 하한 연 1.0%를 적용했어요</div>` : ""}
       <div class="why-row total"><span>최종 금리</span><b>연 ${fmtRate(l.rate_percent)}%</b></div>
     </div>`;
   }

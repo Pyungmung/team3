@@ -566,7 +566,7 @@ def test_보유_보증금이_매물_보증금보다_많거나_같으면_대출�
         assert result["effective_cost"] == 3  # 이자 없이 월세(0) + 관리비(3)뿐
 
 
-def test_여러_우대금리_차감_중_가장_큰_값_하나만_적용되고_0퍼센트_밑으로는_내려가지_않는다():
+def test_여러_우대금리_차감_중_가장_큰_값_하나만_적용되고_1퍼센트_밑으로는_내려가지_않는다():
     # 2026-10-01: 여러 우대사항에 해당해도 합산하지 않고 가장 큰 차감 하나만 적용한다(모든 대출 공통).
     # YOUTH_MONTHLY_RENT는 우대금리 차감 상한(2026-10-02) 목록에 없는 대출이라 이 테스트는 상한 영향 없이
     # 순수하게 max() 동작만 검증한다 - 상한 자체는 아래 전용 테스트들에서 따로 검증한다.
@@ -579,11 +579,12 @@ def test_여러_우대금리_차감_중_가장_큰_값_하나만_적용되고_0�
     result = loan_matcher.match_eligible_loans(r, WOLSE)[0]
     assert result["rate_percent"] == 1.5  # 3.0 - max(1.0, 1.5, 1.0) = 1.5 (합산 아님)
 
-    # 가장 큰 차감이 기본금리를 넘으면 0으로 바닥
+    # 가장 큰 차감이 기본금리를 넘으면 최종 금리 하한(연 1.0%, 2026-10-03 - 홈페이지 "1.0% 미만이면 1.0%로 적용")으로 바닥
     loans_big = [loan(type_="YOUTH_MONTHLY_RENT", lease="월세", preferences={"NO_HOME": {"required": False, "discount": 5.0}})]
     r_big = req(loans_big, noHouseholder=True)
     result_big = loan_matcher.match_eligible_loans(r_big, WOLSE)[0]
-    assert result_big["rate_percent"] == 0.0
+    assert result_big["rate_percent"] == 1.0
+    assert result_big["rate_floor_applied"] is True
 
 
 def test_우대금리_차감_상한_일반_청년전용_버팀목은_기본값_0_5퍼센트다():
@@ -733,3 +734,23 @@ def test_청년전용_보증부월세대출은_고정금리_종류와_월세대�
     # 다른 대출은 월세대출 근거가 없다
     other = loan_matcher.match_eligible_loans(req([loan()]), JEONSE)[0]
     assert other["rent_loan_total_cap_manwon"] is None and other["base_rate_kind"] == "market"
+
+
+# 2026-10-03: 최종 금리 하한 - 홈페이지 "우대금리 적용 후 최종금리가 연 1.0% 미만인 경우에는 연 1.0%로 적용"
+def test_신생아_특례_우대로_1퍼센트_밑이_되면_최종금리_1퍼센트로_올린다():
+    newborn = {"type": "NEWBORN_BEOTIMMOK", "name": "신생아", "leaseType": "전세",
+               "preferences": {"NEWBORN_ADDITIONAL_CHILD": {"required": True, "discount": 0.2}},
+               "rateTable": [[1.3, 1.4, 1.5, 1.6]] + [[2.0] * 4] * 8}
+    listing = {**JEONSE, "listing_deposit": 4000}
+    r2 = loan_matcher.match_eligible_loans(req([newborn], annualIncome=1500, deposit=4000, newbornAdditionalChildCount=2), listing)[0]
+    assert r2["base_rate_percent"] == 1.3 and r2["discount_percent"] == 0.4  # 1.3 - 0.4 = 0.9 -> 하한
+    assert r2["rate_percent"] == 1.0 and r2["rate_floor_applied"] is True
+    r1 = loan_matcher.match_eligible_loans(req([newborn], annualIncome=1500, deposit=4000, newbornAdditionalChildCount=1), listing)[0]
+    assert r1["rate_percent"] == 1.1 and r1["rate_floor_applied"] is False  # 1.3 - 0.2 = 1.1 (하한 아님)
+
+
+def test_우대가_없으면_기본금리가_1퍼센트_미만이어도_하한을_적용하지_않는다():
+    low = {"type": "NEWBORN_BEOTIMMOK", "name": "신생아", "leaseType": "전세",
+           "preferences": {}, "rateTable": [[0.8, 0.8, 0.8, 0.8]] + [[2.0] * 4] * 8}
+    r = loan_matcher.match_eligible_loans(req([low], annualIncome=1500, deposit=4000), {**JEONSE, "listing_deposit": 4000})[0]
+    assert r["rate_percent"] == 0.8 and r["rate_floor_applied"] is False

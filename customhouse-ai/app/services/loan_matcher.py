@@ -311,6 +311,11 @@ _PREFERENCE_LABELS = {
 }
 
 
+# 2026-10-03: 홈페이지(주택도시기금) 공통 문구 - "우대금리 적용 후 최종금리가 연 1.0% 미만인 경우에는 연 1.0%로 적용".
+# 우대금리를 실제로 깎은 경우에만 하한을 적용한다(기본금리 자체가 1.0% 미만인 대출은 우대가 없으면 그대로 둔다).
+MIN_FINAL_RATE_PERCENT = 1.0
+
+
 def _preference_label(key: str) -> str:
     return _PREFERENCE_LABELS.get(key, key)
 
@@ -350,13 +355,19 @@ def _rate_details(loan, request, listing: dict, market_rate_percent: float) -> d
         })
     cap = _discount_cap_percent(loan, request)
     discount = raw_discount if cap is None else min(raw_discount, cap)
+    final_rate = max(0.0, base_rate - discount)
+    # 최종 금리 하한(연 1.0%): 우대로 깎아서 1.0% 밑으로 내려갈 때만 1.0%로 올린다
+    floor_applied = discount > 0 and final_rate < MIN_FINAL_RATE_PERCENT
+    if floor_applied:
+        final_rate = MIN_FINAL_RATE_PERCENT
     return {
         "base_rate_percent": round(base_rate, 2),
         "discount_items": items,
         "discount_percent": round(discount, 2),
         "discount_cap_percent": cap,
         "discount_capped": cap is not None and raw_discount > cap,
-        "rate_percent": round(max(0.0, base_rate - discount), 2),
+        "rate_floor_applied": floor_applied,
+        "rate_percent": round(final_rate, 2),
     }
 
 
@@ -489,6 +500,7 @@ def _loan_result(loan, request, listing: dict, market_rate_percent: float) -> di
         "discount_percent": rate_details["discount_percent"],
         "discount_cap_percent": rate_details["discount_cap_percent"],
         "discount_capped": rate_details["discount_capped"],
+        "rate_floor_applied": rate_details["rate_floor_applied"],
         "discount_items": rate_details["discount_items"],
         "limit_reflections": _limit_reflections(loan, request),
         # 기본금리가 어디서 왔는지: table=소득x보증금 금리표, fixed=관리자가 입력한 고정 보증금 대출 금리
