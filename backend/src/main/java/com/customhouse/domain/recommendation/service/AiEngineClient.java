@@ -1,5 +1,7 @@
 package com.customhouse.domain.recommendation.service;
 
+import com.customhouse.domain.appsetting.dto.AppSettingResponse;
+import com.customhouse.domain.appsetting.service.AppSettingService;
 import com.customhouse.domain.incomestandard.dto.IncomeStandardResponse;
 import com.customhouse.domain.incomestandard.service.IncomeStandardService;
 import com.customhouse.domain.listing.dto.ListingRegistrationRequest;
@@ -34,6 +36,7 @@ public class AiEngineClient {
     private final RestClient aiEngineRestClient;
     private final LoanProductService loanProductService;
     private final IncomeStandardService incomeStandardService;
+    private final AppSettingService appSettingService;
 
     /**
      * 더미 매물(docs/samples/dummyhouses CSV) 기반 추천. 같은 요청 본문을 customhouse-ai의
@@ -46,7 +49,7 @@ public class AiEngineClient {
         return aiEngineRestClient.post()
                 .uri("/api/v1/diagnosis/listings")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiListingRequest(request, savedLoans(), incomeStandard()))
+                .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings()))
                 .retrieve()
                 .body(Map.class);
     }
@@ -62,7 +65,7 @@ public class AiEngineClient {
             return aiEngineRestClient.post()
                     .uri("/api/v1/diagnosis/listings/{listingId}", listingId)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(new AiListingRequest(request, savedLoans(), incomeStandard()))
+                    .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings()))
                     .retrieve()
                     .body(Map.class);
         } catch (HttpClientErrorException.NotFound e) {
@@ -160,6 +163,16 @@ public class AiEngineClient {
             return incomeStandardService.get();
         } catch (RuntimeException e) {
             log.warn("기준소득 통계를 읽지 못해 폴백 없이 진단을 진행합니다: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** 기타 설정(추천 개수 상한)을 읽지 못해도 진단 자체는 계속한다 (AI 엔진이 기본값으로 대신한다). */
+    private AppSettingResponse appSettings() {
+        try {
+            return appSettingService.get();
+        } catch (RuntimeException e) {
+            log.warn("기타 설정을 읽지 못해 기본값으로 진단을 진행합니다: {}", e.getMessage());
             return null;
         }
     }

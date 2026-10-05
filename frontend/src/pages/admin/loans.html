@@ -94,6 +94,7 @@
       <div id="top-tabs" class="flex border-b border-slate-200 mb-6 overflow-x-auto" role="tablist">
         <button type="button" class="adm-tab active" role="tab" aria-selected="true" data-top-tab="loans">전세자금대출</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="income-standard">기준소득관리</button>
+        <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="app-settings">기타 설정</button>
       </div>
 
       <section id="tab-loans">
@@ -163,6 +164,35 @@
           </div>
         </form>
       </section>
+
+      <section id="tab-app-settings" class="hidden">
+        <form id="app-settings-form" class="card p-6 space-y-6" novalidate>
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <h2 class="text-lg font-extrabold">기타 설정</h2>
+            <span class="text-xs text-slate-400" data-as-updated></span>
+          </div>
+          <p class="text-xs text-slate-400">코드를 고치지 않고 관리자가 바로 바꿀 수 있는 서비스 설정이에요. 저장하면 다음 진단부터 바로 반영돼요.</p>
+
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-700 mb-1">추천 개수 상한</h3>
+            <p class="text-xs text-slate-400 mb-3">
+              추천 리포트에 보여줄 매물 수의 최대치예요. <b>월세·전세 각각</b>에 적용돼요 (예: 500이면 월세 최대 500건 + 전세 최대 500건).
+              조건에 맞는 매물이 이보다 적으면 그만큼만 보여요. 낮출수록 서버 부담과 응답 크기가 줄지만 지도·목록에 보이는 하위 순위 매물이 줄어요.
+              10 ~ 1000 사이로 입력해주세요 (기본 500).
+            </p>
+            <div class="adm-field max-w-xs">
+              <span class="lbl">월세·전세 각각 최대</span>
+              <input type="number" min="10" max="1000" step="1" data-as-field="recommendationLimit" placeholder="예: 500" />
+              <div class="adm-unit">건</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 flex-wrap">
+            <button type="submit" class="adm-btn adm-save" data-as-save>수정완료</button>
+            <span class="adm-msg" data-as-msg role="status"></span>
+          </div>
+        </form>
+      </section>
     </div>
   </main>
 
@@ -173,6 +203,7 @@
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/admin-loans.js?v=20260928a"></script>
   <script src="../../js/api/admin-income-standard.js?v=20260930a"></script>
+  <script src="../../js/api/admin-app-settings.js?v=20261005a"></script>
   <script>
     renderHeader("admin");
     renderFooter();
@@ -188,6 +219,7 @@
     const subtabsEl = document.getElementById("loan-subtabs");
     const panelsEl = document.getElementById("loan-panels");
     const incomeStandardFormEl = document.getElementById("income-standard-form");
+    const appSettingsFormEl = document.getElementById("app-settings-form");
     let preferenceOptions = [];
     // 이 우대사항들만 매물 보증금/연소득/최대 대출금액을 공통 조건과 다른 자체 한도로 재반영할 수 있다 (관리자 요청,
     // 2026-10-01에 맞벌이부부/1자녀/2자녀/중소기업 취업청년 4종 추가 - AI 엔진(loan_matcher._effective_limit)은
@@ -655,7 +687,7 @@
       if (btn) selectSubtab(btn.dataset.type);
     });
 
-    // ---------- 상단 탭 (전세자금대출 <-> 기준소득관리) ----------
+    // ---------- 상단 탭 (전세자금대출 / 기준소득관리 / 기타 설정) ----------
     function selectTopTab(tab) {
       topTabsEl.querySelectorAll(".adm-tab").forEach((b) => {
         const on = b.dataset.topTab === tab;
@@ -664,6 +696,7 @@
       });
       document.getElementById("tab-loans").classList.toggle("hidden", tab !== "loans");
       document.getElementById("tab-income-standard").classList.toggle("hidden", tab !== "income-standard");
+      document.getElementById("tab-app-settings").classList.toggle("hidden", tab !== "app-settings");
     }
 
     topTabsEl.addEventListener("click", (e) => {
@@ -739,6 +772,40 @@
         setIsMsg("저장했어요.", "ok");
       } catch (err) {
         setIsMsg(err.message || "저장하지 못했어요.", "err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ---------- 기타 설정 (추천 개수 상한) ----------
+    function renderAppSettings(data) {
+      appSettingsFormEl.querySelector('[data-as-field="recommendationLimit"]').value = data.recommendationLimit ?? "";
+      const updatedEl = appSettingsFormEl.querySelector("[data-as-updated]");
+      updatedEl.textContent = data.updatedAt ? `마지막 수정: ${new Date(data.updatedAt).toLocaleString("ko-KR")}` : "";
+    }
+
+    function setAsMsg(text, kind) {
+      const el = appSettingsFormEl.querySelector("[data-as-msg]");
+      el.textContent = text || "";
+      el.className = "adm-msg" + (kind ? " " + kind : "");
+    }
+
+    appSettingsFormEl.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const raw = appSettingsFormEl.querySelector('[data-as-field="recommendationLimit"]').value.trim();
+      const limit = raw === "" ? null : Number(raw);
+      if (limit === null || !Number.isInteger(limit) || limit < 10 || limit > 1000) {
+        return setAsMsg("추천 개수 상한은 10 ~ 1000 사이의 정수로 입력해주세요.", "err");
+      }
+
+      const btn = appSettingsFormEl.querySelector("[data-as-save]");
+      btn.disabled = true;
+      setAsMsg("저장 중...", "");
+      try {
+        renderAppSettings(await CustomHouseAdminAppSettingsApi.saveAppSettings({ recommendationLimit: limit }));
+        setAsMsg("저장했어요. 다음 진단부터 반영돼요.", "ok");
+      } catch (err) {
+        setAsMsg(err.message || "저장하지 못했어요.", "err");
       } finally {
         btn.disabled = false;
       }
@@ -829,9 +896,10 @@
           <a href="../auth/login.html" class="text-sm px-4 py-2 rounded-xl text-white brand-gradient inline-block">로그인하기</a>`);
       }
       try {
-        const [loansResult, incomeResult] = await Promise.allSettled([
+        const [loansResult, incomeResult, settingsResult] = await Promise.allSettled([
           CustomHouseAdminLoansApi.getLoans(),
           CustomHouseAdminIncomeStandardApi.getIncomeStandard(),
+          CustomHouseAdminAppSettingsApi.getAppSettings(),
         ]);
         if (loansResult.status === "rejected") throw loansResult.reason;
         render(loansResult.value);
@@ -840,6 +908,11 @@
           renderIncomeStandard(incomeResult.value);
         } else {
           setIsMsg(incomeResult.reason?.message || "기준소득 통계를 불러오지 못했어요.", "err");
+        }
+        if (settingsResult.status === "fulfilled") {
+          renderAppSettings(settingsResult.value);
+        } else {
+          setAsMsg(settingsResult.reason?.message || "기타 설정을 불러오지 못했어요.", "err");
         }
       } catch (err) {
         if (err.status === 403 || err.code === "FORBIDDEN") {

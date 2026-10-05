@@ -70,6 +70,7 @@
 | `post_scraps` | `domain/board/entity/PostScrap.java` | 미정 | 게시글 스크랩 |
 | `listing_reports` | `domain/listing/entity/ListingReport.java` | 송귀성 | 추천 매물(더미 매물 CSV) 허위매물 신고 (회원당 매물 1번) |
 | `listing_favorites` | `domain/listing/entity/ListingFavorite.java` | 송귀성 | 추천 매물 관심매물 (마이페이지 관심 매물에 함께 표시) |
+| `app_settings` | `domain/appsetting/entity/AppSetting.java` | 송귀성 | 관리자 수정 > 기타 설정 (싱글톤 1행, id=1). `recommendation_limit INT` = 추천 개수 상한(월세·전세 각각, 기본 500, 10~1000). 서버 최초 기동 때 시더가 기본값으로 만들고, 진단 요청마다 AI 엔진에 실어 보낸다. 운영(validate)에는 `CREATE TABLE app_settings (id BIGINT PRIMARY KEY, recommendation_limit INT, created_at DATETIME(6), updated_at DATETIME(6));` 필요 |
 | `loan_products` | `domain/loan/entity/LoanProduct.java` | 송귀성 | 전세자금대출 5종의 자격 조건/우대사항 (관리자 수정 > 전세자금대출) |
 | `loan_reference_links` | `domain/loan/entity/LoanReferenceLink.java` | 송귀성 | 대출별 참고 확인 페이지 주소 (자격 조건과 무관, 관리자 수정 > 전세자금대출) |
 | ~~`registry_analysis`~~ | `domain/watchlist/entity/RegistryAnalysis.java` | 김시연 | ⏳ **미구현.** 실제 등기부등본 API 연동이 필요해 스키마 설계만 되어있는 상태 (자세한 내용은 9번 항목 참고) |

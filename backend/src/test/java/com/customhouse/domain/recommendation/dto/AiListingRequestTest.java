@@ -32,7 +32,9 @@ class AiListingRequestTest {
                 Map.of("NEWLYWED", new LoanPreference(true, 0.2, null, null, null, null, null, null)), null, null, null);
 
         IncomeStandardResponse incomeStandard = new IncomeStandardResponse(15.8, 18.4, 18.3, 16.2, 19.4, 2024, "국토교통부,「주거실태조사」", 2_564_238L, null);
-        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(recommend(), List.of(loan), incomeStandard)));
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(recommend(), List.of(loan), incomeStandard, new com.customhouse.domain.appsetting.dto.AppSettingResponse(500, null))));
+
+        assertThat(json.get("appSettings").get("recommendationLimit").asInt()).isEqualTo(500);   // 기타 설정도 함께 실린다
 
         // 기존 요청 필드는 AI 엔진이 기대하는 이름 그대로 최상위에 있다 (감싸이지 않는다)
         assertThat(json.get("annualIncome").asInt()).isEqualTo(3400);
@@ -61,7 +63,7 @@ class AiListingRequestTest {
         String body = "{\"annualIncome\":3400,\"deposit\":800,\"workLocation\":\"강남구\",\"loanProducts\":[{\"type\":\"HACK\"}]}";
         RecommendRequest parsed = mapper.readValue(body, RecommendRequest.class);
 
-        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(parsed, List.of(), null)));
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(parsed, List.of(), null, null)));
 
         assertThat(json.get("loanProducts")).isEmpty();   // 서버가 붙인 값만 나간다
     }
