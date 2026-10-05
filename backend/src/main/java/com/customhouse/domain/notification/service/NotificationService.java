@@ -52,4 +52,16 @@ public class NotificationService {
         notification.setRead(true);
         notificationRepository.save(notification);
     }
+
+    /** 알림 1건 삭제 (휴대폰 알림바에서 알림을 밀어서 지우는 것과 같다). 본인 알림만 지울 수 있다. */
+    @Transactional
+    public void delete(Long userId, Long notificationId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "알림을 찾을 수 없습니다."));
+
+        if (!notification.getUserId().equals(userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN, "본인의 알림만 삭제할 수 있습니다.");
+        }
+        notificationRepository.delete(notification);
+    }
 }

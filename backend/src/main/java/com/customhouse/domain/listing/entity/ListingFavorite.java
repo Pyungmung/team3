@@ -13,6 +13,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 /**
  * [담당: 송귀성] 추천 매물 - 관심매물(마이페이지 "관심 매물"에 함께 표시).
  * 추천 매물은 CSV에서 오므로 매물 테이블이 없다. 목록 화면을 그리려고 담을 당시의 주소/가격을 스냅샷으로 함께 저장하고,
@@ -74,8 +76,34 @@ public class ListingFavorite extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String snapshot;
 
+    /** 가격이 바뀌기 직전의 보증금(만원) - 알림함/카드의 "옛 가격 -> 새 가격" 표시용. 가격 변동이 없었으면 null. */
+    @Column(name = "previous_deposit")
+    private Integer previousDeposit;
+
+    /** 가격이 바뀌기 직전의 월세(만원). */
+    @Column(name = "previous_monthly_rent")
+    private Integer previousMonthlyRent;
+
+    /** 마지막으로 가격 변동이 감지된 시각. */
+    @Column(name = "price_changed_at")
+    private LocalDateTime priceChangedAt;
+
     public void updateSnapshot(String snapshot) {
         this.snapshot = snapshot;
+    }
+
+    /**
+     * 매물 가격이 바뀌었을 때 호출한다 (2026-10-05). 옛 가격을 남기고 새 가격으로 바꾼다.
+     * 담을 당시 카드 전체(snapshot)에는 실질주거비 같은 계산값이 옛 가격 기준으로 들어 있어서 함께 비운다 -
+     * 비우면 화면이 새 가격이 반영된 간단 카드(위 deposit/monthlyRent)로 보여준다.
+     */
+    public void applyPriceChange(Integer newDeposit, Integer newMonthlyRent) {
+        this.previousDeposit = this.deposit;
+        this.previousMonthlyRent = this.monthlyRent;
+        this.deposit = newDeposit;
+        this.monthlyRent = newMonthlyRent;
+        this.snapshot = null;
+        this.priceChangedAt = LocalDateTime.now();
     }
 
     public static ListingFavorite of(Long userId, String listingId, String address, String region, String leaseType,

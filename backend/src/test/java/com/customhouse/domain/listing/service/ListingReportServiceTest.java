@@ -41,6 +41,7 @@ class ListingReportServiceTest {
     private ListingReportRepository reportRepository;
     private UserRepository userRepository;
     private SupportMailService mailService;
+    private ListingAlertService alertService;
     private ListingReportService service;
 
     @BeforeEach
@@ -48,7 +49,8 @@ class ListingReportServiceTest {
         reportRepository = mock(ListingReportRepository.class);
         userRepository = mock(UserRepository.class);
         mailService = mock(SupportMailService.class);
-        service = new ListingReportService(reportRepository, userRepository, mailService);
+        alertService = mock(ListingAlertService.class);
+        service = new ListingReportService(reportRepository, userRepository, mailService, alertService);
 
         User user = new User();
         ReflectionTestUtils.setField(user, "email", "member@example.com");
@@ -77,6 +79,34 @@ class ListingReportServiceTest {
         when(reportRepository.countByListingId(LISTING)).thenReturn(2L);
 
         assertThat(service.report(1L, LISTING, request(null)).flagged()).isTrue();
+    }
+
+    @Test
+    void 신고가_경고_기준_2건에_처음_도달하면_관심매물_담은_회원에게_알린다() {
+        when(reportRepository.countByListingId(LISTING)).thenReturn(2L);
+
+        service.report(1L, LISTING, request(null));
+
+        verify(alertService).notifyFlagged(LISTING, 2L);
+    }
+
+    @Test
+    void 경고_기준_전이나_이후_신고에서는_알림을_다시_보내지_않는다() {
+        when(reportRepository.countByListingId(LISTING)).thenReturn(1L, 3L);
+
+        service.report(1L, LISTING, request(null));
+        service.report(1L, LISTING, request(null));
+
+        verify(alertService, never()).notifyFlagged(any(), anyLong());
+    }
+
+    @Test
+    void 경고_알림_처리가_실패해도_신고는_유지된다() {
+        when(reportRepository.countByListingId(LISTING)).thenReturn(2L);
+        doThrow(new RuntimeException("boom")).when(alertService).notifyFlagged(any(), anyLong());
+
+        assertThat(service.report(1L, LISTING, request(null)).flagged()).isTrue();
+        verify(reportRepository).saveAndFlush(any(ListingReport.class));
     }
 
     @Test

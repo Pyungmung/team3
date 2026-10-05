@@ -9,6 +9,7 @@ import com.customhouse.domain.user.service.AdminGuard;
 import com.customhouse.global.error.CustomException;
 import com.customhouse.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.Objects;
  * 등록했는지"만 RegisteredListing에 남겨 수정·삭제 권한을 판정한다. 수정은 등록한 본인만(관리자
  * 예외 없음), 삭제는 본인 또는 관리자(더미 매물 포함 전체)가 할 수 있다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ListingRegistrationService {
@@ -27,6 +29,7 @@ public class ListingRegistrationService {
     private final AiEngineClient aiEngineClient;
     private final RegisteredListingRepository registeredListingRepository;
     private final AdminGuard adminGuard;
+    private final ListingAlertService alertService;
 
     public ListingRegistrationResponse register(Long userId, ListingRegistrationRequest request) {
         ListingRegistrationResponse result = aiEngineClient.registerListing(request);
@@ -58,7 +61,14 @@ public class ListingRegistrationService {
         if (owner == null || !owner.getUserId().equals(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN, "본인이 등록한 매물만 수정할 수 있어요.");
         }
-        return aiEngineClient.updateListing(listingId, request);
+        ListingRegistrationResponse response = aiEngineClient.updateListing(listingId, request);
+        // 가격(보증금/월세)이 바뀌었으면 이 매물을 관심매물로 담은 회원에게 알린다. 알림 처리 실패가 매물 수정을 막으면 안 된다.
+        try {
+            alertService.notifyPriceChange(listingId, request.deposit(), request.monthlyRent());
+        } catch (RuntimeException e) {
+            log.warn("매물 가격 변동 알림 처리에 실패했습니다 (매물: {}): {}", listingId, e.toString());
+        }
+        return response;
     }
 
     /** 등록한 본인이면 통과, 아니면 관리자여야 한다(AdminGuard가 아니면 FORBIDDEN을 던진다). */
