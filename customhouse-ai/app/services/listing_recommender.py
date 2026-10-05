@@ -27,7 +27,7 @@ docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실�
    전환율은 한국부동산원(R-ONE) 수도권 전월세 전환율(종합주택)의 가장 최근 월 값이다 (reb_conversion_rate.py,
    2026-09-28: 예전 고정값 연 4.5%에서 변경. 이 앱은 수도권만 다루므로 수도권 값 하나만 쓴다)
    (교통비 항목은 응답 호환을 위해 남기되 0, 응답에서는 내보내지 않는다)
-5. 월세/전세 따로 **보증금전환 실질거주비** 낮은 순으로 상위 TOP_N (지역별 비례 배분) - 순위 기준은 2026-09-28부터
+5. 월세/전세 따로 **보증금전환 실질거주비** 낮은 순으로 상위 N(기본 DEFAULT_TOP_N, 관리자 기타 설정으로 변경) (지역별 비례 배분) - 순위 기준은 2026-09-28부터
    실질 주거비가 아니라 보증금전환 실질거주비다 (보증금이 큰 반전세가 월세만 낮다는 이유로 상위를 차지하지 않게)
 
 통근시간 표시(2026-10-01, 검색/매칭을 가볍게 하는 쪽으로 전환): 위 1~5단계(검색·필터·랭킹) 전체가
@@ -49,7 +49,19 @@ from app.services import (
 
 logger = logging.getLogger(__name__)
 
-TOP_N = 1000  # 월세/전세 각각 최대 추천 수 (지도 마커/카드 렌더링이 버틸 수 있는 상한)
+DEFAULT_TOP_N = 500  # 월세/전세 각각 최대 추천 수 기본값 (2026-10-05: 1000 -> 500 - 응답 4MB/연속 요청 시 Render 무료 인스턴스 헬스체크 타임아웃 완화)
+MAX_TOP_N = 1000  # 관리자 설정으로도 넘을 수 없는 상한 (지도 마커/카드 렌더링이 버틸 수 있는 한계)
+MIN_TOP_N = 10
+
+
+def _top_n(request) -> int:
+    """월세/전세 각각의 추천 개수 상한. 관리자 수정 > 기타 설정의 값(request.app_settings.recommendation_limit)이 있으면
+    그 값(MIN_TOP_N~MAX_TOP_N로 보정), 없으면 DEFAULT_TOP_N."""
+    settings = getattr(request, "app_settings", None)
+    limit = getattr(settings, "recommendation_limit", None) if settings else None
+    if limit is None:
+        return DEFAULT_TOP_N
+    return max(MIN_TOP_N, min(int(limit), MAX_TOP_N))
 
 # 추천 순위를 매기는 비용 항목: 보증금전환 실질거주비 (월세 + 관리비 + 보증금 기회비용)
 RANK_COST_KEY = "deposit_converted_cost"
@@ -387,8 +399,9 @@ def run_listing_diagnosis(request) -> dict:
             (wolse_results if listing["lease_type"] == "월세" else jeonse_results).append(lightweight)
 
     # 월세/전세 각각 보증금전환 실질거주비 낮은 순 상위 N (절감 기준이 없으니 require_savings=False)
-    wolse = data_analysis.rank_by_real_cost(wolse_results, top_n=TOP_N, require_savings=False, cost_key=RANK_COST_KEY)
-    jeonse = data_analysis.rank_by_real_cost(jeonse_results, top_n=TOP_N, require_savings=False, cost_key=RANK_COST_KEY)
+    top_n = _top_n(request)
+    wolse = data_analysis.rank_by_real_cost(wolse_results, top_n=top_n, require_savings=False, cost_key=RANK_COST_KEY)
+    jeonse = data_analysis.rank_by_real_cost(jeonse_results, top_n=top_n, require_savings=False, cost_key=RANK_COST_KEY)
 
     # 랭킹이 끝나 top_n(최대 TOP_N x 2)으로 추려진 뒤에야 _to_result()로 나머지 필드(브로커/좌표 등)를 채운다.
     def _expand(ranked: list[dict]) -> list[dict]:

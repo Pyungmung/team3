@@ -57,6 +57,16 @@ class IncomeStandardCondition(BaseModel):
         populate_by_name = True
 
 
+class AppSettingCondition(BaseModel):
+    """관리자 화면(관리자 수정 > 기타 설정)에서 저장한 설정. 백엔드가 DB에서 읽어 요청에 실어 보낸다(브라우저 입력이 아니다).
+    recommendation_limit: 월세/전세 각각의 추천 개수 상한. 없으면(None/조회 실패) listing_recommender.DEFAULT_TOP_N을 쓴다."""
+
+    recommendation_limit: int | None = Field(None, alias="recommendationLimit")
+
+    class Config:
+        populate_by_name = True
+
+
 class LoanProductCondition(BaseModel):
     """관리자 화면(관리자 수정 > 전세자금대출)에서 저장한 대출 1종의 자격 조건. 백엔드가 DB에서 읽어 요청에 실어 보낸다
     (브라우저가 보낸 값이 아니다). 값이 None인 조건은 "제한 없음". 금액은 만원, 면적은 ㎡."""
@@ -188,6 +198,9 @@ class DiagnosisRequest(BaseModel):
     # 관리자 화면(관리자 수정 > 기준소득관리)에서 저장한 RIR/기준중위소득. 백엔드가 DB에서 읽어 실어 보내며
     # 브라우저 입력이 아니다. None이면(조회 실패 등) CSV/JSON 폴백을 쓴다 (IncomeStandardCondition 참고).
     income_standard: IncomeStandardCondition | None = Field(None, alias="incomeStandard")
+
+    # 관리자 화면(관리자 수정 > 기타 설정)에서 저장한 설정(추천 개수 상한 등). 백엔드가 실어 보내며 브라우저 입력이 아니다.
+    app_settings: AppSettingCondition | None = Field(None, alias="appSettings")
 
     class Config:
         populate_by_name = True
