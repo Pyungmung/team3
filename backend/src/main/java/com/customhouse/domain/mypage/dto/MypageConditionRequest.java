@@ -42,10 +42,10 @@ public record MypageConditionRequest(
         @Min(value = 0, message = "현재 사용가능 보증금은 0 이상이어야 합니다.")
         Integer deposit, // 선택. 지금 수중에 있는 현금 기준 - AI 진단 폼의 deposit과 같은 값, 저장해두면 다음 진단 시 자동으로 불러온다
 
-        @Min(value = 0, message = "희망 보증금은 0 이상이어야 합니다.")
+        @Min(value = 0, message = "최대 매물 보증금은 0 이상이어야 합니다.")
         Integer desiredDeposit, // 선택. AI 진단 폼과 마찬가지로 미입력 시 연소득 기준으로 자동 계산됨
 
-        @Min(value = 0, message = "희망 월세는 0 이상이어야 합니다.")
+        @Min(value = 0, message = "최대 매물 월세는 0 이상이어야 합니다.")
         Integer desiredRent,
 
         @Min(value = 0, message = "부동산 자산은 0 이상이어야 합니다.")

@@ -852,7 +852,7 @@
 
         <div class="divider"></div>
 
-        <div class="section-title">보증금 · 희망 월세</div>
+        <div class="section-title">보증금 · 최대 매물 월세</div>
 
         <div class="grid3">
           <div>
@@ -861,12 +861,12 @@
             <div class="hint">지금 수중에 있는 현금 기준</div>
           </div>
           <div>
-            <label class="flabel">희망 보증금 (만원) <span class="req">*</span></label>
+            <label class="flabel">최대 매물 보증금 (만원) <span class="req">*</span></label>
             <input type="number" name="desiredDeposit" placeholder="예: 1000" min="0" class="input" />
-            <div class="hint">입력한 금액 이하 매물만 검색</div>
+            <div class="hint">입력한 금액 이하 매물만 검색<br />대출금 조회에도 이용됩니다</div>
           </div>
           <div>
-            <label class="flabel">희망 월세 (만원)</label>
+            <label class="flabel">최대 매물 월세 (만원)</label>
             <input type="number" name="desiredRent" placeholder="선택 (미입력 시 소득 기준)" min="0" class="input" />
             <div class="hint">입력한 금액 이하 매물만 검색</div>
           </div>
@@ -1176,7 +1176,7 @@
       if (!form.workLocation.value) return "직장 위치를 입력해주세요.";
       if (form.annualIncome.value === "" || Number(form.annualIncome.value) < 0) return "연소득을 입력해주세요.";
       if (form.deposit.value === "" || Number(form.deposit.value) < 0) return "(필수사항) 현재 사용가능한 보증금액을 입력해주세요.";
-      if (form.desiredDeposit.value === "" || Number(form.desiredDeposit.value) < 0) return "희망 보증금을 입력해주세요.";
+      if (form.desiredDeposit.value === "" || Number(form.desiredDeposit.value) < 0) return "최대 매물 보증금을 입력해주세요.";
       return null;
     }
 

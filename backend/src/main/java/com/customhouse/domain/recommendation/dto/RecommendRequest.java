@@ -27,10 +27,10 @@ public record RecommendRequest(
         @Min(value = 0, message = "보증금은 0 이상이어야 합니다.")
         Integer deposit, // 만원 단위, 현재 수중에 있는 현금
 
-        @Min(value = 0, message = "희망 보증금/전세액은 0 이상이어야 합니다.")
+        @Min(value = 0, message = "최대 매물 보증금/전세액은 0 이상이어야 합니다.")
         Integer desiredDeposit, // 만원 단위, 선택. 실제 계약에 쓸 목표 금액(대출 등으로 deposit보다 클 수 있음)
 
-        @Min(value = 0, message = "희망 월세는 0 이상이어야 합니다.")
+        @Min(value = 0, message = "최대 매물 월세는 0 이상이어야 합니다.")
         Integer desiredRent, // 만원 단위, 선택 입력 (없으면 소득 기준 자동 산정)
 
         @NotBlank(message = "직장 위치(workLocation)는 필수입니다.")

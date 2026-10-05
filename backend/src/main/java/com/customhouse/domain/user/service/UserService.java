@@ -12,7 +12,6 @@ import com.customhouse.domain.user.dto.UpdateProfileRequest;
 import com.customhouse.domain.user.dto.UserResponse;
 import com.customhouse.domain.user.entity.User;
 import com.customhouse.domain.user.repository.UserRepository;
-import com.customhouse.domain.watchlist.repository.WatchlistItemRepository;
 import com.customhouse.global.error.CustomException;
 import com.customhouse.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +38,6 @@ public class UserService {
     private final NotificationRepository notificationRepository;
     private final PaymentRepository paymentRepository;
     private final SubscriptionRepository subscriptionRepository;
-    private final WatchlistItemRepository watchlistItemRepository;
     private final ListingFavoriteRepository listingFavoriteRepository;
 
     @Transactional
@@ -105,7 +103,6 @@ public class UserService {
 
         subscriptionRepository.findByUserId(userId).ifPresent(subscriptionRepository::delete);
         paymentRepository.deleteByUserId(userId);
-        watchlistItemRepository.deleteByUserId(userId);
         listingFavoriteRepository.deleteByUserId(userId);
         notificationRepository.deleteByUserId(userId);
         // preferentialStatuses(HousingConditionPreference)는 HousingCondition에 cascade+orphanRemoval로

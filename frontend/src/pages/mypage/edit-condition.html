@@ -1442,12 +1442,13 @@
               </div>
 
               <div class="field mb-4">
-                <label>희망 보증금 (만원, 선택)</label>
+                <label>최대 매물 보증금 (만원, 선택)</label>
                 <input type="number" name="desiredDeposit" min="0" placeholder="예: 1000" class="input">
+                <div class="hint">입력한 금액 이하 매물만 검색<br />대출금 조회에도 이용됩니다</div>
               </div>
 
               <div class="field">
-                <label>희망 월세 (만원, 선택)</label>
+                <label>최대 매물 월세 (만원, 선택)</label>
                 <input type="number" name="desiredRent" min="0" placeholder="예: 60" class="input">
                 <div class="hint">입력하지 않으면 소득 기준으로 자동 계산해요.</div>
               </div>
@@ -1677,7 +1678,7 @@
 <script src="../../js/api/auth.js?v=20260916a"></script>
 <script src="../../js/api/mypage.js?v=20260916a"></script>
 <script src="../../js/api/user.js?v=20260921a"></script>
-<script src="../../js/api/watchlist.js?v=20261001b"></script>
+<script src="../../js/api/watchlist.js?v=20261005a"></script>
 <script src="../../js/utils/address-match-util.js?v=20260916a"></script>
 
 <script>
@@ -2335,7 +2336,7 @@
       return setMsg(msg, "직장 위치를 선택해주세요.", "error");
     }
     if (form.desiredDeposit.value !== "" && Number(form.desiredDeposit.value) < 0) {
-      return setMsg(msg, "희망 보증금은 0 이상이어야 합니다.", "error");
+      return setMsg(msg, "최대 매물 보증금은 0 이상이어야 합니다.", "error");
     }
 
     setMsg(msg, "저장 중...");
