@@ -8,6 +8,8 @@ import com.customhouse.domain.loan.dto.LoanProductResponse;
 import com.customhouse.domain.loan.service.LoanProductService;
 import com.customhouse.domain.recommendation.dto.AiListingRequest;
 import com.customhouse.domain.recommendation.dto.RecommendRequest;
+import com.customhouse.global.error.CustomException;
+import com.customhouse.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -47,6 +49,25 @@ public class AiEngineClient {
                 .body(new AiListingRequest(request, savedLoans(), incomeStandard()))
                 .retrieve()
                 .body(Map.class);
+    }
+
+    /**
+     * 관심매물 새로고침 - 매물번호 1건을 사용자의 현재 조건으로 다시 계산한 카드를 받는다
+     * (customhouse-ai POST /api/v1/diagnosis/listings/{listingId}). 같은 대출 조건/기준소득을 함께 실어 보낸다.
+     * 매물이 없으면(삭제됨) AI 엔진이 404를 주고, 여기서 NOT_FOUND로 바꿔 던진다.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> requestListingRefresh(String listingId, RecommendRequest request) {
+        try {
+            return aiEngineRestClient.post()
+                    .uri("/api/v1/diagnosis/listings/{listingId}", listingId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new AiListingRequest(request, savedLoans(), incomeStandard()))
+                    .retrieve()
+                    .body(Map.class);
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new CustomException(ErrorCode.NOT_FOUND, "매물을 찾을 수 없어요. 삭제되었을 수 있어요.");
+        }
     }
 
     /**

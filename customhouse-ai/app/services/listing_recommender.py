@@ -265,6 +265,39 @@ def _attach_details(record: dict, listing: dict) -> dict:
     return record
 
 
+def refresh_listing_card(request, listing_id: str) -> dict | None:
+    """관심매물 새로고침 - 매물번호로 그 매물 1건의 추천 카드를 사용자의 현재 조건으로 다시 만든다 (2026-10-05).
+    run_listing_diagnosis와 같은 계산(_to_result/_attach_details/대출 판별)을 쓰되, 순위/필터(보증금 한도, 통근시간,
+    유형, 이사 일정, 계약중 여부)는 적용하지 않는다 - 이미 관심매물로 담은 매물의 가격/비용을 새 기준으로 갱신하는 용도라서
+    조건에 안 맞게 되었어도 카드는 만들어 준다. 매물이 없으면(삭제됨) None."""
+    listing = listing_repository.get_listing(listing_id)
+    if listing is None:
+        return None
+    work_lat, work_lon = _resolve_work_coords(request)
+    deposit_rate = reb_conversion_rate.get_metro_conversion_rate()
+    monthly_deposit_rate = deposit_interest_rate.get_one_year_deposit_rate()
+    if listing["lat"] is not None and listing["lon"] is not None:
+        minutes = calculator._estimate_commute_minutes_fallback(work_lat, work_lon, listing["lat"], listing["lon"])
+    else:
+        minutes = 0
+    card = _to_result(listing, minutes, calculator.ESTIMATE_SOURCE_LABEL, deposit_rate.rate_percent, request.deposit,
+                      monthly_deposit_rate.rate_percent)
+    card = _clean_nan(card)
+    _attach_details(card, listing)
+    card["eligible_loans"] = loan_matcher.match_eligible_loans(request, card, deposit_rate.rate_percent)
+    return {
+        "listing": card,
+        "deposit_conversion_rate": deposit_rate.rate_percent,
+        "deposit_conversion_rate_base": deposit_rate.base_month,
+        "deposit_conversion_rate_label": deposit_rate.label,
+        "deposit_conversion_rate_is_fallback": deposit_rate.is_fallback,
+        "monthly_deposit_rate": monthly_deposit_rate.rate_percent,
+        "monthly_deposit_rate_base": monthly_deposit_rate.base_month,
+        "monthly_deposit_rate_label": monthly_deposit_rate.label,
+        "monthly_deposit_rate_is_fallback": monthly_deposit_rate.is_fallback,
+    }
+
+
 def run_listing_diagnosis(request) -> dict:
     started = time.time()
     regions, _ = calculator._load_regions()

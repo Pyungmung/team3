@@ -93,6 +93,17 @@ public class ListingFavorite extends BaseTimeEntity {
     }
 
     /**
+     * 관심매물 새로고침 결과를 반영한다 (2026-10-05) - 새 가격/관리비와, 새 가격 기준으로 다시 계산한 카드 전체(snapshot).
+     * 가격 변동 이력(previous*, priceChangedAt)은 그대로 둔다.
+     */
+    public void refreshFrom(Integer deposit, Integer monthlyRent, Integer maintenanceFee, String snapshot) {
+        this.deposit = deposit;
+        this.monthlyRent = monthlyRent;
+        this.maintenanceFee = maintenanceFee;
+        this.snapshot = snapshot;
+    }
+
+    /**
      * 매물 가격이 바뀌었을 때 호출한다 (2026-10-05). 옛 가격을 남기고 새 가격으로 바꾼다.
      * 담을 당시 카드 전체(snapshot)에는 실질주거비 같은 계산값이 옛 가격 기준으로 들어 있어서 함께 비운다 -
      * 비우면 화면이 새 가격이 반영된 간단 카드(위 deposit/monthlyRent)로 보여준다.

@@ -1929,14 +1929,17 @@
   function renderProfile(user) {
     const email = user?.email ?? "";
     const nickname = user?.nickname ?? "";
+    // 관리자 계정은 로그인 아이디(admin@admin.com)는 그대로 두고, 이메일 항목에는 실제 수신 메일(고객센터와 같은 주소)을 보여준다.
+    // 알림 메일도 백엔드(ADMIN_MAIL_EMAIL)가 이 주소로 보낸다.
+    const displayEmail = user?.role === "ADMIN" ? CUSTOMER_SUPPORT_EMAIL : email;
 
-    document.getElementById("profile-email").value = email;
+    document.getElementById("profile-email").value = displayEmail;
     document.getElementById("profile-id").value = email;
     profileForm.nickname.value = nickname;
     profileForm.phone.value = user?.phone ?? "";
 
     document.getElementById("sidebar-name").textContent = nickname || "회원";
-    document.getElementById("sidebar-email").textContent = email || "로그인 계정";
+    document.getElementById("sidebar-email").textContent = displayEmail || "로그인 계정";
 
     // 광고·마케팅 동의는 회원(User) 정보에 저장되므로 여기서 함께 초기화한다 (주거 조건과 무관).
     if (marketingConsentToggle) {
