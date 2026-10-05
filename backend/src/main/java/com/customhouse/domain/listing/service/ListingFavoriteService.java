@@ -5,11 +5,15 @@ import com.customhouse.domain.listing.dto.ListingFavoriteResponse;
 import com.customhouse.domain.listing.dto.ListingReportStatus;
 import com.customhouse.domain.listing.entity.ListingFavorite;
 import com.customhouse.domain.listing.repository.ListingFavoriteRepository;
+import com.customhouse.domain.recommendation.dto.RecommendRequest;
+import com.customhouse.domain.recommendation.service.AiEngineClient;
 import com.customhouse.global.error.CustomException;
 import com.customhouse.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +34,7 @@ public class ListingFavoriteService {
 
     private final ListingFavoriteRepository favoriteRepository;
     private final ListingReportService reportService;
+    private final AiEngineClient aiEngineClient;
 
     public void add(Long userId, ListingFavoriteRequest request) {
         String snapshot = validSnapshot(request.snapshot());
@@ -64,6 +69,39 @@ public class ListingFavoriteService {
             throw new CustomException(ErrorCode.VALIDATION_ERROR, "매물 정보 형식이 올바르지 않습니다.");
         }
         return snapshot;
+    }
+
+    /**
+     * 관심매물 새로고침 (2026-10-05) - 매물번호로 그 매물 1건을 사용자의 현재 진단 조건으로 다시 계산한 카드를 받아
+     * 관심매물의 가격과 카드 전체 정보(snapshot)를 갱신한다. 가격이 바뀌어 간단 카드가 된 관심매물을 다시 전체 카드로 되돌린다.
+     * 카드 JSON은 리포트에서 하트를 누를 때 저장하는 것과 같은 모양(_conversion_rate/_transport_type 포함)으로 저장한다.
+     */
+    @Transactional
+    public ListingFavoriteResponse refresh(Long userId, String listingId, RecommendRequest condition) {
+        ListingFavorite fav = favoriteRepository.findByUserIdAndListingId(userId, listingId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND, "관심 매물로 담은 매물이 아니에요."));
+
+        Map<String, Object> result = aiEngineClient.requestListingRefresh(listingId, condition);
+        if (result == null || !(result.get("listing") instanceof Map)) {
+            throw new CustomException(ErrorCode.NOT_FOUND, "매물 정보를 불러오지 못했어요.");
+        }
+        ObjectNode card = JSON.valueToTree(result.get("listing"));
+        if (result.get("deposit_conversion_rate") instanceof Number rate) {
+            card.put("_conversion_rate", rate.doubleValue());
+        }
+        if (condition.transportType() != null) {
+            card.put("_transport_type", condition.transportType());
+        }
+        fav.refreshFrom(intOrNull(card.get("listing_deposit")), intOrNull(card.get("listing_monthly_rent")),
+                intOrNull(card.get("maintenance_fee")), JSON.writeValueAsString(card));
+        favoriteRepository.save(fav);
+
+        Map<String, ListingReportStatus> statuses = reportService.getStatuses(List.of(listingId));
+        return ListingFavoriteResponse.of(fav, statuses.getOrDefault(listingId, NO_REPORTS));
+    }
+
+    private static Integer intOrNull(JsonNode node) {
+        return node != null && node.isNumber() ? node.asInt() : null;
     }
 
     @Transactional

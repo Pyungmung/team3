@@ -712,7 +712,7 @@
   <script src="../../js/components/footer.js?v=20260928c"></script>
   <script src="../../js/components/listing-card.js?v=20261005b"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/watchlist.js?v=20261005a"></script>
+  <script src="../../js/api/watchlist.js?v=20261005b"></script>
 
   <script>
     renderHeader("watchlist");
@@ -824,7 +824,10 @@
               ${CustomHouseListingCard.renderBody(full)}
               <div class="property-actions" style="justify-content:space-between">
                 <span class="listing-no">매물번호 ${escapeHtml(fav.listingId)}</span>
-                <button type="button" class="listing-remove-btn action-button remove">삭제</button>
+                <span style="display:flex;gap:8px">
+                  <button type="button" class="listing-refresh-btn action-button">새로고침</button>
+                  <button type="button" class="listing-remove-btn action-button remove">삭제</button>
+                </span>
               </div>
             </li>`;
           }
@@ -857,14 +860,12 @@
                   ? `<div class="report-warning">⚠ 허위매물 주의 · 신고 ${fav.reportCount}건이 접수된 매물이에요</div>`
                   : ""
               }
-              <div style="font-size:11px;color:#94a3b8;margin-top:8px">${
-                fav.priceChangedAt
-                  ? "가격이 바뀌어 새 가격 기준의 간단 정보로 보여드려요. 리포트에서 하트를 껐다가 다시 담으면 새 가격 기준 전체 정보가 표시돼요."
-                  : "리포트에서 하트를 껐다가 다시 눌러 담으면 매물 전체 정보가 이곳에 표시돼요."
-              }</div>
-              <div class="property-actions">
+              <div class="property-actions" style="justify-content:space-between">
                 <span style="font-size:12px;color:#94a3b8;align-self:center">매물번호 ${escapeHtml(fav.listingId)}</span>
-                <button type="button" class="listing-remove-btn action-button remove">삭제</button>
+                <span style="display:flex;gap:8px">
+                  <button type="button" class="listing-refresh-btn action-button">새로고침</button>
+                  <button type="button" class="listing-remove-btn action-button remove">삭제</button>
+                </span>
               </div>
             </li>`;
         })
@@ -874,6 +875,26 @@
       CustomHouseListingCard.wireReferenceAutoLoad(listEl);
 
       listEl.querySelectorAll("[data-listing-id]").forEach((li) => {
+        const refreshBtn = li.querySelector(".listing-refresh-btn");
+        if (refreshBtn) {
+          refreshBtn.addEventListener("click", () =>
+            runAction(refreshBtn, async () => {
+              // 새 가격 기준 계산에는 AI 주거 진단 때 입력한 조건이 필요하다
+              let condition = null;
+              try {
+                condition = JSON.parse(localStorage.getItem("customhouse:lastDiagnosisCondition") || "null");
+              } catch {
+                condition = null;
+              }
+              if (!condition) {
+                alert("새로고침하려면 먼저 AI 주거 진단에서 조건을 입력해 주세요.");
+                return;
+              }
+              await CustomHouseWatchlistApi.refreshListingFavorite(li.dataset.listingId, condition);
+              await loadWatchlist();
+            })
+          );
+        }
         const removeBtn = li.querySelector(".listing-remove-btn");
         removeBtn.addEventListener("click", () =>
           runAction(removeBtn, async () => {
