@@ -47,7 +47,7 @@ class AiEngineClientTest {
         when(loans.getSavedLoans()).thenThrow(new IllegalStateException("db down"));
         IncomeStandardService incomeStandard = mock(IncomeStandardService.class);
 
-        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard).requestListingDiagnosis(request);
+        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class)).requestListingDiagnosis(request);
 
         assertThat(result).containsEntry("ok", true);
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
@@ -65,7 +65,7 @@ class AiEngineClientTest {
         IncomeStandardService incomeStandard = mock(IncomeStandardService.class);
         when(incomeStandard.get()).thenThrow(new IllegalStateException("db down"));
 
-        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard).requestListingDiagnosis(request);
+        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class)).requestListingDiagnosis(request);
 
         assertThat(result).containsEntry("ok", true);
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);

@@ -194,3 +194,17 @@ def test_새로고침_카드는_리포트_카드와_같은_계산을_쓰고_매�
     assert "eligible_loans" in card and card["broker"] is not None
     assert out["deposit_conversion_rate"] == 6.35 and out["monthly_deposit_rate"] == 3.39
     assert listing_recommender.refresh_listing_card(req, "NOPE-1") is None
+
+
+# --- 추천 개수 상한 (관리자 수정 > 기타 설정) ---
+def test_추천_개수_상한은_기본_500이고_관리자_설정이_있으면_그_값이다():
+    from app.models.request_schema import DiagnosisRequest
+    base = dict(annualIncome=3000, deposit=500, workLocation="강남구")
+    assert listing_recommender.DEFAULT_TOP_N == 500
+    assert listing_recommender._top_n(DiagnosisRequest(**base)) == 500                                   # 설정 없음(조회 실패 등)
+    assert listing_recommender._top_n(DiagnosisRequest(**base, appSettings={})) == 500                   # 값 없음
+    assert listing_recommender._top_n(DiagnosisRequest(**base, appSettings={"recommendationLimit": 300})) == 300
+    # 범위를 벗어난 값은 10~1000으로 보정한다
+    assert listing_recommender._top_n(DiagnosisRequest(**base, appSettings={"recommendationLimit": 5000})) == 1000
+    assert listing_recommender._top_n(DiagnosisRequest(**base, appSettings={"recommendationLimit": 1})) == 10
+
