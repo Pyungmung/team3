@@ -10,7 +10,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
   <link rel="stylesheet" href="../../css/listing-card.css?v=20261004h" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="../../js/config.js?v=20260915c"></script>
   <script>
     // config.js에 카카오맵 키가 있으면 SDK를 끼워넣는다 (autoload=false로 즉시 렌더 방지).
@@ -72,6 +71,21 @@
     .rir-table td { padding: 7px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
     .rir-table tr.metro td { background: #eff6ff; font-weight: 800; color: #1d4ed8; }
     .rir-table td .grp { display: block; font-size: 11px; font-weight: 500; color: #94a3b8; }
+    /* 내 정보 · 입력 조건 요약 (그래프 자리) */
+    .cond-summary { border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; padding: 12px 14px 6px; }
+    .cond-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .cond-head h3 { font-size: 13px; font-weight: 800; color: #0f172a; }
+    .cond-edit { font-size: 11px; font-weight: 700; color: #1d4ed8; }
+    .cond-group { padding: 8px 0 6px; border-top: 1px solid #e2e8f0; }
+    .cond-group:first-of-type { border-top: 0; }
+    .cond-group-title { font-size: 11px; font-weight: 800; color: #64748b; margin-bottom: 4px; }
+    .cond-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; line-height: 1.55; padding: 1px 0; }
+    .cond-row .k { color: #64748b; white-space: nowrap; }
+    .cond-row .v { color: #0f172a; font-weight: 700; text-align: right; word-break: keep-all; }
+    .cond-row .v.empty { color: #94a3b8; font-weight: 400; }
+    .cond-chips { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .cond-chips.left { align-items: flex-start; margin-bottom: 4px; }
+    .cond-chip { font-size: 11px; font-weight: 700; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 1px 8px; }
     .rir-foot { margin-top: 8px; font-size: 11px; line-height: 1.55; color: #94a3b8; }
     /* 주거정책 추천: 기준 자치구 안내 + 서울 공통/자치구 태그 */
     .pol-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; font-size: 12px; color: #334155; }
@@ -230,10 +244,14 @@
               </table>
               <p class="rir-foot" id="rir-foot"></p>
             </div>
-            <div style="height: 220px; flex: none">
-              <canvas id="savings-chart"></canvas>
+            <!-- 2026-10-05: 월세 실거래 비교 그래프 자리에 내 정보와 진단 때 입력한 조건을 한눈에 보여준다 -->
+            <div class="cond-summary" id="cond-summary">
+              <div class="cond-head">
+                <h3>내 정보 · 입력 조건</h3>
+                <a href="input-form.html" class="cond-edit">조건 수정</a>
+              </div>
+              <div id="cond-body"></div>
             </div>
-            <p class="text-xs text-gray-400 mt-3" id="disclaimer"></p>
             <p class="text-xs mt-2" id="rate-note" style="color:#64748b"></p>
           </div>
 
@@ -345,11 +363,10 @@
   <div class="rl-toast hidden" id="rl-toast" role="status" aria-live="polite"></div>
 
   <script src="../../js/components/header.js?v=20260915b"></script>
-  <script src="../../js/components/listing-card.js?v=20261004k"></script>
+  <script src="../../js/components/listing-card.js?v=20261005b"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/watchlist.js?v=20261001b"></script>
+  <script src="../../js/api/watchlist.js?v=20261005a"></script>
   <script src="../../js/api/recommendation.js?v=20260930a"></script>
-  <script src="../../js/utils/chart-util.js?v=20260915d"></script>
   <script src="../../js/utils/map-util.js?v=20260928a"></script>
   <script src="../../js/utils/map-cluster-util.js?v=20260928a"></script>
   <script>
@@ -357,6 +374,75 @@
 
     // 카드 본문 렌더링과 금액/이스케이프 도구는 마이페이지 관심 매물과 같이 쓰는 js/components/listing-card.js에 있다.
     const { esc, fmtMoney, fmtNum, fmtRate, PHOTO_PLACEHOLDER } = CustomHouseListingCard;
+
+    // 2026-10-05: 리포트 왼쪽 위 카드에 "내 정보 · 입력 조건"을 정리해서 보여준다. 값은 진단 때 저장해 둔
+    // customhouse:lastDiagnosisCondition(= 진단 폼에 입력한 값)에서 온다.
+    const COND_LABELS = {
+      transport: { CAR: "자동차", WALK: "도보", PUBLIC: "대중교통" },
+      job: { GOVERNMENT: "공무원/공공기관", SME: "중소기업 재직자", MID_SIZED: "중견기업 재직자", LARGE_CORP: "대기업 재직자" },
+      schedule: { IMMEDIATE: "1개월 이내 (즉시)", WITHIN_3M: "3개월 이내", WITHIN_6M: "6개월 이내", EXPLORING: "미정" },
+      status: {
+        BASIC_LIVELIHOOD: "기초생활수급자", NEAR_POVERTY: "차상위계층", SINGLE_PARENT: "한부모가구", INDEPENDENT_YOUTH: "자립준비청년",
+        DISABLED: "장애인", MULTICULTURAL: "다문화가구", ELDERLY_DEPENDENT: "노인부양가구", ELDERLY_HOUSEHOLD: "고령자가구",
+        NEWLYWED: "신혼부부(기혼자포함)", DUAL_INCOME: "맞벌이부부", ONE_CHILD: "1자녀", TWO_CHILDREN: "2자녀", MULTI_CHILD: "다자녀가구",
+      },
+    };
+
+    function renderConditionSummary(c) {
+      const box = document.getElementById("cond-body");
+      if (!box) return;
+      if (!c) {
+        box.innerHTML = `<p class="text-xs text-gray-400 py-2">저장된 입력 조건이 없어요. <a href="input-form.html" style="color:#1d4ed8;font-weight:700">진단하러 가기</a></p>`;
+        return;
+      }
+      const has = (v) => v !== null && v !== undefined && v !== "";
+      const money = (v) => (has(v) ? fmtMoney(v) : null);
+      const yesNo = (v) => (v === true ? "예 (무주택)" : v === false ? "아니오" : null);
+      // [라벨, 값(문자열 또는 null), 값이 비었을 때도 "-"로 보여줄지]
+      const row = (k, v, always) => {
+        if (!has(v) && !always) return "";
+        return `<div class="cond-row"><span class="k">${esc(k)}</span><span class="v${has(v) ? "" : " empty"}">${has(v) ? v : "미입력"}</span></div>`;
+      };
+      const group = (title, rows) => {
+        const html = rows.join("");
+        return html ? `<div class="cond-group"><div class="cond-group-title">${title}</div>${html}</div>` : "";
+      };
+      const transport = COND_LABELS.transport[c.transportType] || "대중교통";
+      const workPlace = c.workAddress ? esc(c.workAddress) : has(c.workLocation) ? esc(c.workLocation) + " 권역" : null;
+      const buildingTypes = Array.isArray(c.preferredBuildingTypes) && c.preferredBuildingTypes.length
+        ? c.preferredBuildingTypes.map((t) => esc(t)).join(", ") : null;
+      const statuses = Array.isArray(c.preferentialStatuses) ? c.preferentialStatuses : [];
+      // 우대사항 칩은 "해당 우대사항" 같은 라벨 없이 탭 제목 아래에 바로 한 줄씩 보여준다(다른 값들과 같이 오른쪽 정렬)
+      const children = [];
+      if (has(c.newbornAdditionalChildCount) && c.newbornAdditionalChildCount > 0) children.push(`신생아 특례 자녀 · 2년 내 출산 ${c.newbornAdditionalChildCount}명`);
+      if (has(c.minorChildOver2YearsCount) && c.minorChildOver2YearsCount > 0) children.push(`신생아 특례 자녀 · 2년 초과 미성년 ${c.minorChildOver2YearsCount}명`);
+      const prefPills = [...statuses.map((s2) => esc(COND_LABELS.status[s2] || s2)), ...children];
+      const statusBlock = prefPills.length
+        ? `<div class="cond-chips left">${prefPills.map((t) => `<span class="cond-chip">${t}</span>`).join("")}</div>`
+        : "";
+      const military = has(c.militaryServiceMonths) && c.militaryServiceMonths > 0 ? [`${c.militaryServiceMonths}개월`] : [];
+
+      box.innerHTML =
+        group("내 정보", [
+          row("나이", has(c.age) ? `만 ${c.age}세` : null, true),
+          row("연소득", money(c.annualIncome), true),
+          row("부부합산 연소득", money(c.coupleAnnualIncome)),
+          row("총자산", money(c.assets), true),
+          row("직업 유형", COND_LABELS.job[c.jobType] || null),
+          row("무주택 세대주", yesNo(c.noHouseholder)),
+          row("군복무기간", military.length ? military[0] : null),
+        ]) +
+        group("주거 조건", [
+          row("직장·학교", workPlace, true),
+          row("통근", `${transport} · 최대 ${c.maxCommuteMinutes ?? "-"}분`),
+          row("현재 사용가능 보증금", money(c.deposit), true),
+          row("최대 매물 보증금", money(c.desiredDeposit)),
+          row("최대 매물 월세", money(c.desiredRent)),
+          row("희망 이사 일정", COND_LABELS.schedule[c.moveSchedule] || null),
+          row("선호 주택 유형", buildingTypes),
+        ]) +
+        group("우대사항", [statusBlock]);
+    }
 
     // localStorage 사용 이유: 탭이 바뀌거나 세션이 끊겨도 결과가 유지되어야 함.
     const raw = localStorage.getItem("customhouse:lastListingDiagnosis");
@@ -505,13 +591,13 @@
       const TRANSPORT_TYPE_LABELS = { CAR: "자동차", WALK: "도보", PUBLIC: "대중교통" };
       const transportLabel = TRANSPORT_TYPE_LABELS[condition?.transportType] || "대중교통";
 
-      // 보증금 한도(희망 보증금, 없으면 현재 보유 보증금)를 넘는 매물은 추천에서 제외된다 - 왜 매물이 적은지 알 수 있게 밝힌다.
+      // 보증금 한도(최대 매물 보증금, 없으면 현재 보유 보증금)를 넘는 매물은 추천에서 제외된다 - 왜 매물이 적은지 알 수 있게 밝힌다.
       const depositLimitText = data.deposit_limit ? fmtMoney(data.deposit_limit) : "";
       document.getElementById("summary-line").textContent =
         `${depositLimitText ? `보증금 ${depositLimitText} 이하 ` : ""}조건에 맞는 매물 ${(data.total_candidates ?? 0).toLocaleString()}건 중 월세 ${wolseList.length}개, 전세 ${jeonseList.length}개를 추천해요. 월세는 보증금 예금전환 이자기회비용, 전세는 총보증금 전환 이자기회비용이 낮은 순입니다.`;
       if (depositLimitText) {
-        document.getElementById("wolse-empty").textContent = `보증금 ${depositLimitText} 이하 월세 매물을 찾지 못했어요. 희망 보증금을 올려보세요.`;
-        document.getElementById("jeonse-empty").textContent = `보증금 ${depositLimitText} 이하 전세 매물을 찾지 못했어요. 희망 보증금(전세액)을 올려보세요.`;
+        document.getElementById("wolse-empty").textContent = `보증금 ${depositLimitText} 이하 월세 매물을 찾지 못했어요. 최대 매물 보증금을 올려보세요.`;
+        document.getElementById("jeonse-empty").textContent = `보증금 ${depositLimitText} 이하 전세 매물을 찾지 못했어요. 최대 매물 보증금(전세액)을 올려보세요.`;
       }
       document.getElementById("affordable-rent").textContent = `${fmtNum(data.affordable_rent)}만원`;
       document.getElementById("rir").textContent = `${fmtRate(data.rent_to_income_ratio)}%`;
@@ -546,7 +632,6 @@
           `통계의 월소득은 세금 제외 실수령액 기준이라, 입력하신 연소득이 세전이면 실제 적정 월세는 이보다 낮을 수 있어요.`;
         document.getElementById("rir-box").classList.remove("hidden");
       }
-      document.getElementById("disclaimer").textContent = data.disclaimer;
 
       // 보증금을 월 비용으로 환산하는 이율 = 한국부동산원 수도권 전월세 전환율(종합주택) 최신 월 값. 조회에 실패해 대체값을 썼으면 그렇다고 밝힌다.
       const depositRateText = `${fmtRate(data.deposit_conversion_rate)}%`;
@@ -577,8 +662,7 @@
           }
         : null;
 
-      // 차트는 월세 상위 30건만 (수백 건을 다 그리면 막대가 읽히지 않는다)
-      CustomHouseChartUtil.renderSavingsChart("savings-chart", wolseList.slice(0, 30));
+      renderConditionSummary(condition);
       // 지도 마커 인덱스가 우측 목록과 1:1로 맞도록 같은 배열을 넘긴다 (map-util.js와 renderListingCard가 공유하는 idx).
       CustomHouseClusterMapUtil.renderListingsMap(
         "map-container",

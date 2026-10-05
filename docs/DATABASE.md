@@ -57,9 +57,9 @@
 | `housing_conditions` | `domain/mypage/entity/HousingCondition.java` | 황진구 | 마이페이지에 저장한 주거 조건 + 알림 수신 여부 |
 | `payments` | `domain/payment/entity/Payment.java` | 황진구 | 안심 매물 리포트 단건 결제 이력 |
 | `subscriptions` | `domain/payment/entity/Subscription.java` | 황진구 | 맞집 프리미엄 월 구독(빌링) 상태 |
-| `properties` | `domain/watchlist/entity/Property.java` | 김시연 | 매물 정보 (주소 기준으로 여러 사용자가 공유) |
-| `favorites` | `domain/watchlist/entity/WatchlistItem.java` | 김시연 | 관심 매물 (사용자 ↔ 매물 연결) |
-| `registry_logs` | `domain/watchlist/entity/RegistryLog.java` | 김시연 | 매물 시세/상태 변동 이력 |
+| ~~`properties`~~ | (삭제됨) | 김시연 | 예전 "관심 매물 직접 등록" 방식의 매물 정보. 2026-10-05 코드 삭제, 테이블은 남아 있어도 안 쓴다 |
+| ~~`favorites`~~ | (삭제됨) | 김시연 | 예전 관심 매물(사용자 ↔ 매물). 2026-10-05 코드 삭제 - 지금 관심매물은 `listing_favorites`(하트) |
+| ~~`registry_logs`~~ | (삭제됨) | 김시연 | 예전 매물 시세 변동 이력. 2026-10-05 코드 삭제 |
 | `notifications` | `domain/notification/entity/Notification.java` | 김시연 | 사용자에게 발송된 알림 |
 | `posts` | `domain/board/entity/Post.java` | 미정 | 커뮤니티 게시글 (카테고리 4종) |
 | `post_metas` | `domain/board/entity/PostMeta.java` | 미정 | 게시글 부가정보 키/값 (매물 요약, 인테리어 태그·사진 등) |
@@ -250,7 +250,7 @@ VARCHAR를 의도했지만, 실제 Aiven 운영 DB를 열어보니 Hibernate가 
 | 테이블 | 컬럼 | 제약 |
 |---|---|---|
 | listing_reports | id PK, listing_id VARCHAR(40), user_id BIGINT, report_type VARCHAR(30), message VARCHAR(1500) | **UNIQUE(listing_id, user_id)** `uk_listing_report_user_listing` = 회원당 매물 1번 신고, 인덱스 `idx_listing_report_listing`. 신고 수가 2건 이상이면 카드에 "허위매물 주의"(서버 `ListingReportService.FLAG_THRESHOLD`) |
-| listing_favorites | id PK, user_id BIGINT, listing_id VARCHAR(40), address VARCHAR(300), region VARCHAR(30), lease_type VARCHAR(10), building_name VARCHAR(100), property_type VARCHAR(30), unit_label VARCHAR(60), deposit INT, monthly_rent INT, maintenance_fee INT, snapshot TEXT | **UNIQUE(user_id, listing_id)** `uk_listing_fav_user_listing`, 인덱스 `idx_listing_fav_user`. 주소/가격 컬럼은 예전 관심매물의 간단 표시용이고, `snapshot`(JSON)에 리포트 카드의 전체 매물 정보를 통째로 저장해 마이페이지에서 리포트와 같은 카드로 다시 그린다. 운영(validate)에는 `ALTER TABLE listing_favorites ADD COLUMN snapshot TEXT;` 필요 |
+| listing_favorites | id PK, user_id BIGINT, listing_id VARCHAR(40), address VARCHAR(300), region VARCHAR(30), lease_type VARCHAR(10), building_name VARCHAR(100), property_type VARCHAR(30), unit_label VARCHAR(60), deposit INT, monthly_rent INT, maintenance_fee INT, snapshot TEXT, **previous_deposit INT, previous_monthly_rent INT, price_changed_at DATETIME(6)** | **UNIQUE(user_id, listing_id)** `uk_listing_fav_user_listing`, 인덱스 `idx_listing_fav_user`. 주소/가격 컬럼은 예전 관심매물의 간단 표시용이고, `snapshot`(JSON)에 리포트 카드의 전체 매물 정보를 통째로 저장해 마이페이지에서 리포트와 같은 카드로 다시 그린다. 운영(validate)에는 `ALTER TABLE listing_favorites ADD COLUMN snapshot TEXT;` 필요. **2026-10-05** 가격 변동 알림용으로 `previous_deposit`/`previous_monthly_rent`/`price_changed_at`가 추가됐다(매물 수정으로 보증금·월세가 바뀌면 옛 가격을 남기고 새 가격으로 갱신, `snapshot`은 비운다). 운영(validate)에는 `ALTER TABLE listing_favorites ADD COLUMN previous_deposit INT, ADD COLUMN previous_monthly_rent INT, ADD COLUMN price_changed_at DATETIME(6);` 필요 |
 
 > 회원 탈퇴 시 `listing_favorites`는 함께 지우고, `listing_reports`는 신고 누적 집계를 위해 남깁니다.
 
@@ -374,3 +374,10 @@ Spring은 "프로퍼티가 존재하는지"만 보고 `${JWT_SECRET:기본값}`�
 국토교통부 전월세 실거래가 API 등이 붙으면, 그 배치가 `properties`를 채우고
 `RegistryLog`를 자동으로 쌓는 형태로 자연스럽게 확장할 수 있습니다
 (`customhouse-ai/app/services/api_collector.py`의 TODO와 같은 맥락).
+
+#### 관심매물 알림 (2026-10-05, `domain/listing/service/ListingAlertService.java`)
+
+- 하트로 담은 관심매물(`listing_favorites`)의 **보증금/월세가 바뀌면**(등록자가 매물을 수정할 때) 그 매물을 담은 모든 회원의 알림함(`notifications`)에 "관심 매물 가격 변동" 알림이 쌓인다.
+- 매물의 **허위매물 신고가 2건에 처음 도달하면**(`ListingReportService.FLAG_THRESHOLD`) 담은 모든 회원의 알림함에 "관심 매물 허위매물 경고" 알림이 쌓인다.
+- 위 두 경우 **메일**은 마이페이지 "알림 수신"(`housing_conditions.notification_enabled`)을 켠 회원에게만 간다(SendGrid, 실패해도 알림함 알림은 유지).
+- 알림은 `DELETE /api/notifications/{id}`로 본인 것만 삭제한다.

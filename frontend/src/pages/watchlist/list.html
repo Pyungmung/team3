@@ -330,13 +330,6 @@
       margin-left: auto;
     }
 
-    .source-link {
-      font-size: 11px;
-      font-weight: 700;
-      color: #6b7b93;
-      text-decoration: underline;
-    }
-
     /* EMPTY */
     .empty-box {
       border: 1px dashed #dce2ea;
@@ -394,6 +387,46 @@
       font-size: 10px;
       color: #b0b7c1;
       margin-top: 7px;
+    }
+
+    .notification-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .delete-button {
+      border: 0;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 4px;
+    }
+
+    .delete-button:hover {
+      color: #dc2626;
+    }
+
+    .price-change-note {
+      margin: 0 0 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .price-change-note span {
+      font-weight: 400;
+      color: #b45309;
     }
 
     .read-button {
@@ -602,7 +635,7 @@
 
         <nav class="side-nav">
           <button type="button" class="side-btn active" onclick="scrollToArea('list-area', this)">
-            내가 등록한 매물
+            관심매물 조회
           </button>
 
           <button type="button" class="side-btn" onclick="scrollToArea('notification-area', this)">
@@ -628,11 +661,11 @@
           </div>
         </div>
 
-        <!-- 1. 내가 등록한 매물 -->
+        <!-- 1. 관심매물 조회 -->
         <section id="list-area" class="panel">
           <div class="panel-head">
             <div>
-              <div class="panel-title">내가 등록한 매물</div>
+              <div class="panel-title">관심매물 조회</div>
               <div class="panel-description">관심 매물의 현재 상태와 가격 변화를 확인하세요.</div>
             </div>
           </div>
@@ -656,14 +689,14 @@
                 <span id="unread-badge" class="hidden"></span>
               </div>
 
-              <div class="panel-description">관심 매물에서 발생한 중요한 변화를 확인하세요.</div>
+              <div class="panel-description">관심매물의 보증금·월세 변동과 허위매물 경고를 알려드려요.<br />메일로도 받으려면 마이페이지 &gt; 알림 설정에서 알림 수신을 켜주세요.</div>
             </div>
           </div>
 
           <div id="notifications-empty" class="hidden empty-box">
             <div class="empty-icon">♢</div>
             아직 받은 알림이 없어요.<br />
-            관심 매물의 가격을 재확인하면 변동 알림을 테스트할 수 있어요.
+            관심매물의 보증금·월세가 바뀌거나 허위매물 경고가 생기면 이곳에 알려드려요.
           </div>
 
           <ul id="notification-items"></ul>
@@ -677,9 +710,9 @@
 
   <script src="../../js/components/header.js?v=20260921a"></script>
   <script src="../../js/components/footer.js?v=20260928c"></script>
-  <script src="../../js/components/listing-card.js?v=20261004k"></script>
+  <script src="../../js/components/listing-card.js?v=20261005b"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/watchlist.js?v=20261001b"></script>
+  <script src="../../js/api/watchlist.js?v=20261005a"></script>
 
   <script>
     renderHeader("watchlist");
@@ -695,11 +728,6 @@
     /** 사용자가 입력한 값(주소/지역/알림 문구 등)을 innerHTML 템플릿에 넣기 전에 반드시 거친다 (XSS 방지). */
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    }
-
-    /** http(s) 주소만 링크로 허용한다 (javascript: 등 차단). */
-    function safeUrl(url) {
-      return /^https?:\/\//i.test(String(url || "").trim()) ? String(url).trim() : "";
     }
 
     function scrollToArea(id, button) {
@@ -733,14 +761,9 @@
       const emptyEl = document.getElementById("watchlist-empty");
       const errorEl = document.getElementById("watchlist-error");
 
-      let items;
       let listingFavorites = [];
       try {
-        // 추천 매물(리포트의 하트로 담은 매물)은 별도 API라 실패해도 기존 관심 매물 목록은 그대로 보여준다
-        [items, listingFavorites] = await Promise.all([
-          CustomHouseWatchlistApi.getWatchlist(),
-          CustomHouseWatchlistApi.getFavoriteListings().catch(() => []),
-        ]);
+        listingFavorites = await CustomHouseWatchlistApi.getFavoriteListings();
         errorEl.classList.add("hidden");
       } catch (err) {
         listEl.innerHTML = "";
@@ -750,7 +773,7 @@
         return;
       }
 
-      if (items.length === 0 && listingFavorites.length === 0) {
+      if (listingFavorites.length === 0) {
         emptyEl.classList.remove("hidden");
         listEl.innerHTML = "";
         return;
@@ -758,9 +781,20 @@
 
       emptyEl.classList.add("hidden");
 
-      // 추천 매물 카드: 진단 리포트의 월세/전세 추천 매물에서 하트로 담은 매물 (가격 재확인/기존 신고 대신 매물번호와 허위매물 주의를 보여준다)
+      // 관심매물 카드: 진단 리포트의 월세/전세 추천 매물에서 하트로 담은 매물 (매물번호와 허위매물 주의를 보여준다)
       // 리포트에서 담을 때 카드의 매물 정보를 통째로 저장해 두었으니(snapshot) 리포트와 같은 카드로 보여준다.
-      // 전체 정보 저장 이전에 담은 매물(snapshot 없음)은 아래의 간단 카드로 보여준다.
+      // snapshot이 없는 매물(전체 정보 저장 이전에 담았거나, 가격이 바뀌어 서버가 비운 매물)은 아래의 간단 카드로 보여준다.
+      const won = (n) => Number(n ?? 0).toLocaleString();
+      // 가격이 바뀐 적이 있으면 "보증금 A → B, 월세 C → D" 한 줄 (바뀐 항목만)
+      const priceChangeHtml = (fav) => {
+        if (!fav.priceChangedAt) return "";
+        const parts = [];
+        if (fav.previousDeposit != null && fav.previousDeposit !== fav.deposit) parts.push(`보증금 ${won(fav.previousDeposit)} → ${won(fav.deposit)}만원`);
+        if ((fav.previousMonthlyRent ?? 0) !== (fav.monthlyRent ?? 0)) parts.push(`월세 ${won(fav.previousMonthlyRent)} → ${won(fav.monthlyRent)}만원`);
+        if (!parts.length) return "";
+        const when = new Date(fav.priceChangedAt).toLocaleDateString();
+        return `<div class="price-change-note">💰 가격 변동 · ${parts.join(", ")} <span>(${when})</span></div>`;
+      };
       const parseSnapshot = (fav) => {
         if (!fav.snapshot) return null;
         try {
@@ -786,6 +820,7 @@
                   ? `<div class="report-warning" style="margin-bottom:12px">⚠ 허위매물 주의 · 신고 ${fav.reportCount}건이 접수된 매물이에요. 계약 전에 꼭 확인하세요.</div>`
                   : ""
               }
+              ${priceChangeHtml(fav)}
               ${CustomHouseListingCard.renderBody(full)}
               <div class="property-actions" style="justify-content:space-between">
                 <span class="listing-no">매물번호 ${escapeHtml(fav.listingId)}</span>
@@ -814,14 +849,19 @@
                     ${fav.maintenanceFee != null ? `<span class="maintenance">관리비 ${fav.maintenanceFee}만</span>` : ""}
                   </div>
                 </div>
-                <span class="status-badge status-normal">추천 매물</span>
+                <span class="status-badge ${fav.priceChangedAt ? "status-changed" : "status-normal"}">${fav.priceChangedAt ? "가격 변동" : "추천 매물"}</span>
               </div>
+              ${priceChangeHtml(fav)}
               ${
                 fav.flagged
                   ? `<div class="report-warning">⚠ 허위매물 주의 · 신고 ${fav.reportCount}건이 접수된 매물이에요</div>`
                   : ""
               }
-              <div style="font-size:11px;color:#94a3b8;margin-top:8px">리포트에서 하트를 껐다가 다시 눌러 담으면 매물 전체 정보가 이곳에 표시돼요.</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:8px">${
+                fav.priceChangedAt
+                  ? "가격이 바뀌어 새 가격 기준의 간단 정보로 보여드려요. 리포트에서 하트를 껐다가 다시 담으면 새 가격 기준 전체 정보가 표시돼요."
+                  : "리포트에서 하트를 껐다가 다시 눌러 담으면 매물 전체 정보가 이곳에 표시돼요."
+              }</div>
               <div class="property-actions">
                 <span style="font-size:12px;color:#94a3b8;align-self:center">매물번호 ${escapeHtml(fav.listingId)}</span>
                 <button type="button" class="listing-remove-btn action-button remove">삭제</button>
@@ -830,46 +870,7 @@
         })
         .join("");
 
-      listEl.innerHTML = items
-        .map((item) => {
-          const source = safeUrl(item.sourceUrl);
-          return `
-            <li class="property-card" data-watchlist-id="${item.watchlistItemId}" data-property-id="${item.propertyId}">
-              <div class="property-top">
-
-                <div>
-                  <div class="property-location">${escapeHtml(item.region)}</div>
-                  <div class="property-address">${escapeHtml(item.address)}</div>
-
-                  <div class="property-price">
-                    <span class="price-main">보증금 ${item.deposit}만</span>
-                    <span class="price-divider">/</span>
-                    <span class="price-main">월세 ${item.monthlyRent}만</span>
-                    ${item.maintenanceFee != null ? `<span class="maintenance">관리비 ${item.maintenanceFee}만</span>` : ""}
-                  </div>
-                </div>
-
-                <span class="status-badge ${item.status === "CHANGED" ? "status-changed" : "status-normal"}">
-                  ${item.status === "CHANGED" ? "변동 감지됨" : "모니터링 중"}
-                </span>
-
-              </div>
-
-              ${
-                item.reportCount > 0
-                  ? `<div class="report-warning">⚠ 신고 누적 ${item.reportCount}건${item.reportCount >= 3 ? " · 허위 매물 의심" : ""}</div>`
-                  : ""
-              }
-
-              <div class="property-actions">
-                <button type="button" class="recheck-btn action-button">가격 재확인</button>
-                <button type="button" class="report-btn action-button report">허위 매물 신고</button>
-                ${source ? `<a href="${escapeHtml(source)}" target="_blank" rel="noopener noreferrer" class="source-link">출처 보기 ↗</a>` : ""}
-                <button type="button" class="remove-btn action-button remove">삭제</button>
-              </div>
-            </li>`;
-        })
-        .join("") + listingCardsHtml;
+      listEl.innerHTML = listingCardsHtml;
       CustomHouseListingCard.wireReferenceAutoLoad(listEl);
 
       listEl.querySelectorAll("[data-listing-id]").forEach((li) => {
@@ -878,42 +879,6 @@
           runAction(removeBtn, async () => {
             await CustomHouseWatchlistApi.removeListingFavorite(li.dataset.listingId);
             await loadWatchlist();
-          })
-        );
-      });
-
-      listEl.querySelectorAll("[data-watchlist-id]").forEach((li) => {
-        const watchlistItemId = li.dataset.watchlistId;
-        const propertyId = li.dataset.propertyId;
-        const item = items.find((i) => String(i.watchlistItemId) === watchlistItemId);
-
-        const removeBtn = li.querySelector(".remove-btn");
-        removeBtn.addEventListener("click", () =>
-          runAction(removeBtn, async () => {
-            await CustomHouseWatchlistApi.removeFromWatchlist(watchlistItemId);
-            await loadWatchlist();
-          })
-        );
-
-        const reportBtn = li.querySelector(".report-btn");
-        reportBtn.addEventListener("click", () =>
-          runAction(reportBtn, async () => {
-            await CustomHouseWatchlistApi.reportProperty(propertyId);
-            await loadWatchlist();
-          })
-        );
-
-        const recheckBtn = li.querySelector(".recheck-btn");
-        recheckBtn.addEventListener("click", () =>
-          runAction(recheckBtn, async () => {
-            // 데모용: 실제로는 외부 시세 API/크롤링이 최신값을 가져오지만, 여기서는
-            // 현재 월세에서 임의로 변동을 줘서 알림 발행 로직을 바로 확인할 수 있게 한다.
-            const bumped = item.monthlyRent + (Math.random() > 0.5 ? 5 : -5);
-            await CustomHouseWatchlistApi.recheckPrice(propertyId, {
-              deposit: item.deposit,
-              monthlyRent: Math.max(0, bumped),
-            });
-            await Promise.all([loadWatchlist(), loadNotifications()]);
           })
         );
       });
@@ -958,10 +923,23 @@
                 <div class="notification-content">${escapeHtml(n.content)}</div>
                 <div class="notification-date">${new Date(n.createdAt).toLocaleString()}</div>
               </div>
-              ${!n.read ? `<button type="button" class="read-btn read-button">읽음</button>` : ""}
+              <div class="notification-side">
+                <button type="button" class="delete-btn delete-button" title="알림 삭제" aria-label="알림 삭제">✕</button>
+                ${!n.read ? `<button type="button" class="read-btn read-button">읽음</button>` : ""}
+              </div>
             </li>`
         )
         .join("");
+
+      listEl.querySelectorAll(".delete-btn").forEach((btn) => {
+        btn.addEventListener("click", () =>
+          runAction(btn, async () => {
+            const id = btn.closest("[data-id]").dataset.id;
+            await CustomHouseWatchlistApi.deleteNotification(id);
+            await loadNotifications();
+          })
+        );
+      });
 
       listEl.querySelectorAll(".read-btn").forEach((btn) => {
         btn.addEventListener("click", () =>

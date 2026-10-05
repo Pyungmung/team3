@@ -41,6 +41,7 @@ public class ListingReportService {
     private final ListingReportRepository reportRepository;
     private final UserRepository userRepository;
     private final SupportMailService supportMailService;
+    private final ListingAlertService alertService;
 
     /** @return 이 신고가 반영된 뒤의 매물 신고 현황 */
     public ListingReportStatus report(Long userId, String listingId, ListingReportRequest request) {
@@ -71,6 +72,14 @@ public class ListingReportService {
             supportMailService.sendListingReport(user.getNickname(), replyTo, listingId, request, total);
         } catch (CustomException e) {
             log.warn("허위매물 신고는 저장됐지만 관리자 메일 발송에 실패했습니다 (매물: {}, 회원: {})", listingId, userId);
+        }
+        // 신고가 경고 기준에 "처음" 도달한 순간에만 이 매물을 관심매물로 담은 회원에게 알린다 (3건째부터는 다시 보내지 않는다).
+        if (total == FLAG_THRESHOLD) {
+            try {
+                alertService.notifyFlagged(listingId, total);
+            } catch (RuntimeException e) {
+                log.warn("허위매물 경고 알림 처리에 실패했습니다 (매물: {}): {}", listingId, e.toString());
+            }
         }
         return status(total);
     }

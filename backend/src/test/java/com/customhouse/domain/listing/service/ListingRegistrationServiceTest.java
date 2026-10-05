@@ -35,6 +35,7 @@ class ListingRegistrationServiceTest {
     private AiEngineClient aiEngineClient;
     private RegisteredListingRepository registeredListingRepository;
     private AdminGuard adminGuard;
+    private ListingAlertService alertService;
     private ListingRegistrationService service;
 
     @BeforeEach
@@ -42,7 +43,8 @@ class ListingRegistrationServiceTest {
         aiEngineClient = mock(AiEngineClient.class);
         registeredListingRepository = mock(RegisteredListingRepository.class);
         adminGuard = mock(AdminGuard.class);
-        service = new ListingRegistrationService(aiEngineClient, registeredListingRepository, adminGuard);
+        alertService = mock(ListingAlertService.class);
+        service = new ListingRegistrationService(aiEngineClient, registeredListingRepository, adminGuard, alertService);
     }
 
     private ListingRegistrationRequest request() {
@@ -182,5 +184,38 @@ class ListingRegistrationServiceTest {
         assertThatThrownBy(() -> service.update(1L, "GANGNAM-202610-9999", request()))
                 .isInstanceOf(CustomException.class);
         verify(aiEngineClient, never()).updateListing(any(), any());
+    }
+
+    @Test
+    void 매물_수정에_성공하면_관심매물_담은_회원에게_가격_변동_알림_처리를_맡긴다() {
+        when(registeredListingRepository.findByListingId("SEOCHO-202609-0001"))
+                .thenReturn(Optional.of(RegisteredListing.of("SEOCHO-202609-0001", 1L, "서초구")));
+        when(aiEngineClient.updateListing(eq("SEOCHO-202609-0001"), any()))
+                .thenReturn(new ListingRegistrationResponse("SEOCHO-202609-0001", "서초구"));
+
+        service.update(1L, "SEOCHO-202609-0001", request());
+
+        verify(alertService).notifyPriceChange(eq("SEOCHO-202609-0001"), eq(5000), eq(80));
+    }
+
+    @Test
+    void 알림_처리가_실패해도_매물_수정_결과는_그대로_돌려준다() {
+        when(registeredListingRepository.findByListingId("SEOCHO-202609-0001"))
+                .thenReturn(Optional.of(RegisteredListing.of("SEOCHO-202609-0001", 1L, "서초구")));
+        when(aiEngineClient.updateListing(eq("SEOCHO-202609-0001"), any()))
+                .thenReturn(new ListingRegistrationResponse("SEOCHO-202609-0001", "서초구"));
+        doThrow(new RuntimeException("boom")).when(alertService).notifyPriceChange(any(), any(), any());
+
+        assertThat(service.update(1L, "SEOCHO-202609-0001", request()).listingId()).isEqualTo("SEOCHO-202609-0001");
+    }
+
+    @Test
+    void 본인_매물이_아니면_수정도_알림도_하지_않는다() {
+        when(registeredListingRepository.findByListingId("SEOCHO-202609-0001"))
+                .thenReturn(Optional.of(RegisteredListing.of("SEOCHO-202609-0001", 2L, "서초구")));
+
+        assertThatThrownBy(() -> service.update(1L, "SEOCHO-202609-0001", request())).isInstanceOf(CustomException.class);
+        verify(aiEngineClient, never()).updateListing(any(), any());
+        verify(alertService, never()).notifyPriceChange(any(), any(), any());
     }
 }

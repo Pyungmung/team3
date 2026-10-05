@@ -7,6 +7,7 @@ import com.customhouse.global.jwt.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,6 +43,15 @@ public class NotificationController {
             @PathVariable Long id
     ) {
         notificationService.markAsRead(principal.id(), id);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable Long id
+    ) {
+        notificationService.delete(principal.id(), id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

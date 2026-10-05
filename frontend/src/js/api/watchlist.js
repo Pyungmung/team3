@@ -40,40 +40,6 @@ async function unwrap(res) {
   return body.data;
 }
 
-async function getWatchlist() {
-  const res = await watchlistFetch(WATCHLIST_API_BASE);
-  return unwrap(res);
-}
-
-async function addToWatchlist(property) {
-  const res = await watchlistFetch(WATCHLIST_API_BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(property),
-  });
-  return unwrap(res);
-}
-
-async function removeFromWatchlist(watchlistItemId) {
-  const res = await watchlistFetch(`${WATCHLIST_API_BASE}/${watchlistItemId}`, { method: "DELETE" });
-  return unwrap(res);
-}
-
-/** 데모/테스트용 "가격 재확인" - 실제로는 배치/외부 API가 수행할 시세 재조회를 사용자가 직접 트리거한다. */
-async function recheckPrice(propertyId, { deposit, monthlyRent }) {
-  const res = await watchlistFetch(`${WATCHLIST_API_BASE}/properties/${propertyId}/recheck-price`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ deposit, monthlyRent }),
-  });
-  return unwrap(res);
-}
-
-async function reportProperty(propertyId) {
-  const res = await watchlistFetch(`${WATCHLIST_API_BASE}/properties/${propertyId}/report`, { method: "POST" });
-  return unwrap(res);
-}
-
 async function getNotifications() {
   const res = await watchlistFetch(NOTIFICATION_API_BASE);
   return unwrap(res);
@@ -90,9 +56,15 @@ async function markNotificationAsRead(notificationId) {
   return unwrap(res);
 }
 
+/** 알림 1건 삭제 (본인 알림만) - 알림함의 오른쪽 삭제 버튼. */
+async function deleteNotification(notificationId) {
+  const res = await watchlistFetch(`${NOTIFICATION_API_BASE}/${notificationId}`, { method: "DELETE" });
+  return unwrap(res);
+}
+
 // ---------- 추천 매물(더미 매물 리포트) 관심매물 / 허위매물 신고 ----------
-// 추천 매물은 CSV에서 오고 매물등록번호(listing_id)로 식별한다. 기존 관심 매물(properties)과는 별개 테이블이지만
-// 마이페이지 "관심 매물"(watchlist/list.html)에 함께 보인다. (백엔드 domain/listing)
+// 추천 매물은 CSV에서 오고 매물등록번호(listing_id)로 식별한다. 관심매물은 리포트 카드의 하트로만 담는다
+// (예전 "관심 매물 직접 등록/가격 재확인" 방식은 삭제됨). 담은 매물의 가격 변동/허위매물 경고는 알림함에 쌓인다. (백엔드 domain/listing)
 
 /** 오류 응답에서 사용자에게 보여줄 문구를 뽑는다: 입력값 오류(400)는 data에 {필드: 메시지}가 오니 첫 메시지를 쓴다. */
 async function listingUnwrap(res, fallback) {
@@ -239,14 +211,10 @@ async function getListingCommute(listingId, workLat, workLon, transportType) {
 }
 
 window.CustomHouseWatchlistApi = {
-  getWatchlist,
-  addToWatchlist,
-  removeFromWatchlist,
-  recheckPrice,
-  reportProperty,
   getNotifications,
   getUnreadNotificationCount,
   markNotificationAsRead,
+  deleteNotification,
   getFavoriteListingIds,
   getFavoriteListings,
   addListingFavorite,

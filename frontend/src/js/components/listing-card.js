@@ -386,7 +386,7 @@
           <div class="badge-row">
             ${r.property_type ? `<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap inline-block">${esc(r.property_type)}</span>` : ""}
             ${leaseTypeBadge}
-            ${r.is_semi_jeonse ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:#fef3c7;color:#92400e" title="보증금 ÷ 월세가 100 이상인 반전세형 매물이에요. 보증금이 부담되면 희망 보증금 조건으로 제외할 수 있어요.">반전세형</span>` : ""}
+            ${r.is_semi_jeonse ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:#fef3c7;color:#92400e" title="보증금 ÷ 월세가 100 이상인 반전세형 매물이에요. 보증금이 부담되면 최대 매물 보증금 조건으로 제외할 수 있어요.">반전세형</span>` : ""}
             ${r.jeonse_loan_available === false ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:#fee2e2;color:#991b1b" title="등록자가 이 매물은 전세자금대출이 불가능하다고 표시했어요.">전세대출 불가</span>` : ""}
           </div>
           <div class="commute-time">
