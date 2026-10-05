@@ -3,6 +3,7 @@ package com.customhouse.domain.listing.controller;
 import com.customhouse.domain.listing.dto.ListingFavoriteRequest;
 import com.customhouse.domain.listing.dto.ListingFavoriteResponse;
 import com.customhouse.domain.listing.service.ListingFavoriteService;
+import com.customhouse.domain.recommendation.dto.RecommendRequest;
 import com.customhouse.global.common.ApiResponse;
 import com.customhouse.global.jwt.AuthenticatedUser;
 import jakarta.validation.Valid;
@@ -49,6 +50,16 @@ public class ListingFavoriteController {
     @GetMapping("/ids")
     public ResponseEntity<ApiResponse<List<String>>> ids(@AuthenticationPrincipal AuthenticatedUser principal) {
         return ResponseEntity.ok(ApiResponse.ok(favoriteService.getMyListingIds(principal.id())));
+    }
+
+    /** 관심매물 새로고침 - 요청 본문은 AI 주거진단 때 입력한 조건(리포트가 보내는 것과 같은 모양). */
+    @PostMapping("/{listingId}/refresh")
+    public ResponseEntity<ApiResponse<ListingFavoriteResponse>> refresh(
+            @AuthenticationPrincipal AuthenticatedUser principal,
+            @PathVariable String listingId,
+            @Valid @RequestBody RecommendRequest condition
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok("새 정보로 새로고침했어요.", favoriteService.refresh(principal.id(), listingId, condition)));
     }
 
     @DeleteMapping("/{listingId}")

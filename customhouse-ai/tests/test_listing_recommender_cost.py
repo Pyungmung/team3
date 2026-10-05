@@ -170,3 +170,27 @@ def test_조회가_실패하면_기본값으로_대체하고_예외를_던지지
     r = deposit_interest_rate.get_one_year_deposit_rate()
     assert r.is_fallback is True
     assert r.rate_percent == deposit_interest_rate.DEFAULT_RATE_PERCENT
+
+
+# --- 관심매물 새로고침 (매물번호 1건 카드 다시 만들기) ---
+def test_새로고침_카드는_리포트_카드와_같은_계산을_쓰고_매물이_없으면_None이다(monkeypatch):
+    l = listing(lease_type="월세", deposit=1000, monthly_rent=50, maintenance_fee=5)
+    l["listing_id"] = "SEOCHO-202609-0001"
+    l.update(broker_name="중개사", broker_representative="대표", broker_reg_no="1-1", broker_phone="02-000-0000", broker_address="서울", broker_comment="")
+    monkeypatch.setattr(listing_recommender.listing_repository, "get_listing", lambda lid: l if lid == "SEOCHO-202609-0001" else None)
+    monkeypatch.setattr(listing_recommender.reb_conversion_rate, "get_metro_conversion_rate",
+                        lambda: listing_recommender.reb_conversion_rate.ConversionRate(6.35, "2026-07", "전환율", False))
+    monkeypatch.setattr(listing_recommender.deposit_interest_rate, "get_one_year_deposit_rate",
+                        lambda: listing_recommender.deposit_interest_rate.DepositRate(3.39, "2026-08", "정기예금", False))
+    from app.models.request_schema import DiagnosisRequest
+    req = DiagnosisRequest(annualIncome=3000, deposit=500, workLocation="강남구", workLat=37.5, workLon=127.0)
+
+    out = listing_recommender.refresh_listing_card(req, "SEOCHO-202609-0001")
+
+    card = out["listing"]
+    assert card["listing_deposit"] == 1000 and card["listing_monthly_rent"] == 50
+    assert card["deposit_opportunity_rate_percent"] == 3.39      # 월세는 정기예금 금리
+    assert card["deposit_opportunity_cost"] == round(1000 * 3.39 / 100 / 12, 1)
+    assert "eligible_loans" in card and card["broker"] is not None
+    assert out["deposit_conversion_rate"] == 6.35 and out["monthly_deposit_rate"] == 3.39
+    assert listing_recommender.refresh_listing_card(req, "NOPE-1") is None

@@ -260,6 +260,20 @@ class RirIncomeLevel(BaseModel):
     affordable_rent: float   # 만원/월 = 내 월소득 x rir_percent / 100
 
 
+class ListingRefreshResponse(BaseModel):
+    """관심매물 새로고침 응답 - 매물 1건의 추천 카드(ListingRecommendation)와 그 계산에 쓴 이율. 리포트 카드와 같은 모양이다."""
+
+    listing: ListingRecommendation
+    deposit_conversion_rate: float = 0
+    deposit_conversion_rate_base: str = ""
+    deposit_conversion_rate_label: str = ""
+    deposit_conversion_rate_is_fallback: bool = False
+    monthly_deposit_rate: float = 0
+    monthly_deposit_rate_base: str = ""
+    monthly_deposit_rate_label: str = ""
+    monthly_deposit_rate_is_fallback: bool = False
+
+
 class ListingDiagnosisResponse(BaseModel):
     affordable_rent: float        # 만원/월, 적정 월세 상한 = 내 월소득 x 수도권 RIR (docs/RIR.csv). 통계 파일이 없으면 소득의 20%(기본값)
     rent_to_income_ratio: float   # 수도권 RIR(%) - docs/RIR.csv(국토교통부 주거실태조사). 파일이 없으면 20.0(기본값)

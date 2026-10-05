@@ -105,6 +105,20 @@ async function addListingFavorite(listing) {
   return listingUnwrap(res, "관심 매물로 담지 못했어요.");
 }
 
+/**
+ * 관심매물 새로고침 - 매물번호로 그 매물을 내 진단 조건으로 다시 계산해 가격과 카드 전체 정보를 새로 받는다.
+ * @param {string} listingId
+ * @param {object} condition AI 주거 진단 때 입력한 조건 (localStorage customhouse:lastDiagnosisCondition)
+ */
+async function refreshListingFavorite(listingId, condition) {
+  const res = await watchlistFetch(`${WATCHLIST_API_BASE}/listings/${encodeURIComponent(listingId)}/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(condition),
+  });
+  return listingUnwrap(res, "새로고침하지 못했어요.");
+}
+
 async function removeListingFavorite(listingId) {
   const res = await watchlistFetch(`${WATCHLIST_API_BASE}/listings/${encodeURIComponent(listingId)}`, { method: "DELETE" });
   return listingUnwrap(res, "관심 매물에서 빼지 못했어요.");
@@ -219,6 +233,7 @@ window.CustomHouseWatchlistApi = {
   getFavoriteListings,
   addListingFavorite,
   removeListingFavorite,
+  refreshListingFavorite,
   reportListing,
   getListingReportStatuses,
   getListingReference,
