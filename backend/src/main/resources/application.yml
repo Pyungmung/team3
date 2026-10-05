@@ -77,6 +77,8 @@ jwt:
 admin:
   email: ${ADMIN_EMAIL:admin@admin.com}
   password: ${ADMIN_PASSWORD:}
+  # 관리자 계정(위 email)에게 가는 메일을 실제로 받을 주소. 계정 이메일/로그인은 바뀌지 않고 메일 수신만 이 주소로 간다 (MailClient 참고).
+  mail-email: ${ADMIN_MAIL_EMAIL:}
 
 # 로그인 성공 후 JWT를 담아 되돌려보낼 프론트엔드 콜백 페이지.
 # frontend/serve.py가 frontend/ 전체를 루트로 서빙하므로 실제 파일 경로(frontend/src/pages/...)와

@@ -40,8 +40,30 @@ public class MailClient {
     @Value("${sendgrid.from-email:}")
     private String fromEmail;
 
+    /** 관리자 계정의 로그인용 이메일 (admin.email, 기본 admin@admin.com). 실제 메일함이 없는 주소일 수 있다. */
+    @Value("${admin.email:admin@admin.com}")
+    private String adminLoginEmail;
+
+    /**
+     * 관리자 계정에게 가는 메일을 실제로 받을 주소 (admin.mail-email = ADMIN_MAIL_EMAIL, 2026-10-05).
+     * 관리자 계정의 이메일(admin@admin.com)은 로그인 아이디일 뿐 받을 수 있는 메일함이 아니라서, 그 주소로 가는 메일
+     * (관심매물 알림, 인증/재설정 메일 등)을 이 주소로 대신 보낸다. 비워두면 바꾸지 않는다. 계정 이메일 자체는 바뀌지 않는다.
+     */
+    @Value("${admin.mail-email:}")
+    private String adminMailEmail;
+
+    /** 받는 사람이 관리자 로그인 이메일이면 실제 수신 주소로 바꾼다. 그 외 주소는 그대로. */
+    String resolveRecipient(String to) {
+        if (to != null && adminMailEmail != null && !adminMailEmail.isBlank()
+                && adminLoginEmail != null && to.trim().equalsIgnoreCase(adminLoginEmail.trim())) {
+            return adminMailEmail.trim();
+        }
+        return to;
+    }
+
     /** replyTo는 선택(null 가능) - 문의/신고 메일처럼 "답장하면 신고자에게 바로 가게" 하고 싶을 때만 넣는다. */
     public void send(String to, String subject, String text, String replyTo) {
+        to = resolveRecipient(to);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("personalizations", List.of(Map.of("to", List.of(Map.of("email", to)))));
         body.put("from", Map.of("email", fromEmail, "name", "맞집"));
