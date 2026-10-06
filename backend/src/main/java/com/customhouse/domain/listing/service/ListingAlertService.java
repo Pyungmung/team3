@@ -91,7 +91,8 @@ public class ListingAlertService {
      * @param actingUserId 삭제를 실행한 회원 (알림 대상에서 제외)
      * @return 알림을 만든 회원 수
      */
-    @Transactional(readOnly = true)
+    // readOnly로 두면 안 된다: 알림 저장(NotificationService.notify)이 이 트랜잭션에 합류해서 "Connection is read-only"로 실패한다 (2026-10-06 배포에서 확인).
+    @Transactional
     public int notifyDeleted(String listingId, Long actingUserId) {
         int notified = 0;
         for (ListingFavorite fav : favoriteRepository.findByListingId(listingId)) {
