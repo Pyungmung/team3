@@ -44,6 +44,15 @@ def test_전세_대출은_전세_매물에만_월세_대출은_월세_매물에�
     assert names(r, WOLSE) == ["YOUTH_MONTHLY_RENT"]
 
 
+def test_전세대출_불가_매물은_보증부월세대출을_포함해_어떤_대출도_적용하지_않는다():
+    r = req([loan("A"), loan("YOUTH_MONTHLY_RENT", lease="월세")])
+    assert names(r, {**JEONSE, "jeonse_loan_available": False}) == []
+    assert names(r, {**WOLSE, "jeonse_loan_available": False}) == []
+    # 표시가 없거나 True면 그대로 적용된다
+    assert names(r, {**WOLSE, "jeonse_loan_available": True}) == ["YOUTH_MONTHLY_RENT"]
+    assert names(r, WOLSE) == ["YOUTH_MONTHLY_RENT"]
+
+
 def test_정책_대출_활용을_해제하면_대출을_보여주지_않는다():
     assert names(req([loan()], useLoanPolicy=False)) == []
 

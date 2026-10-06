@@ -310,6 +310,7 @@
             </div>
 
             <div id="wolse-panel" class="report-tab-panel">
+              <p class="text-gray-400 px-4 pt-3" style="font-size:11px;line-height:1.5;white-space:pre-line" id="wolse-note"></p>
               <div id="wolse-box" class="report-list-box">
                 <ul id="wolse-list"></ul>
                 <p id="wolse-empty" class="text-sm text-gray-400 hidden p-4">조건에 맞는 월세 매물을 찾지 못했어요.</p>
@@ -317,7 +318,7 @@
             </div>
 
             <div id="jeonse-panel" class="report-tab-panel hidden">
-              <p class="text-xs text-gray-400 px-4 pt-3" id="jeonse-note"></p>
+              <p class="text-gray-400 px-4 pt-3" style="font-size:11px;line-height:1.5;white-space:pre-line" id="jeonse-note"></p>
               <div id="jeonse-box" class="report-list-box">
                 <ul id="jeonse-list"></ul>
                 <p id="jeonse-empty" class="text-sm text-gray-400 hidden p-4">조건에 맞는 전세 매물을 찾지 못했어요.</p>
@@ -618,7 +619,7 @@
       const excludedNote = !showAllDeposits && data.excluded_no_loan > 0
         ? ` (보유 보증금을 넘고 대출도 안 되는 ${data.excluded_no_loan.toLocaleString()}건은 제외했어요)` : "";
       document.getElementById("summary-line").textContent =
-        `${scopeText}${scopeText.includes("대출이 가능한") ? "" : "조건에 맞는 "}매물 ${(data.total_candidates ?? 0).toLocaleString()}건 중 월세 ${wolseList.length}개, 전세 ${jeonseList.length}개를 추천해요${excludedNote}. 월세는 보증금 예금전환 이자기회비용, 전세는 총보증금 전환 이자기회비용이 낮은 순입니다.`;
+        `${scopeText}${scopeText.includes("대출이 가능한") ? "" : "조건에 맞는 "}매물 ${(data.total_candidates ?? 0).toLocaleString()}건 중 월세 ${wolseList.length}개, 전세 ${jeonseList.length}개를 추천해요${excludedNote}.`;
       if (depositLimitText) {
         const hint = showAllDeposits || !("show_all_deposits" in data)
           ? "최대 매물 보증금을 올려보세요."
@@ -670,8 +671,12 @@
           : "") +
         `💡 <b>전세</b> 매물의 보증금 이자는 <b>${esc(data.deposit_conversion_rate_label || "수도권 전월세 전환율")}</b> <b>${depositRateText}</b>로 환산했어요.` +
         (data.deposit_conversion_rate_is_fallback ? ` <span style="color:#b45309">(최신 값을 불러오지 못해 대체값을 썼어요)</span>` : "");
+      // 정렬 기준 설명은 위 요약 문장이 아니라 각 탭 목록 위에 보여준다 (전세 탭과 같은 방식, 2026-10-06)
+      const monthlyRateInNote = data.monthly_deposit_rate ? `(보증금을 연 ${fmtRate(data.monthly_deposit_rate)}%로 환산)` : "";
+      document.getElementById("wolse-note").textContent =
+        `월세는 월세와 관리비, 보증금 이자${monthlyRateInNote}를 더한\n"보증금 예금전환 이자기회비용"이 낮은 순이에요.`;
       document.getElementById("jeonse-note").textContent =
-        `전세는 월세가 없어서 관리비와 보증금 이자(보증금을 연 ${depositRateText}로 환산)를 더한 "총보증금 전환 이자기회비용"이 낮은 순이에요.`;
+        `전세는 관리비와 보증금 이자(보증금을 연 ${depositRateText}로 환산)를 더한\n"총보증금 전환 이자기회비용"이 낮은 순이에요.`;
 
       const workAddressEl = document.getElementById("work-address-line");
       if (condition?.workLocation) {
