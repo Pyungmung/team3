@@ -244,9 +244,8 @@
   async function _loadCommute(el, workLat, workLon, transportType) {
     try {
       const result = await CustomHouseWatchlistApi.getListingCommute(el.dataset.commuteListingId, workLat, workLon, transportType);
-      // 카카오 길찾기로 구한 값이면 "(추정)"을 떼고, 그것도 실패해 직선거리 추정이 그대로 돌아왔으면 계속 "(추정)"으로 보여준다
-      const isEstimate = (result.commute_source || "").includes("추정");
-      el.textContent = `통근 약 ${result.commute_minutes}분${isEstimate ? " (추정)" : ""}`;
+      // "약"이 이미 대략의 값이라는 뜻이라 "(추정)"은 따로 붙이지 않는다 (2026-10-06). 출처는 마우스를 올리면 title로 보인다.
+      el.textContent = `통근 약 ${result.commute_minutes}분`;
       el.title = result.commute_source || "카카오 API";
     } catch (e) {
       // 실패하면 직선거리 추정치를 그대로 보여준다 (조용히 무시)
@@ -427,7 +426,7 @@
           </div>
           <div class="commute-time">
             <span aria-hidden="true">🚇</span>
-            <span${autoLoadRef ? ` data-commute-listing-id="${esc(r.listing_id)}"` : ""} title="${esc(r.commute_source ? r.commute_source : "직선거리 추정")}${autoLoadRef ? " - 화면에 보이면 카카오 길찾기 기준 정확한 시간으로 바뀌어요" : ""}">통근 약 ${r.commute_minutes}분${!r.commute_source || r.commute_source.includes("추정") ? " (추정)" : ""}</span>
+            <span${autoLoadRef ? ` data-commute-listing-id="${esc(r.listing_id)}"` : ""} title="${esc(r.commute_source ? r.commute_source : "직선거리 추정")}${autoLoadRef ? " - 화면에 보이면 카카오 길찾기 기준 정확한 시간으로 바뀌어요" : ""}">통근 약 ${r.commute_minutes}분</span>
             ${transportLabel ? `<span class="transport-tag">${esc(transportLabel)}</span>` : ""}
           </div>
         </div>
