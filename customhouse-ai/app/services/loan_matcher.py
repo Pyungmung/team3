@@ -283,7 +283,11 @@ def _age_ok(loan, request) -> bool:
 
 
 def is_eligible(loan, request, listing: dict) -> bool:
-    """대출 1종이 매물 1건에 적용되는지. 대상 매물 유형(전세/월세)까지 맞아야 한다."""
+    """대출 1종이 매물 1건에 적용되는지. 대상 매물 유형(전세/월세)까지 맞아야 한다.
+    등록자가 "전세대출 불가"로 표시한 매물(jeonse_loan_available=False)은 보증금을 대출로 마련할 수 없는 매물이라
+    보증금 대출인 청년전용 보증부월세대출을 포함해 어떤 대출도 적용하지 않는다 (2026-10-06)."""
+    if listing.get("jeonse_loan_available") is False:
+        return False
     if loan.lease_type != listing.get("lease_type"):
         return False
     return (

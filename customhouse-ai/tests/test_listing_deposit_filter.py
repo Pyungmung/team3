@@ -106,3 +106,18 @@ def test_저장된_대출이_없으면_보유_보증금_이하만_추천한다(m
 def test_백엔드가_null로_보낸_체크박스_값은_기본값_false로_본다():
     r = DiagnosisRequest(annualIncome=3000, deposit=800, workLocation="강남구", showAllDeposits=None, includeSemiJeonse=None)
     assert r.show_all_deposits is False and r.include_semi_jeonse is True   # 모두 표시: 해제, 반전세 포함: 체크가 기본
+
+
+def test_전세대출_불가_표시_월세_매물은_보증부월세대출이_되는_보증금이어도_기본에서_제외한다(monkeypatch):
+    # 보유 보증금(800)을 넘지만 월세대출 한도(1500) 안인 월세 매물 - 대출 가능하면 추천, 등록자가 전세대출 불가로 표시했으면 제외
+    monkeypatch.setitem(globals(), "LISTINGS", [
+        listing("T-WOLSE-LOAN-OK", "월세", 1200, 40),
+        listing("T-WOLSE-LOAN-FLAG", "월세", 1200, 40, loan_ok=False),
+    ])
+    out, wolse, _ = run(monkeypatch)
+    assert wolse == ["T-WOLSE-LOAN-OK"] and out["excluded_no_loan"] == 1
+    card = next(x for x in out["wolse_recommendations"] if x["listing_id"] == "T-WOLSE-LOAN-OK")
+    assert [l["type"] for l in card["eligible_loans"]] == ["YOUTH_MONTHLY_RENT"]
+    _, with_all, _ = run(monkeypatch, showAllDeposits=True)
+    flagged = next(x for x in run(monkeypatch, showAllDeposits=True)[0]["wolse_recommendations"] if x["listing_id"] == "T-WOLSE-LOAN-FLAG")
+    assert flagged["eligible_loans"] == []                    # 모두 표시로 보여도 이 매물 카드에는 대출이 붙지 않는다
