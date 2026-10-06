@@ -84,6 +84,31 @@ public class ListingAlertService {
         return favorites.size();
     }
 
+    /**
+     * 매물이 삭제됐을 때 호출한다 (2026-10-06). 이 매물을 관심매물로 담은 회원에게 알림함 알림을 쌓고, 알림 수신을 켠 회원에게는 메일도 보낸다.
+     * 삭제한 본인(등록자/관리자)은 자기가 지운 걸 아니까 알리지 않는다. 관심매물 기록은 지우지 않는다 - 담을 당시 정보를 계속 볼 수 있다.
+     *
+     * @param actingUserId 삭제를 실행한 회원 (알림 대상에서 제외)
+     * @return 알림을 만든 회원 수
+     */
+    @Transactional(readOnly = true)
+    public int notifyDeleted(String listingId, Long actingUserId) {
+        int notified = 0;
+        for (ListingFavorite fav : favoriteRepository.findByListingId(listingId)) {
+            if (Objects.equals(fav.getUserId(), actingUserId)) {
+                continue;
+            }
+            String place = placeName(fav);
+            String message = "등록자가 이 매물을 삭제해서 더 이상 볼 수 없어요. 관심매물 화면에는 담을 당시의 정보만 남아 있어요.";
+            notificationService.notify(fav.getUserId(), "관심 매물 삭제", "[" + place + "] " + message);
+            sendMailIfEnabled(fav.getUserId(), "[맞집] 관심 매물이 삭제됐어요",
+                    "관심 매물로 담아두신 [" + place + "]이(가) 삭제됐어요.\n\n" + message
+                            + "\n\n맞집 > 관심매물 > 알림함에서 확인하실 수 있어요.");
+            notified++;
+        }
+        return notified;
+    }
+
     static String describePriceChange(int oldDeposit, int newDeposit, int oldRent, int newRent) {
         NumberFormat nf = NumberFormat.getIntegerInstance(Locale.KOREA);
         StringBuilder sb = new StringBuilder();
