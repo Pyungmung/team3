@@ -48,8 +48,8 @@ public record RecommendRequest(
         Boolean noHouseholder, // 선택, 무주택 세대주 여부 (버팀목 대출 자격 판별용)
 
         @Min(value = 0, message = "병역이행기간은 0 이상이어야 합니다.")
-        Integer militaryServiceMonths, // 개월 단위, 선택. 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) -
-        // 추후 특정 대출상품에 연동 예정(12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식)
+        Integer militaryServiceMonths, // 개월 단위, 선택. 전세자금대출의 나이 제한(최대 나이가 있을 때만)을 늘려주는 값 -
+        // 12개월마다 1년, 1개월만 넘겨도 1년으로 올림 (AI 엔진 loan_matcher.military_extension_years). 정책 추천 판별에는 쓰지 않는다
 
         @Min(value = 0, message = "자산은 0 이상이어야 합니다.")
         Integer assets, // 만원 단위, 선택. 정책의 자산(순자산) 기준 판별용
@@ -71,7 +71,12 @@ public record RecommendRequest(
 
         Boolean useLoanPolicy, // 선택, 기본 true. false면 정부지원정책 목록에서 대출 상품을 추천하지 않음
 
-        List<String> preferredBuildingTypes // 선택. 아파트/오피스텔/연립다세대/단독다가구 (실거래가 API 유형명 그대로).
+        List<String> preferredBuildingTypes, // 선택. 아파트/오피스텔/연립다세대/단독다가구 (실거래가 API 유형명 그대로).
         // 일부만 선택하면 그 유형의 매물만 추천, 비어 있거나 전부면 전체 추천
+
+        Boolean showAllDeposits, // 선택, 기본 false (2026-10-06). false면 현재 보유 보증금 이하이거나 초과해도 대출이 가능한 매물만 추천하고,
+        // true면 최대 매물 보증금(희망 보증금, 없으면 보유 보증금) 이하 매물을 대출 가능 여부와 상관없이 모두 추천한다 (리포트의 "모두 표시" 체크박스)
+
+        Boolean includeSemiJeonse // 선택, 기본 true (2026-10-06). false면 월세 추천에서 반전세(보증금÷월세 >= 100) 매물을 뺀다 (리포트의 "반전세 포함" 체크박스, 기본 체크)
 ) {
 }

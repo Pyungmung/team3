@@ -124,15 +124,24 @@ def _newborn_child_count(key: str, request) -> int:
     return getattr(request, _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD[key], None) or 0
 
 
+def _discountable_child_count(key: str, request) -> int:
+    """우대금리 차감에 실제로 곱해지는 인원수. NEWBORN_ADDITIONAL_CHILD(대출접수일 기준 2년 내 출산한 자녀)는 첫 번째 자녀는
+    차감이 없고 두 번째부터 1명씩 세므로 (입력한 자녀 수 - 1)이다 (1명=0, 2명=1, 3명=2 ...). 자격 판별(1명 이상이면 해당)은
+    _preference_satisfied가 입력 인원수를 그대로 쓰므로 이 값과 무관하다. MINOR_CHILD_OVER_2YEARS는 입력 인원수 그대로."""
+    count = _newborn_child_count(key, request)
+    return max(count - 1, 0) if key == "NEWBORN_ADDITIONAL_CHILD" else count
+
+
 def _newborn_summed_discount(loan, request) -> float:
-    """NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS 두 우대사항의 (1명당 차감율 x 인원수)를 더한 값.
-    대출에 그 우대사항 행이 아예 없으면(다른 대출들) 0으로, 있어도 인원수가 0이면 0이다."""
+    """NEWBORN_ADDITIONAL_CHILD/MINOR_CHILD_OVER_2YEARS 두 우대사항의 (1명당 차감율 x 차감 인원수)를 더한 값.
+    NEWBORN_ADDITIONAL_CHILD의 차감 인원수는 입력 자녀 수 - 1이다(_discountable_child_count). 대출에 그 우대사항 행이 아예
+    없으면(다른 대출들) 0으로, 있어도 차감 인원수가 0이면 0이다."""
     total = 0.0
     for key, count_field in _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD.items():
         setting = loan.preferences.get(key)
         if setting is None:
             continue
-        total += (setting.discount or 0.0) * _newborn_child_count(key, request)
+        total += (setting.discount or 0.0) * _discountable_child_count(key, request)
     return total
 
 
@@ -256,12 +265,29 @@ def _loan_amount_ok(loan, request, listing: dict) -> bool:
     return available is None or shortfall <= available
 
 
+def military_extension_years(months: int | None) -> int:
+    """군복무기간(개월)이 나이 상한을 몇 년 늘려주는지. 12개월마다 1년이고, 12개월을 1개월이라도 넘기면 1년으로 올림한다
+    (1~12개월=1년, 13~24개월=2년, 25~36개월=3년 ...). 미입력/0개월이면 0년."""
+    if not months or months <= 0:
+        return 0
+    return -(-int(months) // 12)  # 올림 나눗셈
+
+
+def _age_ok(loan, request) -> bool:
+    """대출 나이 제한 판별. 최대 나이가 공란이면 군복무기간은 아무 영향이 없고, 최대 나이가 있으면 군복무기간만큼 연장해서 본다.
+    최소 나이는 연장하지 않는다 (군복무는 상한을 늘려주는 제도)."""
+    max_age = loan.max_age
+    if max_age is not None:
+        max_age += military_extension_years(getattr(request, "military_service_months", None))
+    return policy_matcher._age_ok({"min_age": loan.min_age, "max_age": max_age}, request.age)
+
+
 def is_eligible(loan, request, listing: dict) -> bool:
     """대출 1종이 매물 1건에 적용되는지. 대상 매물 유형(전세/월세)까지 맞아야 한다."""
     if loan.lease_type != listing.get("lease_type"):
         return False
     return (
-        policy_matcher._age_ok({"min_age": loan.min_age, "max_age": loan.max_age}, request.age)
+        _age_ok(loan, request)
         and _income_ok(loan, request)
         and policy_matcher._asset_ok({"max_asset": loan.max_asset}, request.assets)
         and _listing_deposit_ok(loan, request, listing)
@@ -346,11 +372,12 @@ def _rate_details(loan, request, listing: dict, market_rate_percent: float) -> d
     ]
     for k in _NEWBORN_SUMMED_PREFERENCE_COUNT_FIELD:
         setting = loan.preferences.get(k)
-        count = _newborn_child_count(k, request)
-        if setting is None or count <= 0 or not (setting.discount or 0.0) > 0:
+        count = _newborn_child_count(k, request)  # 화면에는 사용자가 입력한 자녀 수를 그대로 보여준다
+        effective = _discountable_child_count(k, request)  # 차감에 곱해지는 수 (NEWBORN_ADDITIONAL_CHILD는 입력 - 1)
+        if setting is None or effective <= 0 or not (setting.discount or 0.0) > 0:
             continue
         items.append({
-            "key": k, "label": _preference_label(k), "discount_percent": round(setting.discount * count, 2),
+            "key": k, "label": _preference_label(k), "discount_percent": round(setting.discount * effective, 2),
             "count": count, "applied": newborn_wins,
         })
     cap = _discount_cap_percent(loan, request)

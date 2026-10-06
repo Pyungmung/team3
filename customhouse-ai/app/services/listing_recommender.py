@@ -6,7 +6,7 @@ docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실�
 
 처리 흐름 (정책/순위는 calculator·policy_matcher·data_analysis를 그대로 재사용):
 1. 직장 좌표, 소득 기준 적정 월세 (수도권 RIR = 관리자 수정 > 기준소득관리에 저장된 값 우선, 없으면 docs/RIR.csv, 그것도 없으면 기본값 20%)
-2. 자치구 대표좌표 기준 1차 통근권 필터 (버퍼, DEFAULT_REGION_PREFILTER_BUFFER_MIN) - 어느 자치구
+2. 자치구 대표좌표 기준 1차 통근권 필터 (이동수단별 최대 거리 + 버퍼, calculator.REGION_PREFILTER_BUFFER_KM) - 어느 자치구
    CSV를 아예 읽을지만 정하는 용도(IO 절약)이고, 매물 하나하나를 거르는 기준은 아니다.
 3. 통근권 자치구의 CSV 매물 -> 계약가능만, 선호 유형, 보증금 한도 이하, 희망 월세 이하, 이사희망시기,
    그리고 "이 매물 자신의" 좌표 기준 직선거리 추정 통근시간 필터 - 자치구가 넓으면(예: 서초구) 대표좌표
@@ -196,15 +196,12 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_
     # 지금 가진 보증금(current_deposit)으로 못 채우는 부족분만 대출로 메운다고 보고, 그 금액에 이자를 적용해
     # 관리비에 더한다. 금리는 "보증금액 전환 이자기회비용"(deposit_opportunity_cost)과 같은 값(deposit_rate_percent -
     # 한국부동산원 R-ONE 수도권 전월세 전환율 API)을 그대로 재사용한다(2026-09-29: 임시 3% 고정값에서 변경).
-    # 월세는 월세 자체가 이미 실제 부담을 보여주므로 그대로 0 (기존과 동일).
-    if listing["lease_type"] == "전세":
-        deposit_shortfall = max(0, deposit - current_deposit)  # 부족분(대출금액): 매물 보증금 - 현재 보증금
-        # real_housing_cost/loan_interest는 응답 모델(response_schema.BuildingRecommendation)에서 int라
-        # 기존 calculator.py의 대출이자 계산과 같이 정수(만원)로 반올림한다 (소수 자리는 deposit_opportunity_cost 등 float 필드가 담당).
-        loan_interest = round(deposit_shortfall * deposit_rate_percent / 100 / 12)
-    else:
-        deposit_shortfall = 0
-        loan_interest = 0
+    # 2026-10-06: 월세도 같은 방식이다 - 매물 보증금이 지금 가진 보증금을 넘으면 그 부족분에 같은 기준이자(전환율)를 적용한
+    # 월 이자를 월세 + 관리비에 더한다 (보증금이 이하면 부족분 0, 이자 0으로 기존과 동일). 순위(보증금 전환 이자기회비용)에는 영향 없다.
+    deposit_shortfall = max(0, deposit - current_deposit)  # 부족분(대출금액): 매물 보증금 - 현재 보증금
+    # real_housing_cost/loan_interest는 응답 모델(response_schema.BuildingRecommendation)에서 int라
+    # 기존 calculator.py의 대출이자 계산과 같이 정수(만원)로 반올림한다 (소수 자리는 deposit_opportunity_cost 등 float 필드가 담당).
+    loan_interest = round(deposit_shortfall * deposit_rate_percent / 100 / 12)
     real_housing_cost = rent + maintenance_fee + loan_interest  # 교통비는 뺐다
     # 보증금 기회비용(월) = 보증금 x 연 전환율% / 12 (한국부동산원 수도권 전월세 전환율), 보증금전환 실질거주비 = 월세 + 관리비 + 보증금 기회비용 (만원, 소수 첫째 자리)
     # 2026-10-03: 월세 매물은 전환율이 아니라 예금은행 정기예금(1년) 금리로 환산한다(_opportunity_rate_percent).
@@ -232,7 +229,7 @@ def _to_result(listing: dict, region_commute: int, commute_source: str, deposit_
         "rent": rent,
         "maintenance_fee": maintenance_fee,
         "loan_interest": loan_interest,
-        "deposit_shortfall": deposit_shortfall,  # 부족분(대출금액) = 매물 보증금 - 현재 보증금 (전세만, 월세는 0)
+        "deposit_shortfall": deposit_shortfall,  # 부족분(대출금액) = 매물 보증금 - 현재 보증금 (전세/월세 공통)
         "government_support": 0,
         "real_housing_cost": real_housing_cost,
         "deposit_opportunity_cost": deposit_opportunity_cost,
@@ -289,7 +286,7 @@ def refresh_listing_card(request, listing_id: str) -> dict | None:
     deposit_rate = reb_conversion_rate.get_metro_conversion_rate()
     monthly_deposit_rate = deposit_interest_rate.get_one_year_deposit_rate()
     if listing["lat"] is not None and listing["lon"] is not None:
-        minutes = calculator._estimate_commute_minutes_fallback(work_lat, work_lon, listing["lat"], listing["lon"])
+        minutes = calculator._estimate_commute_minutes_fallback(work_lat, work_lon, listing["lat"], listing["lon"], request.transport_type)
     else:
         minutes = 0
     card = _to_result(listing, minutes, calculator.ESTIMATE_SOURCE_LABEL, deposit_rate.rate_percent, request.deposit,
@@ -308,6 +305,32 @@ def refresh_listing_card(request, listing_id: str) -> dict | None:
         "monthly_deposit_rate_label": monthly_deposit_rate.label,
         "monthly_deposit_rate_is_fallback": monthly_deposit_rate.is_fallback,
     }
+
+
+def _loan_possible(request, listing: dict, cache: dict) -> bool:
+    """이 매물에 신청 가능한 대출이 하나라도 있는가 (보증금 필터용, 2026-10-06). 순위/카드용 계산(match_eligible_loans)과 같은
+    자격 판별(loan_matcher.is_eligible)을 쓰되 금리/이자 계산은 하지 않는다. 저장된 대출이 없거나 "정책 대출 활용"을 껐으면 False.
+    전세 매물은 등록자가 "전세자금대출 불가"로 표시했으면 False. 같은 (거래유형, 보증금, 월세, 면적)이면 결과를 재사용한다."""
+    if not request.loan_products or not request.use_loan_policy:
+        return False
+    lease = listing["lease_type"]
+    if lease == "전세" and listing.get("jeonse_loan_available") is False:
+        return False
+    # 결과가 면적/월세에 따라 달라지는 대출(전용면적/월세 제한이 있는 대출)이 하나도 없으면 그 값을 키에서 빼서 캐시 적중률을 높인다
+    # (매물마다 면적이 달라 그대로 두면 후보 1만 건대에서 거의 매번 다시 계산한다).
+    if "_uses" not in cache:
+        cache["_uses"] = (
+            any(l.max_exclusive_area is not None or any(p.override_max_exclusive_area is not None for p in l.preferences.values())
+                for l in request.loan_products),
+            any(l.max_listing_monthly_rent is not None for l in request.loan_products),
+        )
+    uses_area, uses_rent = cache["_uses"]
+    key = (lease, listing["deposit"], listing["monthly_rent"] if uses_rent else None, listing["exclusive_area"] if uses_area else None)
+    if key not in cache:
+        probe = {"lease_type": lease, "listing_deposit": listing["deposit"] or 0,
+                 "listing_monthly_rent": listing["monthly_rent"] or 0, "exclusive_area": listing["exclusive_area"]}
+        cache[key] = any(loan_matcher.is_eligible(loan, request, probe) for loan in request.loan_products)
+    return cache[key]
 
 
 def run_listing_diagnosis(request) -> dict:
@@ -330,10 +353,11 @@ def run_listing_diagnosis(request) -> dict:
 
     # 1차: 자치구 대표좌표 기준 통근권 - 어느 자치구 CSV를 읽을지만 정하는 IO 절약용이라 버퍼를 넉넉히 두고,
     # 카카오 API 호출 없이 직선거리 추정(계산만 하므로 25개 자치구 전부 즉시)으로 거른다(2026-10-01).
+    # 2026-10-06: 이동수단별 보정식으로 환산한 최대 직선거리 + 자치구 대표좌표 오차를 감당하는 여유(km)
+    prefilter_km = calculator.max_commute_distance_km(request.max_commute_minutes, request.transport_type)         + calculator.REGION_PREFILTER_BUFFER_KM
     eligible = [
         region for region in regions
-        if calculator._estimate_commute_minutes_fallback(work_lat, work_lon, region.lat, region.lon)
-        <= request.max_commute_minutes + calculator.DEFAULT_REGION_PREFILTER_BUFFER_MIN
+        if calculator._haversine_km(work_lat, work_lon, region.lat, region.lon) <= prefilter_km
     ]
 
     all_types = {"아파트", "오피스텔", "연립다세대", "단독다가구"}
@@ -342,6 +366,11 @@ def run_listing_diagnosis(request) -> dict:
     today = date.today()
 
     wolse_results, jeonse_results = [], []
+    # 보증금 필터 (2026-10-06): 기본은 "현재 보유 보증금 이하 + (초과해도 대출 가능한 매물)"만 추천한다. 리포트의 "모두 표시"를
+    # 체크하면(show_all_deposits) 최대 매물 보증금(deposit_limit) 이하를 전부 추천한다.
+    own_deposit = request.deposit or 0
+    loan_cache: dict = {}
+    excluded_no_loan = excluded_semi_jeonse = 0
     policies_by_region: dict[str, list[dict]] = {}  # 자치구 -> 그 자치구에 매칭된 정책 (서울 공통 + 그 자치구)
     listing_by_id: dict[str, dict] = {}
     total_candidates = 0
@@ -379,9 +408,19 @@ def run_listing_diagnosis(request) -> dict:
             # 웬만한 구 안에서는 다 통과함 - 2026-10-01 실측). 최종 _refine이 카카오 실제 경로로
             # 한 번 더 정확히 거르므로, 여기서 추정치가 약간 낙관적이어도 안전하다.
             estimated_minutes = calculator._estimate_commute_minutes_fallback(
-                work_lat, work_lon, listing["lat"], listing["lon"]
+                work_lat, work_lon, listing["lat"], listing["lon"], request.transport_type
             )
             if estimated_minutes > request.max_commute_minutes:
+                continue
+
+            # 반전세는 "반전세 포함"을 체크해야 월세 추천에 들어온다
+            if listing["lease_type"] == "월세" and listing.get("is_semi_jeonse") and not request.include_semi_jeonse:
+                excluded_semi_jeonse += 1
+                continue
+            # 보유 보증금을 넘는 매물은 대출이 가능할 때만 (모두 표시를 체크하면 이 조건을 건너뛴다)
+            if not request.show_all_deposits and (listing["deposit"] or 0) > own_deposit \
+                    and not _loan_possible(request, listing, loan_cache):
+                excluded_no_loan += 1
                 continue
 
             total_candidates += 1
@@ -453,6 +492,11 @@ def run_listing_diagnosis(request) -> dict:
         "used_distance_estimate": used_distance_estimate,
         "total_candidates": total_candidates,
         "deposit_limit": deposit_limit,
+        "own_deposit": own_deposit,
+        "show_all_deposits": bool(request.show_all_deposits),
+        "include_semi_jeonse": bool(request.include_semi_jeonse),
+        "excluded_no_loan": excluded_no_loan,
+        "excluded_semi_jeonse": excluded_semi_jeonse,
         "work_region": work_region,
         "policies_by_region": policies_by_region,
         "deposit_conversion_rate": deposit_rate.rate_percent,

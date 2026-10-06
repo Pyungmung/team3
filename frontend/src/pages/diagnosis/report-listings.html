@@ -167,6 +167,11 @@
     .type-chip:hover span { border-color: #cbd5e1; color: #64748b; }
     .type-chip input:checked + span { background: var(--brand-600, #1B2A4A); border-color: var(--brand-600, #1B2A4A); color: #fff; }
     .type-chip input:focus-visible + span { outline: 2px solid var(--brand-600, #1B2A4A); outline-offset: 2px; }
+    /* 월세/전세 탭 바로 아래 목록 옵션 (보증금 필터 / 반전세 포함) */
+    .list-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 10px 16px; border-bottom: 1px solid #eef1f6; background: #fbfcfe; }
+    .opt-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; user-select: none; }
+    .opt-check input { width: 15px; height: 15px; accent-color: var(--brand-600, #1B2A4A); cursor: pointer; }
+    .opt-check input:disabled { cursor: default; }
     .requery-msg { font-size: 13px; color: #94a3b8; }
     .requery-msg.error { color: #dc2626; font-weight: 700; }
 
@@ -295,6 +300,15 @@
               <button type="button" class="report-tab" data-tab="jeonse">전세 매물</button>
             </div>
 
+            <div class="list-options" id="list-options">
+              <label class="opt-check" id="opt-show-all-wrap" title="체크하면 현재 보유 보증금을 넘고 대출도 안 되는 매물까지, 최대 매물 보증금 이하인 매물을 전부 보여줘요. 해제하면 보유 보증금 이하이거나 초과해도 대출이 가능한 매물만 보여줘요.">
+                <input type="checkbox" id="opt-show-all" /><span>최대 매물 보증금액 매물 모두 표시</span>
+              </label>
+              <label class="opt-check" id="opt-semi-wrap" title="체크하면 월세 매물에 반전세(보증금이 월세의 100배 이상)도 함께 보여줘요.">
+                <input type="checkbox" id="opt-semi" /><span>반전세 포함</span>
+              </label>
+            </div>
+
             <div id="wolse-panel" class="report-tab-panel">
               <div id="wolse-box" class="report-list-box">
                 <ul id="wolse-list"></ul>
@@ -363,7 +377,7 @@
   <div class="rl-toast hidden" id="rl-toast" role="status" aria-live="polite"></div>
 
   <script src="../../js/components/header.js?v=20260915b"></script>
-  <script src="../../js/components/listing-card.js?v=20261005b"></script>
+  <script src="../../js/components/listing-card.js?v=20261006j"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/watchlist.js?v=20261005a"></script>
   <script src="../../js/api/recommendation.js?v=20260930a"></script>
@@ -593,11 +607,24 @@
 
       // 보증금 한도(최대 매물 보증금, 없으면 현재 보유 보증금)를 넘는 매물은 추천에서 제외된다 - 왜 매물이 적은지 알 수 있게 밝힌다.
       const depositLimitText = data.deposit_limit ? fmtMoney(data.deposit_limit) : "";
+      // 보증금 필터 (2026-10-06): 기본은 "보유 보증금 이하 + 초과해도 대출 가능", "모두 표시"를 체크하면 최대 매물 보증금 이하 전부.
+      // 옛 저장본(own_deposit 없음)은 예전 문구 그대로 보여준다.
+      const ownDepositText = data.own_deposit != null ? fmtMoney(data.own_deposit) : "";
+      const showAllDeposits = !!data.show_all_deposits;
+      let scopeText = depositLimitText ? `보증금 ${depositLimitText} 이하 ` : "";
+      if (data.own_deposit != null && "show_all_deposits" in data && !showAllDeposits) {
+        scopeText = `보유 보증금 ${ownDepositText} 이하이거나, 초과해도 대출이 가능한 `;
+      }
+      const excludedNote = !showAllDeposits && data.excluded_no_loan > 0
+        ? ` (보유 보증금을 넘고 대출도 안 되는 ${data.excluded_no_loan.toLocaleString()}건은 제외했어요)` : "";
       document.getElementById("summary-line").textContent =
-        `${depositLimitText ? `보증금 ${depositLimitText} 이하 ` : ""}조건에 맞는 매물 ${(data.total_candidates ?? 0).toLocaleString()}건 중 월세 ${wolseList.length}개, 전세 ${jeonseList.length}개를 추천해요. 월세는 보증금 예금전환 이자기회비용, 전세는 총보증금 전환 이자기회비용이 낮은 순입니다.`;
+        `${scopeText}${scopeText.includes("대출이 가능한") ? "" : "조건에 맞는 "}매물 ${(data.total_candidates ?? 0).toLocaleString()}건 중 월세 ${wolseList.length}개, 전세 ${jeonseList.length}개를 추천해요${excludedNote}. 월세는 보증금 예금전환 이자기회비용, 전세는 총보증금 전환 이자기회비용이 낮은 순입니다.`;
       if (depositLimitText) {
-        document.getElementById("wolse-empty").textContent = `보증금 ${depositLimitText} 이하 월세 매물을 찾지 못했어요. 최대 매물 보증금을 올려보세요.`;
-        document.getElementById("jeonse-empty").textContent = `보증금 ${depositLimitText} 이하 전세 매물을 찾지 못했어요. 최대 매물 보증금(전세액)을 올려보세요.`;
+        const hint = showAllDeposits || !("show_all_deposits" in data)
+          ? "최대 매물 보증금을 올려보세요."
+          : "\"최대 매물 보증금액 매물 모두 표시\"를 체크하거나 최대 매물 보증금을 올려보세요.";
+        document.getElementById("wolse-empty").textContent = `조건에 맞는 월세 매물을 찾지 못했어요. ${hint}`;
+        document.getElementById("jeonse-empty").textContent = `조건에 맞는 전세 매물을 찾지 못했어요. ${hint}`;
       }
       document.getElementById("affordable-rent").textContent = `${fmtNum(data.affordable_rent)}만원`;
       document.getElementById("rir").textContent = `${fmtRate(data.rent_to_income_ratio)}%`;
@@ -683,6 +710,17 @@
         requeryMsg.classList.toggle("error", !!isError);
       }
 
+      // ---------- 목록 옵션 체크박스: 보증금 필터("모두 표시") / 반전세 포함 - 기본 둘 다 해제 ----------
+      // 체크 상태는 조건(condition.showAllDeposits / includeSemiJeonse)에 담아 같은 방식으로 다시 조회한다
+      // (서버가 순위를 매기기 전에 거르기 때문에 화면에서 숨기는 게 아니라 다시 받아와야 목록이 상위 N건으로 채워진다).
+      const showAllCheckbox = document.getElementById("opt-show-all");
+      const semiCheckbox = document.getElementById("opt-semi");
+      const listOptionCheckboxes = [showAllCheckbox, semiCheckbox];
+      showAllCheckbox.checked = !!condition?.showAllDeposits;
+      semiCheckbox.checked = condition?.includeSemiJeonse !== false; // 기본 체크 (조건에 값이 없으면 포함)
+      // 반전세 포함은 월세 탭에만 있다 (전세 탭에서는 숨긴다 - 탭 전환 코드 참고)
+      const syncListOptionsForTab = (tab) => document.getElementById("opt-semi-wrap").classList.toggle("hidden", tab !== "wolse");
+
       async function requeryByBuildingType() {
         const selectedTypes = buildingTypeCheckboxes.filter((cb) => cb.checked).map((cb) => cb.value);
         if (selectedTypes.length === 0) return setRequeryMsg("주택 유형을 1개 이상 선택해주세요.", true);
@@ -690,8 +728,14 @@
 
         setRequeryMsg("다시 조회 중...", false);
         buildingTypeCheckboxes.forEach((cb) => (cb.disabled = true));
+        listOptionCheckboxes.forEach((cb) => (cb.disabled = true));
         try {
-          const newCondition = { ...condition, preferredBuildingTypes: selectedTypes };
+          const newCondition = {
+            ...condition,
+            preferredBuildingTypes: selectedTypes,
+            showAllDeposits: showAllCheckbox.checked,
+            includeSemiJeonse: semiCheckbox.checked,
+          };
           const result = await CustomHouseRecommendationApi.requestListingDiagnosis(newCondition);
           localStorage.setItem("customhouse:lastListingDiagnosis", JSON.stringify(result));
           localStorage.setItem("customhouse:lastListingDiagnosisCondition", JSON.stringify(newCondition));
@@ -700,14 +744,18 @@
         } catch (err) {
           setRequeryMsg(err.message || "다시 조회하는 중 오류가 발생했어요.", true);
           buildingTypeCheckboxes.forEach((cb) => (cb.disabled = false));
+          listOptionCheckboxes.forEach((cb) => (cb.disabled = false));
         }
       }
       buildingTypeCheckboxes.forEach((cb) => cb.addEventListener("change", requeryByBuildingType));
+      listOptionCheckboxes.forEach((cb) => cb.addEventListener("change", requeryByBuildingType));
+      syncListOptionsForTab("wolse");
 
       // ---------- 월세/전세 탭 전환 (우측 목록 + 지도 마커 둘 다 선택한 탭 것만 보여준다) ----------
       document.querySelectorAll(".report-tab").forEach((btn) => {
         btn.addEventListener("click", () => {
           const tab = btn.dataset.tab;
+          syncListOptionsForTab(tab);
           document.querySelectorAll(".report-tab").forEach((b) => b.classList.toggle("active", b === btn));
           document.getElementById("wolse-panel").classList.toggle("hidden", tab !== "wolse");
           document.getElementById("jeonse-panel").classList.toggle("hidden", tab !== "jeonse");

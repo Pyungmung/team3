@@ -30,8 +30,10 @@
     body { background: #f6f8fb !important; }
     .reg-shell { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
     .reg-card { background: #fff; border: 1px solid #e7edf4; border-radius: 16px; padding: 28px 24px; }
-    .reg-title { font-size: 22px; font-weight: 700; color: var(--brand-600); margin: 0 0 4px; }
+    .reg-title { font-size: 22px; font-weight: 700; color: var(--brand-600); margin: 0 0 20px; }
+    .reg-title:has(+ .reg-sub:not(:empty)) { margin-bottom: 4px; }
     .reg-sub { color: #64748b; font-size: 14px; margin: 0 0 24px; }
+    .reg-sub:empty { display: none; }
     .reg-section { border-top: 1px solid #eef1f6; padding-top: 18px; margin-top: 18px; }
     .reg-section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
     .reg-section h2 { font-size: 15px; font-weight: 700; color: #334155; margin: 0 0 12px; }
@@ -53,8 +55,25 @@
     #reg-map { width: 100%; height: 220px; margin-top: 10px; border-radius: 10px; border: 1px solid #e7edf4; display: none; }
     .reg-map-note { font-size: 12px; color: #64748b; margin-top: 6px; }
     .reg-checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #334155; }
-    .reg-photo-preview { display: none; width: 160px; height: 120px; object-fit: cover; border-radius: 10px; margin-top: 10px; border: 1px solid #e7edf4; }
-    .reg-photo-status { font-size: 12px; color: #64748b; margin-top: 6px; }
+    /* 사진 드롭존: 파일을 끌어다 놓거나, 영역/버튼을 눌러 선택 */
+    .reg-dropzone {
+      display: flex; align-items: center; gap: 16px; padding: 18px; border: 1.5px dashed #c5d0de; border-radius: 12px;
+      background: #f8fafc; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .reg-dropzone:hover, .reg-dropzone:focus-visible { border-color: var(--brand-600); background: #f1f6fd; outline: none; }
+    .reg-dropzone.is-dragover { border-color: var(--brand-600); background: #e6effc; border-style: solid; }
+    .reg-dropzone-ico { flex: none; width: 44px; height: 44px; border-radius: 12px; background: #e8eef7; color: var(--brand-600); display: flex; align-items: center; justify-content: center; }
+    .reg-dropzone-text { flex: 1; min-width: 0; }
+    .reg-dropzone-title { font-size: 14px; font-weight: 600; color: #334155; margin: 0 0 2px; }
+    .reg-dropzone-hint { font-size: 12px; color: #64748b; margin: 0; }
+    .reg-photo-box { display: none; align-items: center; gap: 12px; margin-top: 12px; }
+    .reg-photo-box.is-visible { display: flex; }
+    .reg-photo-preview { width: 160px; height: 120px; object-fit: cover; border-radius: 10px; border: 1px solid #e7edf4; background: #f1f5f9; }
+    .reg-photo-status { font-size: 12px; color: #64748b; margin-top: 8px; min-height: 16px; }
+    .reg-photo-status.is-error { color: #b91c1c; }
+    .reg-btn-sm { padding: 8px 14px; font-size: 12px; }
+    .reg-btn-outline.is-muted { border-color: #cbd5e1; color: #64748b; }
+    .reg-btn-outline.is-muted:hover { background: #f1f5f9; color: #334155; }
     .reg-error { background: #fef2f2; color: #b91c1c; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 18px; }
     .reg-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
     .reg-cancel { padding: 11px 20px; border-radius: 999px; font-size: 14px; color: #475569; text-decoration: none; }
@@ -63,8 +82,21 @@
       background: var(--brand-600); border: none; cursor: pointer;
     }
     .reg-submit:disabled { opacity: 0.6; cursor: default; }
-    .reg-done { text-align: center; padding: 20px 0; }
-    .reg-done .ico { font-size: 40px; margin-bottom: 10px; }
+    .reg-done { text-align: center; padding: 28px 0 12px; }
+    .reg-done .ico { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%; background: #e8f3ec; color: #2f855a; display: flex; align-items: center; justify-content: center; }
+    .reg-done-msg { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0; }
+    /* 완료 화면 버튼: 같은 크기의 알약형 - 주 동작은 채움, 보조 동작은 테두리 */
+    .reg-done-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 22px; }
+    .reg-pill {
+      display: inline-flex; align-items: center; justify-content: center; min-width: 190px; padding: 11px 22px;
+      border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background .15s, color .15s, filter .15s;
+    }
+    .reg-pill.primary { background: var(--brand-600); color: #fff; border: 1px solid var(--brand-600); }
+    .reg-pill.primary:hover { filter: brightness(1.1); }
+    .reg-pill.secondary { background: #fff; color: var(--brand-600); border: 1px solid var(--brand-600); }
+    .reg-pill.secondary:hover { background: var(--brand-600); color: #fff; }
+    .reg-ico { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
+    .reg-map-note .reg-ico { color: var(--brand-600); margin-right: 4px; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -74,8 +106,8 @@
 
   <main class="reg-shell">
     <div class="reg-card">
-      <h1 class="reg-title" id="reg-title">＋ 매물 등록</h1>
-      <p class="reg-sub" id="reg-sub">더미 매물과 똑같은 정보를 입력할수록 추천 결과에서 더 정확하게 보여요. 등록한 매물은 언제든 삭제할 수 있어요.</p>
+      <h1 class="reg-title" id="reg-title">매물 등록</h1>
+      <p class="reg-sub" id="reg-sub"></p>
 
       <div id="login-required" class="hidden">
         <p class="text-gray-500 mb-4">로그인한 회원만 매물을 등록할 수 있어요.</p>
@@ -94,7 +126,9 @@
           </label>
           <div id="reg-postcode-wrap" class="hidden" style="margin-top:10px; border:1px solid #d7dee8; border-radius:10px; overflow:hidden;">
             <div style="display:flex; justify-content:flex-end; background:#f8fafc; padding:4px 8px;">
-              <button type="button" id="reg-postcode-close" style="border:none; background:none; cursor:pointer; font-size:13px; color:#64748b;">✕ 닫기</button>
+              <button type="button" id="reg-postcode-close" style="border:none; background:none; cursor:pointer; font-size:13px; color:#64748b; display:inline-flex; align-items:center; gap:4px;">
+                <svg class="reg-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>닫기
+              </button>
             </div>
             <div id="reg-postcode-embed" style="width:100%; height:360px;"></div>
           </div>
@@ -175,12 +209,25 @@
 
         <section class="reg-section">
           <h2>사진</h2>
-          <label class="reg-field">
+          <div class="reg-field" style="margin-bottom:0">
             <span>내부 사진 (대표 1장, 선택)</span>
-            <input type="file" id="reg-photo-input" accept="image/jpeg,image/png,image/webp" />
-          </label>
-          <img id="reg-photo-preview" class="reg-photo-preview" alt="업로드한 내부 사진 미리보기" />
-          <p class="reg-photo-status" id="reg-photo-status"></p>
+            <input type="file" id="reg-photo-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
+            <div class="reg-dropzone" id="reg-dropzone" role="button" tabindex="0" aria-label="사진 파일을 끌어다 놓거나 눌러서 선택">
+              <div class="reg-dropzone-ico">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5m0 0l-4 4m4-4l4 4"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+              </div>
+              <div class="reg-dropzone-text">
+                <p class="reg-dropzone-title">사진을 여기로 끌어다 놓으세요</p>
+                <p class="reg-dropzone-hint">JPG · PNG · WEBP, 5MB 이하</p>
+              </div>
+              <button type="button" class="reg-btn-outline reg-btn-sm" id="reg-photo-pick-btn">파일 선택</button>
+            </div>
+            <div class="reg-photo-box" id="reg-photo-box">
+              <img id="reg-photo-preview" class="reg-photo-preview" alt="업로드한 내부 사진 미리보기" />
+              <button type="button" class="reg-btn-outline reg-btn-sm is-muted" id="reg-photo-remove-btn">사진 삭제</button>
+            </div>
+            <p class="reg-photo-status" id="reg-photo-status" role="status"></p>
+          </div>
         </section>
 
         <section class="reg-section">
@@ -196,9 +243,11 @@
       </form>
 
       <div id="reg-done" class="reg-done hidden">
-        <div class="ico">✅</div>
-        <p><b id="reg-done-msg"></b></p>
-        <div class="reg-actions" style="justify-content:center" id="reg-done-actions"></div>
+        <div class="ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        </div>
+        <p class="reg-done-msg" id="reg-done-msg"></p>
+        <div class="reg-done-actions" id="reg-done-actions"></div>
       </div>
     </div>
   </main>
@@ -261,9 +310,8 @@
       el("reg-description").value = r.description || "";
       if (r.photo && r.photo !== "PHOTO_PLACEHOLDER") {
         uploadedPhotoUrl = r.photo;
-        el("reg-photo-preview").src = r.photo;
-        el("reg-photo-preview").classList.remove("hidden");
-        el("reg-photo-status").textContent = "기존 사진 (바꾸려면 새로 선택하세요)";
+        showPhotoPreview(r.photo, false);
+        setPhotoStatus("기존 사진이에요. 바꾸려면 새 사진을 끌어다 놓거나 선택하세요.");
       }
       // 핀 표시는 카카오 SDK 로딩을 기다려야 해서 맨 마지막에 - 혹시 실패해도(SDK 없음 등) 이미 위에서
       // 입력칸은 전부 채워진 뒤라 수정 자체는 문제없다.
@@ -301,7 +349,8 @@
         marker.setPosition(center);
       }
       const noteEl = el("reg-map-note");
-      noteEl.textContent = `📍 ${address} — 이 위치가 맞는지 확인해주세요.`;
+      noteEl.innerHTML = '<svg class="reg-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 1113 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>';
+      noteEl.appendChild(document.createTextNode(`${address} — 이 위치가 맞는지 확인해주세요.`));
       noteEl.classList.remove("hidden");
     }
 
@@ -365,23 +414,87 @@
       el("reg-postcode-embed").innerHTML = "";
     });
 
-    // ---------- 사진 업로드: 파일 선택 즉시 서버에 올리고 URL을 기억해둔다 ----------
+    // ---------- 사진 업로드: 파일을 선택하거나 끌어다 놓으면 즉시 서버에 올리고 URL을 기억해둔다 ----------
+    // (ListingPhotoController 제한과 같은 기준: JPG/PNG/WEBP, 5MB 이하 - 서버 검증 전에 화면에서 먼저 안내한다)
     let uploadedPhotoUrl = null;
-    el("reg-photo-input").addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    let photoUploading = false;
+    const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+    const dropzone = el("reg-dropzone");
+    const photoInput = el("reg-photo-input");
+
+    function setPhotoStatus(text, isError) {
       const statusEl = el("reg-photo-status");
-      statusEl.textContent = "업로드하는 중...";
+      statusEl.textContent = text || "";
+      statusEl.classList.toggle("is-error", !!isError);
+    }
+
+    // removable=false: 수정 모드의 기존 사진 - 서버는 새 사진이 올 때만 바꾸므로(사진 없이 저장하면 기존 사진 유지) 삭제 버튼을 숨긴다
+    function showPhotoPreview(url, removable = true) {
+      el("reg-photo-preview").src = url;
+      el("reg-photo-remove-btn").classList.toggle("hidden", !removable);
+      el("reg-photo-box").classList.add("is-visible");
+    }
+
+    function clearPhoto() {
+      uploadedPhotoUrl = null;
+      photoInput.value = "";
+      el("reg-photo-preview").removeAttribute("src");
+      el("reg-photo-box").classList.remove("is-visible");
+      setPhotoStatus("");
+    }
+
+    async function handlePhotoFile(file) {
+      if (!file || photoUploading) return;
+      if (!PHOTO_TYPES.includes(file.type)) return setPhotoStatus("JPG, PNG, WEBP 사진만 올릴 수 있어요.", true);
+      if (file.size > PHOTO_MAX_BYTES) return setPhotoStatus("사진은 5MB 이하만 올릴 수 있어요.", true);
+      photoUploading = true;
+      setPhotoStatus("업로드하는 중...");
       try {
         uploadedPhotoUrl = await CustomHouseWatchlistApi.uploadListingPhoto(file);
-        el("reg-photo-preview").src = uploadedPhotoUrl;
-        el("reg-photo-preview").classList.remove("hidden");
-        statusEl.textContent = "업로드 완료";
+        showPhotoPreview(uploadedPhotoUrl);
+        setPhotoStatus("업로드 완료");
       } catch (err) {
-        uploadedPhotoUrl = null;
-        statusEl.textContent = err.message || "사진을 업로드하지 못했어요.";
+        setPhotoStatus(err.message || "사진을 업로드하지 못했어요.", true);
+      } finally {
+        photoUploading = false;
+        photoInput.value = ""; // 같은 파일을 다시 골라도 change가 일어나게
+      }
+    }
+
+    photoInput.addEventListener("change", (e) => handlePhotoFile(e.target.files[0]));
+    el("reg-photo-pick-btn").addEventListener("click", (e) => {
+      e.stopPropagation(); // 드롭존 클릭과 겹쳐 파일 창이 두 번 뜨지 않게
+      photoInput.click();
+    });
+    dropzone.addEventListener("click", () => photoInput.click());
+    dropzone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        photoInput.click();
       }
     });
+    el("reg-photo-remove-btn").addEventListener("click", clearPhoto);
+
+    ["dragenter", "dragover"].forEach((type) =>
+      dropzone.addEventListener(type, (e) => {
+        e.preventDefault();
+        dropzone.classList.add("is-dragover");
+      })
+    );
+    ["dragleave", "dragend"].forEach((type) =>
+      dropzone.addEventListener(type, () => dropzone.classList.remove("is-dragover"))
+    );
+    dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("is-dragover");
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      if (files.length > 1) setPhotoStatus("대표 사진은 1장만 쓸 수 있어서 첫 번째 파일만 올렸어요.");
+      handlePhotoFile(files[0]);
+    });
+    // 드롭존 밖에 잘못 놓았을 때 브라우저가 사진 파일을 열어버리며 입력 중이던 내용이 날아가는 것을 막는다
+    ["dragover", "drop"].forEach((type) => window.addEventListener(type, (e) => e.preventDefault()));
 
     // ---------- 등록 제출 ----------
     function setError(text) {
@@ -443,9 +556,10 @@
         // (?justRegistered=1이 강제로 한 번 다시 불러오게 한다) - 수정 직후에도 똑같이 캐시가 수정 전
         // 값 그대로라, 같은 쿼리로 다시 불러오게 한다.
         el("reg-done-actions").innerHTML = editingListingId
-          ? `<a href="report-listings.html?justRegistered=1" class="reg-submit" style="text-decoration:none;display:inline-block">추천 리포트에서 바로 확인</a>
-             <a href="../mypage/edit-condition.html#my-listings" class="reg-cancel" style="display:inline-block">등록한 매물 관리로 돌아가기</a>`
-          : `<a href="report-listings.html?justRegistered=1" class="reg-submit" style="text-decoration:none;display:inline-block">목록으로 돌아가 다시 조회</a>`;
+          ? `<a href="report-listings.html?justRegistered=1" class="reg-pill primary">추천 리포트에서 확인</a>
+             <a href="../mypage/edit-condition.html#my-listings" class="reg-pill secondary">등록한 매물 관리</a>`
+          : `<a href="report-listings.html?justRegistered=1" class="reg-pill primary">추천 리포트에서 확인</a>
+             <a href="../mypage/edit-condition.html#my-listings" class="reg-pill secondary">등록한 매물 관리</a>`;
         el("reg-done").classList.remove("hidden");
       } catch (err) {
         setError(err.message || (editingListingId ? "매물을 수정하지 못했어요. 잠시 후 다시 시도해주세요." : "매물을 등록하지 못했어요. 잠시 후 다시 시도해주세요."));
