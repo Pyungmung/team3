@@ -69,7 +69,8 @@ public class ListingAlertService {
     }
 
     /** 매물의 허위매물 신고가 경고 기준(ListingReportService.FLAG_THRESHOLD)에 처음 도달했을 때 호출한다. */
-    @Transactional(readOnly = true)
+    // readOnly로 두면 안 된다: 알림 저장(NotificationService.notify)이 이 트랜잭션에 합류해서 "Connection is read-only"로 실패한다 (2026-10-06 삭제 알림에서 확인, 같은 문제).
+    @Transactional
     public int notifyFlagged(String listingId, long reportCount) {
         List<ListingFavorite> favorites = favoriteRepository.findByListingId(listingId);
         for (ListingFavorite fav : favorites) {
