@@ -662,7 +662,7 @@
       "median_income_percent": 180,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": true,
       "is_loan": false
     },
@@ -679,7 +679,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -696,7 +696,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -713,7 +713,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -730,7 +730,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -747,7 +747,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -781,7 +781,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -798,7 +798,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1002,7 +1002,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1019,7 +1019,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1053,7 +1053,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1070,7 +1070,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1087,7 +1087,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1104,7 +1104,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1121,7 +1121,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1291,7 +1291,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1308,7 +1308,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1359,7 +1359,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1376,7 +1376,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1393,7 +1393,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1410,7 +1410,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1597,7 +1597,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1614,7 +1614,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1631,7 +1631,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1665,7 +1665,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1682,7 +1682,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1818,7 +1818,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1835,7 +1835,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1869,7 +1869,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1920,7 +1920,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1937,7 +1937,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1954,7 +1954,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1971,7 +1971,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -1988,7 +1988,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2158,7 +2158,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2192,7 +2192,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2226,7 +2226,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2243,7 +2243,7 @@
       "median_income_percent": 150,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2260,7 +2260,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2294,7 +2294,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2396,7 +2396,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2413,7 +2413,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2447,7 +2447,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -2906,7 +2906,7 @@
       "median_income_percent": 150,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3161,7 +3161,7 @@
       "median_income_percent": 250,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3263,7 +3263,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3467,7 +3467,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": true,
       "is_loan": false
     },
@@ -3773,7 +3773,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3841,7 +3841,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3858,7 +3858,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3875,7 +3875,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3892,7 +3892,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3909,7 +3909,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3926,7 +3926,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3943,7 +3943,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -3960,7 +3960,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4504,7 +4504,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4827,7 +4827,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4844,7 +4844,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4861,7 +4861,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4895,7 +4895,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4912,7 +4912,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4929,7 +4929,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4946,7 +4946,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -4963,7 +4963,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -5388,7 +5388,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -5405,7 +5405,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -5439,7 +5439,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -5456,7 +5456,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -5473,7 +5473,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -5490,7 +5490,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -6289,7 +6289,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -6306,7 +6306,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -6374,7 +6374,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -6391,7 +6391,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -6408,7 +6408,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -6425,7 +6425,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -6442,7 +6442,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -7037,7 +7037,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -7054,7 +7054,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -7071,7 +7071,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -7190,7 +7190,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -7207,7 +7207,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -7224,7 +7224,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },
@@ -7241,7 +7241,7 @@
       "median_income_percent": null,
       "require_basic_livelihood": false,
       "require_sme": false,
-      "require_newlywed": false,
+      "require_newlywed": true,
       "require_no_household": false,
       "is_loan": false
     },

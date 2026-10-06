@@ -155,6 +155,27 @@
       </details>`;
   }
 
+  /**
+   * 원본 매물이 삭제된 것이 확인된 카드(관심매물)에 "삭제된 매물" 안내를 붙이고 새로고침을 막는다 (2026-10-06).
+   * 확인은 실거래 조회(scope="deleted") 또는 새로고침 실패(매물 없음)로 한다. 카드에 보이는 값은 저장 당시 값이다.
+   * @param li 카드 요소 (data-listing-id가 있는 <li>)
+   */
+  function markDeleted(li) {
+    if (!li || li.dataset.listingDeleted) return;
+    li.dataset.listingDeleted = "1";
+    const banner = document.createElement("div");
+    banner.setAttribute("style", "margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#fef2f2;color:#b91c1c;font-size:13px;line-height:1.5");
+    banner.textContent = "🚫 삭제된 매물이에요. 중개사가 내렸거나 거래가 끝났을 수 있어요. 아래는 관심매물로 담을 당시의 정보예요.";
+    li.insertBefore(banner, li.firstChild);
+    const refreshBtn = li.querySelector(".listing-refresh-btn");
+    if (refreshBtn) {
+      refreshBtn.textContent = "삭제된 매물";
+      refreshBtn.disabled = true;
+      refreshBtn.style.opacity = "0.5";
+      refreshBtn.style.cursor = "not-allowed";
+    }
+  }
+
   async function _loadReference(el) {
     const body = el.querySelector("[data-ref-body]");
     const summary = el.querySelector("summary");
@@ -162,6 +183,11 @@
       const result = await CustomHouseWatchlistApi.getListingReference(el.dataset.refListingId);
       const list = result?.transactions || [];
       const scope = result?.scope || "none";
+      if (scope === "deleted") {
+        body.innerHTML = `<div class="text-gray-400">삭제된 매물이라 실거래를 조회할 수 없어요.</div>`;
+        markDeleted(el.closest("[data-listing-id]"));
+        return;
+      }
       if (scope === "neighborhood" && summary) {
         summary.textContent = "📊 실거래 참고 (국토부 · 같은 동 최근 계약, 최근 2년)";
       }
@@ -286,6 +312,9 @@
     const maintTxt = `관리비 ${fmtNum(r.maintenance_fee)}만`;
     // 보증금 예금전환 이자기회비용에 실제로 쓴 이율 - 월세는 정기예금(1년) 금리, 전세는 전월세 전환율(2026-10-03). 옛 저장본엔 없어서 전환율로 대체한다.
     const oppRate = r.deposit_opportunity_rate_percent ?? rate;
+    // 전환율로 계산된 카드 = 전세 + (월세인데 예금 금리가 저장돼 있지 않은 옛 저장본). 옛 저장본에 "예금 이자 (연 6.35%)"라고 쓰면
+    // 전환율을 예금 이자라고 잘못 안내하는 셈이라 전세와 같은 문구(수도권 전월세 전환율)로 보여준다 - 새로고침하면 예금 금리 기준으로 바뀐다 (2026-10-06).
+    const convByRate = isJeonse || r.deposit_opportunity_rate_percent == null;
     const realCostSub = r.loan_interest > 0
       // 부족분(대출금액)은 더하는 항목(+), 그 이자(수도권 전월세 전환율 적용)는 그 아래 들여쓴 보충 줄로 두 줄로 나눠 보여준다 (2026-10-06)
       ? _subLines([rentTxt, maintTxt, `부족분 ${fmtNum(r.deposit_shortfall)}만`],
@@ -301,12 +330,12 @@
           <div class="val">${fmtNum(r.real_housing_cost)}만원/월</div>
           <div class="sub">${realCostSub}</div>
         </div>
-        <div class="cost-box conv" title="${isJeonse
+        <div class="cost-box conv" title="${convByRate
           ? `월세 + 관리비 + 보증금 기회비용(보증금 x 연 ${fmtRate(oppRate)}% / 12, 수도권 전월세 전환율)`
           : `월세 + 관리비 + 보증금 기회비용(보증금 x 연 ${fmtRate(oppRate)}% / 12, 보증금을 예금에 넣었을 때의 이자 - 예금은행 정기예금 1년 금리)`}">
-          <div class="lbl">${isJeonse ? "총보증금 전환 이자기회비용" : "보증금 예금전환 이자기회비용"}</div>
+          <div class="lbl">${convByRate ? "총보증금 전환 이자기회비용" : "보증금 예금전환 이자기회비용"}</div>
           <div class="val">${fmtNum(r.deposit_converted_cost)}만원/월</div>
-          <div class="sub">${isJeonse
+          <div class="sub">${convByRate
             ? _subLines([rentTxt, maintTxt, "수도권 전월세 전환율"], [`${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(oppRate)}%)`])
             : _subLines([rentTxt, maintTxt, `예금 이자 ${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(oppRate)}%)`])}</div>
         </div>
@@ -418,5 +447,5 @@
       ${renderReferencePlaceholder(r.listing_id, autoLoadRef)}`;
   }
 
-  window.CustomHouseListingCard = { PHOTO_PLACEHOLDER, esc, fmtMoney, fmtNum, fmtRate, renderBody, wireReferenceAutoLoad, wireCommuteAutoLoad };
+  window.CustomHouseListingCard = { PHOTO_PLACEHOLDER, esc, fmtMoney, fmtNum, fmtRate, renderBody, wireReferenceAutoLoad, wireCommuteAutoLoad, markDeleted };
 })();

@@ -71,7 +71,8 @@ def _to_response(records: list[dict], property_type: str, jibun: str) -> list[Re
 def get_reference_transactions(listing_id: str) -> ReferenceTransactionsResponse:
     listing = listing_repository.get_listing(listing_id)
     if listing is None:
-        return ReferenceTransactionsResponse(scope="none", transactions=[])
+        # 매물 자체가 없다(삭제됨) - 관심매물 카드가 "삭제된 매물" 안내를 띄우는 데 쓴다 (2026-10-06)
+        return ReferenceTransactionsResponse(scope="deleted", transactions=[])
 
     lawd_cd = _lawd_cd(listing["region"])
     property_type = listing["property_type"]
