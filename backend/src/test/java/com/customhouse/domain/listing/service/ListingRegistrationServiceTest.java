@@ -9,6 +9,7 @@ import com.customhouse.domain.user.service.AdminGuard;
 import com.customhouse.global.error.CustomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -50,7 +51,8 @@ class ListingRegistrationServiceTest {
     private ListingRegistrationRequest request() {
         return new ListingRegistrationRequest(
                 "서울특별시 강남구 테헤란로 427", "오피스텔", "월세", 5000, 80, 25.5,
-                "", "", "", null, null, null, 0, "", "", null, "", "", true, "photo.jpg"
+                "", "", "", null, null, null, 0, "", "", null, "", "", true, "photo.jpg",
+                "", "", "", "", "", ""
         );
     }
 
@@ -111,6 +113,54 @@ class ListingRegistrationServiceTest {
         assertThatThrownBy(() -> service.delete(2L, "GANGNAM-202610-1234", null)).isInstanceOf(CustomException.class);
 
         verify(alertService, never()).notifyDeleted(any(), any());
+    }
+
+    @Test
+    void 등록하면_AI_엔진이_돌려준_매물_원본_행을_DB에_저장한다() {
+        ListingRegistrationRequest request = request();
+        Map<String, Object> row = Map.of("매물등록번호", "GANGNAM-202610-1234", "자치구", "강남구", "매물상태", "계약가능", "공인중개사_상호", "맞집공인");
+        when(aiEngineClient.registerListing(request)).thenReturn(new ListingRegistrationResponse("GANGNAM-202610-1234", "강남구", row));
+
+        service.register(1L, request);
+
+        ArgumentCaptor<RegisteredListing> saved = ArgumentCaptor.forClass(RegisteredListing.class);
+        verify(registeredListingRepository).save(saved.capture());
+        assertThat(saved.getValue().getRowJson()).contains("\"매물등록번호\":\"GANGNAM-202610-1234\"").contains("\"공인중개사_상호\":\"맞집공인\"");
+    }
+
+    @Test
+    void 수정하면_DB에_저장된_매물_원본도_새_행으로_바뀐다() {
+        RegisteredListing owner = RegisteredListing.of("GANGNAM-202610-1234", 1L, "강남구", "{\"건물명\":\"옛이름\"}");
+        when(registeredListingRepository.findByListingId("GANGNAM-202610-1234")).thenReturn(Optional.of(owner));
+        ListingRegistrationRequest request = request();
+        when(aiEngineClient.updateListing("GANGNAM-202610-1234", request))
+                .thenReturn(new ListingRegistrationResponse("GANGNAM-202610-1234", "강남구", Map.of("건물명", "새이름")));
+
+        service.update(1L, "GANGNAM-202610-1234", request);
+
+        assertThat(owner.getRowJson()).contains("새이름").doesNotContain("옛이름");
+        verify(registeredListingRepository).save(owner);
+    }
+
+    @Test
+    void 삭제하면_DB에_저장된_매물_원본의_상태도_삭제됨으로_바뀐다() {
+        RegisteredListing owner = RegisteredListing.of("GANGNAM-202610-1234", 1L, "강남구", "{\"매물상태\":\"계약가능\",\"자치구\":\"강남구\"}");
+        when(registeredListingRepository.findByListingId("GANGNAM-202610-1234")).thenReturn(Optional.of(owner));
+
+        service.delete(1L, "GANGNAM-202610-1234", null);
+
+        assertThat(owner.getRowJson()).contains("\"매물상태\":\"삭제됨\"").contains("\"자치구\":\"강남구\"");
+    }
+
+    @Test
+    void 원본이_없는_옛_기록을_삭제해도_오류_없이_삭제된다() {
+        RegisteredListing owner = RegisteredListing.of("GANGNAM-202610-1234", 1L, "강남구");   // rowJson null
+        when(registeredListingRepository.findByListingId("GANGNAM-202610-1234")).thenReturn(Optional.of(owner));
+
+        service.delete(1L, "GANGNAM-202610-1234", null);
+
+        assertThat(owner.getRowJson()).isNull();
+        verify(aiEngineClient).markListingDeleted("GANGNAM-202610-1234", "강남구");
     }
 
     @Test

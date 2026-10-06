@@ -40,11 +40,28 @@ public class RegisteredListing extends BaseTimeEntity {
     @Column(nullable = false, length = 10)
     private String region;
 
+    /**
+     * 매물 내용 원본 - AI 엔진이 저장한 CSV 한 행(55컬럼)을 JSON 문자열로 그대로 담는다 (2026-10-06).
+     * Render 무료 서버는 재배포/유휴 재시작 때 AI 엔진의 CSV가 처음 상태로 돌아가므로, 엔진이 켜질 때
+     * 이 값을 돌려받아 CSV에 되살린다 (GET /api/internal/registered-listings). 옛 기록은 null이다.
+     */
+    @Column(name = "row_json", columnDefinition = "LONGTEXT")
+    private String rowJson;
+
     public static RegisteredListing of(String listingId, Long userId, String region) {
+        return of(listingId, userId, region, null);
+    }
+
+    public static RegisteredListing of(String listingId, Long userId, String region, String rowJson) {
         RegisteredListing entity = new RegisteredListing();
         entity.listingId = listingId;
         entity.userId = userId;
         entity.region = region;
+        entity.rowJson = rowJson;
         return entity;
+    }
+
+    public void updateRowJson(String rowJson) {
+        this.rowJson = rowJson;
     }
 }

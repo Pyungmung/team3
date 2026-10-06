@@ -119,6 +119,47 @@ def append_listing(region: str, listing: dict) -> dict:
     return row
 
 
+def upsert_rows(rows: list[dict]) -> dict:
+    """DB에 저장돼 있던 회원 등록 매물(CSV 행 형태: 헤더 -> 값)을 CSV에 되살린다 (2026-10-06).
+    서버가 새로 켜지면 CSV가 저장소의 원래 상태로 돌아와 등록 매물이 사라지므로, 켜질 때 백엔드 DB에서
+    받아 온 행을 여기로 넣는다. 이미 CSV에 있는 매물번호는 건드리지 않아서(멱등) 여러 번 불러도 안전하고,
+    자치구마다 파일을 한 번만 쓴다. 자치구를 알 수 없거나 지원하지 않는 행은 건너뛴다.
+    반환: {"added": 새로 넣은 수, "skipped": 이미 있거나 건너뛴 수}"""
+    by_region: dict[str, list[dict]] = {}
+    skipped = 0
+    for row in rows:
+        region = (row.get("자치구") or "").strip()
+        if not row.get("매물등록번호") or region not in schema.DISTRICT_ENG:
+            skipped += 1
+            continue
+        by_region.setdefault(region, []).append(row)
+
+    added = 0
+    for region, region_rows in by_region.items():
+        path = csv_path(region)
+        with _lock:
+            existing = {x["listing_id"] for x in load_district(region)}
+            new_rows = []
+            for row in region_rows:
+                if row["매물등록번호"] in existing:
+                    skipped += 1
+                    continue
+                existing.add(row["매물등록번호"])
+                new_rows.append({header: row.get(header, "") for header in schema.LISTING_COLUMNS})
+            if not new_rows:
+                continue
+            is_new = not path.exists()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("w" if is_new else "a", encoding="utf-8-sig" if is_new else "utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=schema.LISTING_COLUMNS)
+                if is_new:
+                    writer.writeheader()
+                writer.writerows(new_rows)
+            _cache.pop(region, None)
+            added += len(new_rows)
+    return {"added": added, "skipped": skipped}
+
+
 def update_listing(region: str, listing_id: str, updates: dict) -> dict | None:
     """매물 1건에 updates만 머지하고(건드리지 않은 필드·broker_*·ref_*·registered_date·listing_status는
     그대로 보존) CSV 전체를 다시 쓴다. 매물을 찾으면 머지된 행(내부 dict)을, 없으면 None을 돌려준다.

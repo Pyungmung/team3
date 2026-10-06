@@ -231,6 +231,20 @@
         </section>
 
         <section class="reg-section">
+          <h2>공인중개사 정보 (선택)</h2>
+          <div class="reg-row">
+            <label class="reg-field"><span>상호</span><input type="text" id="reg-broker-name" maxlength="100" placeholder="예: 맞집공인중개사사무소" /></label>
+            <label class="reg-field"><span>대표자</span><input type="text" id="reg-broker-representative" maxlength="50" placeholder="예: 홍길동" /></label>
+          </div>
+          <div class="reg-row">
+            <label class="reg-field"><span>등록번호</span><input type="text" id="reg-broker-reg-no" maxlength="50" placeholder="예: 11650-2026-00001" /></label>
+            <label class="reg-field"><span>전화번호</span><input type="text" id="reg-broker-phone" maxlength="30" placeholder="예: 02-1234-5678" /></label>
+          </div>
+          <label class="reg-field"><span>사무소 주소</span><input type="text" id="reg-broker-address" maxlength="200" placeholder="예: 서울 서초구 동작대로 132" /></label>
+          <label class="reg-field"><span>중개사 한마디</span><input type="text" id="reg-broker-comment" maxlength="500" placeholder="예: 즉시 입주 가능한 매물입니다" /></label>
+        </section>
+
+        <section class="reg-section">
           <h2>상세 설명</h2>
           <label class="reg-field"><textarea id="reg-description" maxlength="1000" placeholder="매물에 대해 자유롭게 설명해주세요 (선택)"></textarea></label>
         </section>
@@ -308,6 +322,12 @@
       el("reg-maintenance-fee-items").value = r.maintenance_fee_items || "";
       el("reg-jeonse-loan-available").checked = r.jeonse_loan_available !== false;
       el("reg-description").value = r.description || "";
+      el("reg-broker-name").value = r.broker_name || "";
+      el("reg-broker-representative").value = r.broker_representative || "";
+      el("reg-broker-reg-no").value = r.broker_reg_no || "";
+      el("reg-broker-phone").value = r.broker_phone || "";
+      el("reg-broker-address").value = r.broker_address || "";
+      el("reg-broker-comment").value = r.broker_comment || "";
       if (r.photo && r.photo !== "PHOTO_PLACEHOLDER") {
         uploadedPhotoUrl = r.photo;
         showPhotoPreview(r.photo, false);
@@ -539,6 +559,12 @@
         description: el("reg-description").value.trim(),
         jeonseLoanAvailable: el("reg-jeonse-loan-available").checked,
         photoUrl: uploadedPhotoUrl,
+        brokerName: el("reg-broker-name").value.trim(),
+        brokerRepresentative: el("reg-broker-representative").value.trim(),
+        brokerRegNo: el("reg-broker-reg-no").value.trim(),
+        brokerPhone: el("reg-broker-phone").value.trim(),
+        brokerAddress: el("reg-broker-address").value.trim(),
+        brokerComment: el("reg-broker-comment").value.trim(),
       };
 
       const submitBtn = el("reg-submit");
