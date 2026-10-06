@@ -249,6 +249,13 @@ class ListingDetailResponse(BaseModel):
     photo: str
     description: str
     address_source: str
+    # 공인중개사 정보 (매물 수정 폼 프리필용 - 2026-10-06 추가)
+    broker_name: str = ""
+    broker_representative: str = ""
+    broker_reg_no: str = ""
+    broker_phone: str = ""
+    broker_address: str = ""
+    broker_comment: str = ""
 
 
 class RirIncomeLevel(BaseModel):
