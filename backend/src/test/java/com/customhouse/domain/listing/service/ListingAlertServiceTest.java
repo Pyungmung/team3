@@ -208,12 +208,15 @@ class ListingAlertServiceTest {
     }
 
     @Test
-    void 삭제_알림은_읽기전용_트랜잭션이_아니다() throws Exception {
-        // 알림 저장이 이 트랜잭션에 합류하므로 readOnly면 "Connection is read-only"로 저장이 실패한다 (모의 객체 테스트로는 잡히지 않아 따로 확인)
-        var tx = ListingAlertService.class.getMethod("notifyDeleted", String.class, Long.class)
-                .getAnnotation(org.springframework.transaction.annotation.Transactional.class);
-        assertThat(tx).isNotNull();
-        assertThat(tx.readOnly()).isFalse();
+    void 알림을_저장하는_메서드는_읽기전용_트랜잭션이_아니다() throws Exception {
+        // 알림 저장(NotificationService.notify)이 이 트랜잭션에 합류하므로 readOnly면 "Connection is read-only"로 저장이 실패한다 (모의 객체 테스트로는 잡히지 않아 따로 확인)
+        var deleted = ListingAlertService.class.getMethod("notifyDeleted", String.class, Long.class);
+        var flagged = ListingAlertService.class.getMethod("notifyFlagged", String.class, long.class);
+        for (var m : List.of(deleted, flagged)) {
+            var tx = m.getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+            assertThat(tx).as(m.getName()).isNotNull();
+            assertThat(tx.readOnly()).as(m.getName() + " readOnly").isFalse();
+        }
     }
 
     @Test
