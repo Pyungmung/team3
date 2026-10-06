@@ -82,6 +82,38 @@ class ListingRegistrationServiceTest {
     }
 
     @Test
+    void 삭제하면_그_매물을_담은_회원에게_삭제_알림을_보낸다() {
+        RegisteredListing owner = RegisteredListing.of("GANGNAM-202610-1234", 1L, "강남구");
+        when(registeredListingRepository.findByListingId("GANGNAM-202610-1234")).thenReturn(Optional.of(owner));
+
+        service.delete(1L, "GANGNAM-202610-1234", null);
+
+        verify(alertService).notifyDeleted("GANGNAM-202610-1234", 1L);
+    }
+
+    @Test
+    void 삭제_알림_처리가_실패해도_삭제는_성공한다() {
+        RegisteredListing owner = RegisteredListing.of("GANGNAM-202610-1234", 1L, "강남구");
+        when(registeredListingRepository.findByListingId("GANGNAM-202610-1234")).thenReturn(Optional.of(owner));
+        doThrow(new RuntimeException("boom")).when(alertService).notifyDeleted(any(), any());
+
+        service.delete(1L, "GANGNAM-202610-1234", null);
+
+        verify(aiEngineClient).markListingDeleted("GANGNAM-202610-1234", "강남구");
+    }
+
+    @Test
+    void 삭제가_거부되면_삭제_알림도_보내지_않는다() {
+        RegisteredListing owner = RegisteredListing.of("GANGNAM-202610-1234", 1L, "강남구");
+        when(registeredListingRepository.findByListingId("GANGNAM-202610-1234")).thenReturn(Optional.of(owner));
+        doThrow(new CustomException(com.customhouse.global.error.ErrorCode.FORBIDDEN)).when(adminGuard).requireAdmin(2L);
+
+        assertThatThrownBy(() -> service.delete(2L, "GANGNAM-202610-1234", null)).isInstanceOf(CustomException.class);
+
+        verify(alertService, never()).notifyDeleted(any(), any());
+    }
+
+    @Test
     void 등록한_본인이_아니고_관리자도_아니면_FORBIDDEN() {
         RegisteredListing owner = RegisteredListing.of("GANGNAM-202610-1234", 1L, "강남구");
         when(registeredListingRepository.findByListingId("GANGNAM-202610-1234")).thenReturn(Optional.of(owner));
