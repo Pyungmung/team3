@@ -14,6 +14,14 @@ async function requestListingDiagnosis(condition) {
   return postDiagnosis("/recommendation/diagnosis/listings", condition);
 }
 
+/**
+ * 메인 홈 "AI 주거 진단 미리보기"용 가벼운 요약 (전체 진단을 돌리지 않는다). 2026-10-06.
+ * @returns {Promise<{affordable_rent:number, rent_to_income_ratio:number, regions:string[], avg_commute_minutes:number|null, commute_range:string|null}>}
+ */
+async function requestHomePreview(condition) {
+  return postDiagnosis("/recommendation/diagnosis/home-preview", condition);
+}
+
 async function postDiagnosis(path, condition) {
   const res = await fetch(`${RECOMMENDATION_API_BASE}${path}`, {
     method: "POST",
@@ -57,4 +65,4 @@ async function submitPolicyCorrection(payload) {
 }
 
 // eslint-disable-next-line no-unused-vars
-window.CustomHouseRecommendationApi = { requestListingDiagnosis, submitPolicyCorrection };
+window.CustomHouseRecommendationApi = { requestHomePreview, requestListingDiagnosis, submitPolicyCorrection };
