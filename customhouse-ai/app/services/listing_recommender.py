@@ -346,11 +346,11 @@ def run_home_preview(request) -> dict:
 def _loan_possible(request, listing: dict, cache: dict) -> bool:
     """이 매물에 신청 가능한 대출이 하나라도 있는가 (보증금 필터용, 2026-10-06). 순위/카드용 계산(match_eligible_loans)과 같은
     자격 판별(loan_matcher.is_eligible)을 쓰되 금리/이자 계산은 하지 않는다. 저장된 대출이 없거나 "정책 대출 활용"을 껐으면 False.
-    전세 매물은 등록자가 "전세자금대출 불가"로 표시했으면 False. 같은 (거래유형, 보증금, 월세, 면적)이면 결과를 재사용한다."""
+    등록자가 "전세자금대출 불가"로 표시한 매물은 전세/월세 구분 없이 False(보증부월세대출도 불가). 같은 (거래유형, 보증금, 월세, 면적)이면 결과를 재사용한다."""
     if not request.loan_products or not request.use_loan_policy:
         return False
     lease = listing["lease_type"]
-    if lease == "전세" and listing.get("jeonse_loan_available") is False:
+    if listing.get("jeonse_loan_available") is False:
         return False
     # 결과가 면적/월세에 따라 달라지는 대출(전용면적/월세 제한이 있는 대출)이 하나도 없으면 그 값을 키에서 빼서 캐시 적중률을 높인다
     # (매물마다 면적이 달라 그대로 두면 후보 1만 건대에서 거의 매번 다시 계산한다).
