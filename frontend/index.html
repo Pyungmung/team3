@@ -61,7 +61,7 @@
             
             <span class="home-diagnosis-status">
               <span class="home-diagnosis-status-dot"></span>
-              분석 예시
+              <span id="home-preview-status">분석 예시</span>
             </span>
           </div>
           
@@ -87,16 +87,16 @@
                 </span>
                 
                 <p class="home-diagnosis-label">
-                  예상 적정 주거비
+                  적정 월세 상한
                 </p>
               </div>
               
               <p class="home-diagnosis-price">
-                ₩ 58<span>만원</span>
+                ₩ <b id="home-preview-rent" style="font-weight:inherit">61.3</b><span>만원</span>
               </p>
               
-              <p class="home-diagnosis-subtext">
-                월 소득과 보증금을 기준으로 분석한 금액이에요.
+              <p class="home-diagnosis-subtext" id="home-preview-subtext">
+                수도권 주거비 비율 18.4% 기준으로 계산한 금액이에요.
               </p>
             </div>
             
@@ -192,7 +192,7 @@
                   추천 지역
                 </p>
                 
-                <strong>
+                <strong id="home-preview-regions">
                   관악구 · 동작구 · 구로구
                 </strong>
               </div>
@@ -202,7 +202,7 @@
               </span>
             </div>
             
-            <div class="home-diagnosis-info-item">
+            <div class="home-diagnosis-info-item" id="home-preview-commute-row">
               <span class="home-diagnosis-info-number">
                 02
               </span>
@@ -237,15 +237,15 @@
               
               <div>
                 <p>
-                  평균 통근시간
+                  예상 평균 통근시간
                 </p>
                 
-                <strong>
+                <strong id="home-preview-commute">
                   32분
                 </strong>
               </div>
               
-              <span class="home-diagnosis-info-badge">
+              <span class="home-diagnosis-info-badge" id="home-preview-commute-range">
                 30~40분
               </span>
             </div>
@@ -518,6 +518,55 @@
   <script>
     renderHeader("");
     renderFooter();
+
+    // ---------- AI 주거 진단 미리보기: 내가 진단한 결과가 있으면 그 값으로 채운다 (없으면 위의 분석 예시 그대로) ----------
+    // 진단 결과는 input-form/report-listings가 localStorage("customhouse:lastListingDiagnosis")에 저장해 둔다.
+    //  - 적정 월세 상한 = affordable_rent(만원), 수도권 주거비 비율 = rent_to_income_ratio(%) - 주거진단 리포트 첫 칸과 같은 값
+    //  - 추천 지역 = 추천 매물(월세+전세)을 자치구별로 묶어 평균 통근시간(직선거리 추정)이 짧은 자치구 순 (= 직장 위치 주변)
+    //  - 예상 평균 통근시간 = 추천 매물(월세+전세)의 commute_minutes 평균, 배지는 중간 절반(25~75번째 백분위) 범위.
+    //    commute_minutes는 직장-매물 직선거리 추정치라(정확한 값은 리포트 카드에서 온디맨드 조회) "예상"이라고 표기한다
+    (function fillDiagnosisPreview() {
+      let data;
+      try {
+        data = JSON.parse(localStorage.getItem("customhouse:lastListingDiagnosis") || "null");
+      } catch (e) {
+        return;
+      }
+      if (!data || data.affordable_rent == null) return;
+
+      const num = (v) => (Math.round(Number(v) * 10) / 10).toLocaleString();
+      document.getElementById("home-preview-status").textContent = "내 진단 결과";
+      document.getElementById("home-preview-rent").textContent = num(data.affordable_rent);
+      if (data.rent_to_income_ratio != null) {
+        document.getElementById("home-preview-subtext").textContent =
+          `수도권 주거비 비율 ${num(data.rent_to_income_ratio)}% 기준으로 계산한 금액이에요.`;
+      }
+
+      const listings = [...(data.wolse_recommendations || []), ...(data.jeonse_recommendations || [])];
+      const byRegion = {};
+      listings.forEach((r) => {
+        if (!r.region || typeof r.commute_minutes !== "number") return;
+        (byRegion[r.region] = byRegion[r.region] || []).push(r.commute_minutes);
+      });
+      const nearby = Object.entries(byRegion)
+        .filter(([, mins]) => mins.length >= 3) // 한두 건뿐인 자치구는 대표성이 없어 뺀다
+        .map(([region, mins]) => [region, mins.reduce((a, b) => a + b, 0) / mins.length])
+        .sort((a, b) => a[1] - b[1])
+        .slice(0, 3)
+        .map(([region]) => region);
+      if (nearby.length) document.getElementById("home-preview-regions").textContent = nearby.join(" · ");
+
+      const minutes = listings.map((r) => r.commute_minutes).filter((m) => typeof m === "number").sort((a, b) => a - b);
+      if (minutes.length) {
+        const avg = Math.round(minutes.reduce((a, b) => a + b, 0) / minutes.length);
+        const pct = (q) => minutes[Math.min(minutes.length - 1, Math.floor(q * (minutes.length - 1)))];
+        const lo = pct(0.25), hi = pct(0.75);
+        document.getElementById("home-preview-commute").textContent = `${avg}분`;
+        document.getElementById("home-preview-commute-range").textContent = lo === hi ? `${lo}분` : `${lo}~${hi}분`;
+      } else {
+        document.getElementById("home-preview-commute-row").style.display = "none"; // 계산할 값이 없으면 예시 대신 줄을 숨긴다
+      }
+    })();
   </script>
 </body>
 </html>

@@ -140,7 +140,7 @@ class DiagnosisRequest(BaseModel):
     no_householder: bool | None = Field(None, description="무주택 세대주 여부 (버팀목 대출 자격 판별용)", alias="noHouseholder")
     # 아직 어느 대출/정책 판별에도 쓰지 않는 값(필드만 수집) - 추후 특정 대출상품에 연동 예정
     # (12개월마다 가산연수 1년, 1개월만 초과해도 1년치 인정하는 식).
-    military_service_months: int | None = Field(None, ge=0, description="병역이행기간 (개월, 선택). 아직 매칭 로직에 쓰지 않음.", alias="militaryServiceMonths")
+    military_service_months: int | None = Field(None, ge=0, description="병역이행기간 (개월, 선택). 전세자금대출 나이 상한(최대 나이가 있을 때만)을 12개월마다 1년씩(1개월만 넘겨도 올림) 늘려 자격을 판별한다 - loan_matcher.military_extension_years.", alias="militaryServiceMonths")
     assets: int | None = Field(None, ge=0, description="총자산 (만원, 정책 자격의 자산 기준 판별용)", alias="assets")
     job_type: str | None = Field(
         None, description="직업종류 (GOVERNMENT/SME/MID_SIZED/LARGE_CORP, 선택). 정책의 "
@@ -191,6 +191,13 @@ class DiagnosisRequest(BaseModel):
         alias="preferredBuildingTypes",
     )
 
+    # 리포트의 "최대 매물 보증금액 매물 모두 표시"(기본 해제) / "반전세 포함"(기본 체크) 체크박스 (2026-10-06).
+    #  - show_all_deposits=False: 현재 보유 보증금(deposit) 이하이거나, 초과해도 대출이 가능한 매물만 추천한다.
+    #    True: 최대 매물 보증금(desired_deposit, 없으면 deposit) 이하면 대출 가능 여부와 상관없이 모두 추천한다.
+    #  - include_semi_jeonse=False: 월세 추천에서 반전세(보증금/월세 >= 100) 매물을 뺀다. 기본은 True(포함) - 2026-10-06 변경.
+    show_all_deposits: bool = Field(False, alias="showAllDeposits")
+    include_semi_jeonse: bool = Field(True, alias="includeSemiJeonse")
+
     # 관리자 화면에서 저장한 대출 조건. 백엔드(Spring)가 DB에서 읽어 실어 보내며 브라우저 입력이 아니다.
     # 비어 있으면(저장된 대출 없음/조회 실패) 대출 자격 판별은 하지 않는다.
     loan_products: list[LoanProductCondition] = Field(default_factory=list, alias="loanProducts")
@@ -219,6 +226,17 @@ class DiagnosisRequest(BaseModel):
     @classmethod
     def _default_use_loan_policy(cls, v):
         return True if v is None else v
+
+    @field_validator("show_all_deposits", mode="before")
+    @classmethod
+    def _default_show_all_deposits(cls, v):
+        # 백엔드(Spring)는 값이 없는 Boolean을 null로 실어 보내므로(AiListingRequest) None은 기본값으로 본다 (모두 표시: 해제)
+        return False if v is None else v
+
+    @field_validator("include_semi_jeonse", mode="before")
+    @classmethod
+    def _default_include_semi_jeonse(cls, v):
+        return True if v is None else v  # 반전세 포함: 기본 체크
 
     @property
     def effective_monthly_income(self) -> float:

@@ -22,7 +22,7 @@ class AiListingRequestTest {
 
     private RecommendRequest recommend() {
         return new RecommendRequest(3400, null, 800, 20000, null, "강남구", 37.5, 127.03, 40, 29, true, null, null, "SME",
-                List.of("NEWLYWED"), null, null, "EXPLORING", "PUBLIC", true, List.of("아파트"));
+                List.of("NEWLYWED"), null, null, "EXPLORING", "PUBLIC", true, List.of("아파트"), true, false);
     }
 
     @Test
@@ -34,7 +34,9 @@ class AiListingRequestTest {
         IncomeStandardResponse incomeStandard = new IncomeStandardResponse(15.8, 18.4, 18.3, 16.2, 19.4, 2024, "국토교통부,「주거실태조사」", 2_564_238L, null);
         JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(recommend(), List.of(loan), incomeStandard, new com.customhouse.domain.appsetting.dto.AppSettingResponse(500, null))));
 
-        assertThat(json.get("appSettings").get("recommendationLimit").asInt()).isEqualTo(500);   // 기타 설정도 함께 실린다
+        assertThat(json.get("appSettings").get("recommendationLimit").asInt()).isEqualTo(500);
+        assertThat(json.get("showAllDeposits").asBoolean()).isTrue();      // 리포트 체크박스 값이 AI 엔진 요청에 그대로 실린다
+        assertThat(json.get("includeSemiJeonse").asBoolean()).isFalse();   // 기타 설정도 함께 실린다
 
         // 기존 요청 필드는 AI 엔진이 기대하는 이름 그대로 최상위에 있다 (감싸이지 않는다)
         assertThat(json.get("annualIncome").asInt()).isEqualTo(3400);

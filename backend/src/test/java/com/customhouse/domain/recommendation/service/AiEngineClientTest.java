@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 class AiEngineClientTest {
 
     private final RecommendRequest request = new RecommendRequest(3400, null, 800, null, null, "강남구", null, null, 40,
-            29, true, null, null, null, List.of(), null, null, null, "PUBLIC", true, List.of());
+            29, true, null, null, null, List.of(), null, null, null, "PUBLIC", true, List.of(), null, null);
 
     private static RestClient.RequestBodySpec mockRestClient(RestClient rest, Map<String, Object> responseBody) {
         RestClient.RequestBodyUriSpec post = mock(RestClient.RequestBodyUriSpec.class);
