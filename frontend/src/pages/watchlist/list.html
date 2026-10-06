@@ -710,7 +710,7 @@
 
   <script src="../../js/components/header.js?v=20260921a"></script>
   <script src="../../js/components/footer.js?v=20260928c"></script>
-  <script src="../../js/components/listing-card.js?v=20261006j"></script>
+  <script src="../../js/components/listing-card.js?v=20261006k"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/watchlist.js?v=20261005b"></script>
 
@@ -890,7 +890,16 @@
                 alert("새로고침하려면 먼저 AI 주거 진단에서 조건을 입력해 주세요.");
                 return;
               }
-              await CustomHouseWatchlistApi.refreshListingFavorite(li.dataset.listingId, condition);
+              try {
+                await CustomHouseWatchlistApi.refreshListingFavorite(li.dataset.listingId, condition);
+              } catch (err) {
+                // 원본 매물이 삭제돼 새로 계산할 수 없는 경우 - 알림창 대신 카드에 "삭제된 매물" 안내를 붙인다
+                if (/삭제되었을 수 있어요/.test(err.message || "")) {
+                  CustomHouseListingCard.markDeleted(li);
+                  return;
+                }
+                throw err;
+              }
               await loadWatchlist();
             })
           );

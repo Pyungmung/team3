@@ -97,7 +97,7 @@ class ReferenceTransactionsResponse(BaseModel):
     - 국토교통부 API가 지번 자체를 안 줌)이라 같은 법정동의 다른 실거래를 동 단위 참고로 대신
     보여준 것, "none"이면 둘 다 못 찾은 것 - 프론트가 이 값으로 안내 문구를 다르게 보여준다."""
 
-    scope: str = "none"  # "building" | "neighborhood" | "none"
+    scope: str = "none"  # "building" | "neighborhood" | "none" | "deleted"(매물 자체가 삭제돼 없음)
     transactions: list[ReferenceTransaction] = []
 
 
