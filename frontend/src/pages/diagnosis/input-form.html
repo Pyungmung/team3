@@ -1107,7 +1107,7 @@
   <script src="../../js/api/auth.js?v=20260921d"></script>
   <script src="../../js/api/mypage.js?v=20260921d"></script>
   <script src="../../js/api/recommendation.js?v=20260930a"></script>
-  <script src="../../js/utils/address-match-util.js?v=20260921d"></script>
+  <script src="../../js/utils/address-match-util.js?v=20261006a"></script>
   <script>
     renderHeader("diagnosis");
     renderFooter();
@@ -1247,7 +1247,9 @@
       form.annualIncome.value = condition.annualIncome ?? "";
       if (condition.coupleAnnualIncome != null) form.coupleAnnualIncome.value = condition.coupleAnnualIncome;
       if (condition.workLocation) {
-        form.workLocation.value = condition.workLocation;
+        // 예전에 "가장 가까운 구청" 기준으로 저장된 값(서초구 주소가 관악구로 저장됨 등)을 바로잡는다: 주소에 구 이름이 있으면 그 구를 쓴다
+        const addressHub = CustomHouseAddressMatchUtil.hubFromAddress(condition.workAddress);
+        form.workLocation.value = addressHub || condition.workLocation;
 
         if (condition.workAddress && condition.workLat != null && condition.workLon != null) {
           // 마이페이지에서 주소 검색으로 저장해둔 정확한 주소/좌표가 있으면 그대로 불러온다.
@@ -1341,10 +1343,13 @@
                 workLatInput.value = lat;
                 workLonInput.value = lon;
                 const nearest = CustomHouseAddressMatchUtil.findNearestWorkHub(lat, lon);
-                workSelect.value = nearest.hub;
-                hubMatchEl.textContent =
-                  `→ 이 주소로 정확하게 통근시간을 계산해요 (참고: "${nearest.label}"에서 직선거리 약 ` +
-                  `${nearest.distanceKm.toFixed(1)}km · 실제 통근시간은 경로에 따라 다를 수 있어요)`;
+                // 주소에 적힌 실제 자치구가 우선이다 - 가까운 구청으로만 고르면 서초구 주소가 관악구로 분류돼 주거정책이 엉뚱한 구로 나왔다
+                const exactHub = CustomHouseAddressMatchUtil.hubFromAddress(address);
+                workSelect.value = exactHub || nearest.hub;
+                hubMatchEl.textContent = exactHub
+                  ? `→ ${CustomHouseAddressMatchUtil.labelForHub(exactHub)} 주소예요. 이 주소로 정확하게 통근시간을 계산하고, 주거정책도 ${exactHub} 기준으로 보여드려요`
+                  : `→ 이 주소로 정확하게 통근시간을 계산해요 (참고: "${nearest.label}"에서 직선거리 약 ` +
+                    `${nearest.distanceKm.toFixed(1)}km · 실제 통근시간은 경로에 따라 다를 수 있어요)`;
                 hubMatchEl.classList.remove("hidden");
               });
             },
@@ -1360,6 +1365,9 @@
     document.getElementById("work-location-select").addEventListener("change", () => {
       document.getElementById("work-lat-input").value = "";
       document.getElementById("work-lon-input").value = "";
+      // 주소 글자도 같이 지운다 - 안 지우면 구는 새로 고른 곳인데 주소(workAddress)는 예전 프리필 값 그대로 서버/리포트에 실려
+      // 리포트에 엉뚱한 직장 주소가 표시된다 (2026-10-06 UI 테스트에서 발견). 값이 없으면 서버는 구 대표 위치로 계산한다.
+      document.getElementById("work-address-display").value = "";
       const hubMatchEl = document.getElementById("work-hub-match");
       if (hubMatchEl) hubMatchEl.classList.add("hidden");
     });
