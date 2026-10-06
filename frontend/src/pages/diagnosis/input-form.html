@@ -1258,7 +1258,7 @@
           document.getElementById("work-lat-input").value = condition.workLat;
           document.getElementById("work-lon-input").value = condition.workLon;
           const hubMatchEl = document.getElementById("work-hub-match");
-          hubMatchEl.textContent = `→ 마이페이지에 저장된 주소로 정확하게 통근시간을 계산해요 (참고: "${condition.workLocation}" 권역).`;
+          hubMatchEl.textContent = `→ 마이페이지에 저장된 주소로 정확하게 통근시간을 계산해요 (참고: "${form.workLocation.value}" 권역).`; // 위에서 주소 기준으로 바로잡은 구를 보여준다(저장된 옛 값이 아니라)
           hubMatchEl.classList.remove("hidden");
         } else {
           document.getElementById("work-address-display").value = `${condition.workLocation} (마이페이지 저장 위치)`;
