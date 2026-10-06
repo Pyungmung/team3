@@ -31,14 +31,31 @@ logger = logging.getLogger(__name__)
 # (listing_recommender.py 참고). 2026-10-01부터 이 전 단계가 카카오 API 호출 없이 직선거리
 # 추정(_estimate_commute_minutes_fallback)만으로 돌아가므로 이동수단별 버퍼 구분은 쓰지 않는다 -
 # 화면에 보이는 카드의 정확한(카카오 API) 통근시간은 listing_commute.py가 매물 1건씩 따로 조회한다.
-DEFAULT_REGION_PREFILTER_BUFFER_MIN = 20
+# 2026-10-06: 추정식이 이동수단별로 달라지면서(아래 COMMUTE_ESTIMATE_PARAMS) 버퍼를 "분"이 아니라 "거리(km)"로 둔다 -
+# 도보처럼 1km가 20분인 수단에서 분 버퍼는 자치구 대표좌표 오차(수 km)를 감당하지 못한다.
+REGION_PREFILTER_BUFFER_KM = 10.0
 
 # listing_commute.py가 매물 카드 1건의 정확한 통근시간을 조회할 때, 카카오 API 키 미설정/호출
 # 실패/결과 없음이면 그 자리에서 실패 처리하지 않고 이 직선거리 기반 비상용 추정치로 폴백한다.
 # 어떤 값을 썼는지는 commute_source에 그대로 남는다(라벨에 ESTIMATE_SOURCE_LABEL 포함).
 ESTIMATE_SOURCE_LABEL = "직선거리 추정(비상용)"
-FALLBACK_COMMUTE_BASE_MINUTES = 10
-FALLBACK_COMMUTE_MINUTES_PER_KM = 2.2
+# 직선거리(km) -> 통근시간(분) 추정식. 이동수단별로 카카오 실제 경로 시간을 대량 측정해 회귀한 평균 보정식이다
+# (2026-10-06, 서울 10개 직장 거점 x 다양한 거리의 실제 매물에서 대중교통 396건/자동차 300건/도보 119건).
+# 가까운 거리는 기울기가 가파르고(승차/대기/환승 같은 고정 시간 때문에 처음 2km 안에서 빨리 늘어난다) 멀어질수록 완만해서,
+# 직선 하나로 맞추면 아주 가까운 매물이 실제보다 3분쯤 길게 나왔다(예: 대중교통 0.5~1km 실측 평균 12.5분 vs 직선식 15.8분).
+# 그래서 2km에서 한 번 꺾이는 2구간 직선으로 맞췄다: 분 = 기본분 + 가까운구간기울기 x min(km, 꺾임) + 먼구간기울기 x max(0, km - 꺾임).
+# 하한(MIN)은 실측 최솟값이다 (대중교통은 아무리 가까워도 10분 안팎이 걸린다).
+#   대중교통: 7.6 + 6.39 x km(2km까지) + 2.53 x (2km 초과분)   평균 절대오차 4.1분, 5분 이내 69%
+#   자동차:   1.3 + 6.27 x km(2km까지) + 2.37 x (2km 초과분)   평균 절대오차 4.2분, 5분 이내 68%
+#   도보:     1.9 + 20.4 x km (직선 하나로 충분, R² 0.94)       평균 절대오차 3.5분 - 이전 식은 도보를 평균 26분 낮게 추정했다
+# 이전 식(10 + 2.2 x km)은 대중교통을 평균 7.8분 낮게 추정했다. 평균에 맞춘 식이라 개별 매물은 +-5분(약 70%)~10분(약 93%) 안에서
+# 어긋난다 - 정확한 값은 화면에 보이는 카드가 따로 조회해 바꿔 보여준다.
+# (기본분, 가까운구간 분/km, 꺾임 km, 먼구간 분/km, 최소 분)
+COMMUTE_ESTIMATE_PARAMS = {
+    "PUBLIC": (7.6, 6.39, 2.0, 2.53, 10),
+    "CAR": (1.3, 6.27, 2.0, 2.37, 4),
+    "WALK": (1.9, 20.36, 99.0, 20.36, 1),
+}
 
 @dataclass
 class RegionMeta:
@@ -77,12 +94,32 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def _estimate_commute_minutes_fallback(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
-    """카카오 API가 전부 막혔을 때만 쓰는 비상용 직선거리 추정치(ESTIMATE_SOURCE_LABEL 참고).
-    이동수단을 구분하지 않는 단순 근사식이라 실제 도로/노선과는 차이가 클 수 있다 - 정상적으로는
-    _commute_minutes가 카카오 API 결과를 우선하고, 이 함수는 그게 전부 실패할 때만 호출된다."""
-    distance_km = _haversine_km(lat1, lon1, lat2, lon2)
-    return round(FALLBACK_COMMUTE_BASE_MINUTES + distance_km * FALLBACK_COMMUTE_MINUTES_PER_KM)
+def _commute_params(transport_type: str | None) -> tuple[float, float, float, float, int]:
+    """이동수단별 추정식 계수. PUBLIC(기본값) 및 인식하지 못하는 값은 대중교통 기준이다 (_commute_minutes와 같은 규칙)."""
+    return COMMUTE_ESTIMATE_PARAMS.get(transport_type or "PUBLIC", COMMUTE_ESTIMATE_PARAMS["PUBLIC"])
+
+
+def _minutes_for_distance(distance_km: float, transport_type: str | None) -> float:
+    base, near_slope, knot_km, far_slope, floor = _commute_params(transport_type)
+    minutes = base + near_slope * min(distance_km, knot_km) + far_slope * max(0.0, distance_km - knot_km)
+    return max(minutes, floor)
+
+
+def _estimate_commute_minutes_fallback(lat1: float, lon1: float, lat2: float, lon2: float,
+                                       transport_type: str | None = None) -> int:
+    """직선거리 기반 통근시간 추정치(ESTIMATE_SOURCE_LABEL 참고) - 검색/매칭 단계는 이 값만 쓰고(카카오 호출 없음),
+    카카오 API가 막혔을 때의 폴백이기도 하다. 이동수단별 평균 보정식(COMMUTE_ESTIMATE_PARAMS)이라 개별 매물은
+    실제 경로 시간과 몇 분 차이가 난다 - 정확한 값은 listing_commute.py가 매물 1건씩 따로 조회한다."""
+    return round(_minutes_for_distance(_haversine_km(lat1, lon1, lat2, lon2), transport_type))
+
+
+def max_commute_distance_km(max_commute_minutes: float, transport_type: str | None = None) -> float:
+    """희망 최대 통근시간(분)을 추정식으로 환산한 직장-매물 직선거리(km) 상한 (자치구 1차 필터용). _minutes_for_distance의 역함수."""
+    base, near_slope, knot_km, far_slope, floor = _commute_params(transport_type)
+    knot_minutes = base + near_slope * knot_km
+    if max_commute_minutes <= knot_minutes:
+        return max(0.0, (max_commute_minutes - base) / near_slope)
+    return knot_km + (max_commute_minutes - knot_minutes) / far_slope
 
 
 def _commute_minutes(
@@ -107,7 +144,7 @@ def _commute_minutes(
                 return minutes, "카카오 길찾기 API(자동차)"
             except kakao_mobility.KakaoMobilityError as e:
                 logger.warning(str(e))
-        return _estimate_commute_minutes_fallback(work_lat, work_lon, dest_lat, dest_lon), ESTIMATE_SOURCE_LABEL
+        return _estimate_commute_minutes_fallback(work_lat, work_lon, dest_lat, dest_lon, transport_type), ESTIMATE_SOURCE_LABEL
 
     if transport_type == "WALK":
         if kakao_routing.is_enabled():
@@ -116,7 +153,7 @@ def _commute_minutes(
                 return minutes, "카카오맵 API(도보)"
             except kakao_routing.KakaoRoutingError as e:
                 logger.warning(str(e))
-        return _estimate_commute_minutes_fallback(work_lat, work_lon, dest_lat, dest_lon), ESTIMATE_SOURCE_LABEL
+        return _estimate_commute_minutes_fallback(work_lat, work_lon, dest_lat, dest_lon, transport_type), ESTIMATE_SOURCE_LABEL
 
     # PUBLIC(기본값) 및 그 외 인식하지 못하는 값은 모두 대중교통 기준으로 계산한다.
     if kakao_routing.is_enabled():
@@ -125,7 +162,7 @@ def _commute_minutes(
             return minutes, "카카오맵 API(대중교통)"
         except kakao_routing.KakaoRoutingError as e:
             logger.warning(str(e))
-    return _estimate_commute_minutes_fallback(work_lat, work_lon, dest_lat, dest_lon), ESTIMATE_SOURCE_LABEL
+    return _estimate_commute_minutes_fallback(work_lat, work_lon, dest_lat, dest_lon, transport_type), ESTIMATE_SOURCE_LABEL
 
 
 def _load_regions() -> tuple[list[RegionMeta], float]:

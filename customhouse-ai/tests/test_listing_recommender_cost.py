@@ -58,11 +58,28 @@ def test_보유_보증금이_매물_보증금보다_많거나_같으면_대출�
         assert r["real_housing_cost"] == 5  # 관리비만
 
 
-def test_월세는_대출이자와_부족분을_계산하지_않는다_기존과_동일():
-    r = result(current_deposit=0, lease_type="월세", deposit=20000, monthly_rent=60, maintenance_fee=5)
-    assert r["deposit_shortfall"] == 0
-    assert r["loan_interest"] == 0
-    assert r["real_housing_cost"] == 65  # 월세 + 관리비 (기존과 동일)
+def test_월세도_보증금이_보유_보증금을_넘으면_부족분_대출이자를_더한다():
+    # 2026-10-06: 전세와 같은 방식 - 부족분(매물 보증금 - 보유 보증금) x 전환율 / 12를 월세 + 관리비에 더한다
+    r = result(current_deposit=10000, lease_type="월세", deposit=20000, monthly_rent=60, maintenance_fee=5)
+    expected_interest = round(10000 * RATE / 100 / 12)
+    assert r["deposit_shortfall"] == 10000
+    assert r["loan_interest"] == expected_interest
+    assert r["real_housing_cost"] == 60 + 5 + expected_interest
+    assert r["baseline_cost"] == r["real_housing_cost"]
+
+
+def test_월세는_보증금이_보유_보증금_이하면_예전과_같이_월세와_관리비뿐이다():
+    for current in (20000, 30000):
+        r = result(current_deposit=current, lease_type="월세", deposit=20000, monthly_rent=60, maintenance_fee=5)
+        assert r["deposit_shortfall"] == 0 and r["loan_interest"] == 0
+        assert r["real_housing_cost"] == 65  # 월세 + 관리비
+
+
+def test_월세의_대출이자는_순위_기준_보증금전환_이자기회비용에_영향을_주지_않는다():
+    low = result(current_deposit=20000, lease_type="월세", deposit=20000, monthly_rent=60, maintenance_fee=5)
+    high = result(current_deposit=0, lease_type="월세", deposit=20000, monthly_rent=60, maintenance_fee=5)
+    assert low["deposit_converted_cost"] == high["deposit_converted_cost"]
+    assert high["real_housing_cost"] > low["real_housing_cost"]
 
 
 def test_대출이자와_보증금_기회비용은_금리는_같지만_원금이_달라_값이_다르다():

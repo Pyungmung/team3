@@ -361,7 +361,9 @@
         const p = (loan.preferences || {})[opt.key] || { required: false, discount: 0 };
         const overrideCell = OVERRIDE_PREFERENCE_KEYS.includes(opt.key) ? prefOverridePanel(opt.key, p) : `<span class="adm-pref-none">-</span>`;
         const badge = isExclusive ? `<span class="adm-pref-exclusive-badge">이 대출 전용</span>` : "";
-        const discountUnit = PER_CHILD_DISCOUNT_KEYS.includes(opt.key) ? "%p<br />1명당" : "%p";
+        // 2026-10-06: "2년 내 출산한 자녀"는 첫 번째 자녀는 차감이 없고 두 번째부터 1명씩 센다 (차감 = (자녀 수 - 1) x 이 값)
+        const discountUnit = opt.key === "NEWBORN_ADDITIONAL_CHILD" ? "%p<br />2번째 자녀부터<br />1명당"
+          : PER_CHILD_DISCOUNT_KEYS.includes(opt.key) ? "%p<br />1명당" : "%p";
         const label = PREF_LABEL_OVERRIDE[opt.key] || esc(opt.label);
         return `
           <tr class="${isExclusive ? "adm-pref-exclusive-row" : ""}">
@@ -409,7 +411,7 @@
             <h3 class="text-sm font-extrabold text-slate-700 mb-3">공통 조건 <span class="font-medium text-slate-400">(금액은 만원 단위 · 비워두면 제한 없음)</span></h3>
             <div class="grid sm:grid-cols-2 gap-4">
               <div class="adm-field">
-                <span class="lbl">나이 제한 (만)</span>
+                <span class="lbl">나이 제한 (만) <span class="font-medium text-slate-400">(군복무기간 입력시 최대값이 연장됩니다)</span></span>
                 <div class="adm-range">
                   <input type="number" min="0" max="120" step="1" data-field="minAge" value="${loan.minAge ?? ""}" placeholder="최소" />
                   <em>~</em>

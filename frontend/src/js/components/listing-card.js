@@ -218,7 +218,9 @@
   async function _loadCommute(el, workLat, workLon, transportType) {
     try {
       const result = await CustomHouseWatchlistApi.getListingCommute(el.dataset.commuteListingId, workLat, workLon, transportType);
-      el.textContent = `통근 약 ${result.commute_minutes}분`;
+      // 카카오 길찾기로 구한 값이면 "(추정)"을 떼고, 그것도 실패해 직선거리 추정이 그대로 돌아왔으면 계속 "(추정)"으로 보여준다
+      const isEstimate = (result.commute_source || "").includes("추정");
+      el.textContent = `통근 약 ${result.commute_minutes}분${isEstimate ? " (추정)" : ""}`;
       el.title = result.commute_source || "카카오 API";
     } catch (e) {
       // 실패하면 직선거리 추정치를 그대로 보여준다 (조용히 무시)
@@ -279,15 +281,18 @@
     // 실질 주거비 = 월세 + 관리비 (교통비는 뺐다). 전세는 월세가 없어서, 매물 보증금 중 지금 가진 보증금으로
     // 못 채우는 부족분에 이자를 적용한 대출이자를 관리비에 더해 실제 부담을 보여준다(2026-09-29). 금리는 아래
     // 총보증금 전환 이자기회비용과 같은 값(전환율=한국부동산원 수도권 전월세 전환율 API) - 원금만 다르다(부족분 vs 보증금 전체).
-    const rentTxt = `월세 ${fmtNum(r.listing_monthly_rent)}만`;
+    // 전세는 월세가 없어서 비용 설명 줄에 "월세 0만"을 넣지 않는다 (_subLines가 빈 값은 건너뛴다) - 2026-10-06
+    const rentTxt = isJeonse ? "" : `월세 ${fmtNum(r.listing_monthly_rent)}만`;
     const maintTxt = `관리비 ${fmtNum(r.maintenance_fee)}만`;
     // 보증금 예금전환 이자기회비용에 실제로 쓴 이율 - 월세는 정기예금(1년) 금리, 전세는 전월세 전환율(2026-10-03). 옛 저장본엔 없어서 전환율로 대체한다.
     const oppRate = r.deposit_opportunity_rate_percent ?? rate;
     const realCostSub = r.loan_interest > 0
-      ? _subLines([maintTxt, `부족분(대출금액) ${fmtNum(r.deposit_shortfall)}만 대출이자 ${fmtNum(r.loan_interest)}만 (연 ${fmtRate(rate)}%)`])
+      // 부족분(대출금액)은 더하는 항목(+), 그 이자(수도권 전월세 전환율 적용)는 그 아래 들여쓴 보충 줄로 두 줄로 나눠 보여준다 (2026-10-06)
+      ? _subLines([rentTxt, maintTxt, `부족분 ${fmtNum(r.deposit_shortfall)}만`],
+          ["수도권 전월세 전환율", `${fmtNum(r.loan_interest)}만 (연 ${fmtRate(rate)}%)`])
       : isJeonse ? _subLines([maintTxt], ["(대출 없이 충분)"]) : _subLines([rentTxt, maintTxt]);
     const realCostTitle = r.loan_interest > 0
-      ? `관리비 + 부족분(매물 보증금 - 현재 보증금) ${fmtNum(r.deposit_shortfall)}만 x 연 ${fmtRate(rate)}% / 12`
+      ? `${isJeonse ? "" : "월세 + "}관리비 + 부족분(매물 보증금 - 현재 보증금) ${fmtNum(r.deposit_shortfall)}만 x 연 ${fmtRate(rate)}% / 12`
       : isJeonse ? "관리비 (보유 보증금으로 충분해 대출이자 없음)" : "월세 + 관리비";
     const costBoxes = `
       <div class="cost-boxes">
@@ -301,7 +306,9 @@
           : `월세 + 관리비 + 보증금 기회비용(보증금 x 연 ${fmtRate(oppRate)}% / 12, 보증금을 예금에 넣었을 때의 이자 - 예금은행 정기예금 1년 금리)`}">
           <div class="lbl">${isJeonse ? "총보증금 전환 이자기회비용" : "보증금 예금전환 이자기회비용"}</div>
           <div class="val">${fmtNum(r.deposit_converted_cost)}만원/월</div>
-          <div class="sub">${_subLines([rentTxt, maintTxt, `보증금 이자 ${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(oppRate)}%)`])}</div>
+          <div class="sub">${isJeonse
+            ? _subLines([rentTxt, maintTxt, "수도권 전월세 전환율"], [`${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(oppRate)}%)`])
+            : _subLines([rentTxt, maintTxt, `예금 이자 ${fmtNum(r.deposit_opportunity_cost)}만 (연 ${fmtRate(oppRate)}%)`])}</div>
         </div>
       </div>`;
 
@@ -340,7 +347,7 @@
             <div class="sub">${_subLines([
               `월세 ${fmtNum(Math.max(0, (r.listing_monthly_rent || 0) - (l.rent_loan_amount_manwon || 0)))}만 (${fmtNum(r.listing_monthly_rent)}만 중 ${fmtNum(l.rent_loan_amount_manwon)}만 대출로 충당)`,
               maintTxt,
-              l.loan_principal > 0 ? `보증금대출이자 ${fmtNum(l.monthly_interest)}만` : "",
+              l.loan_principal > 0 ? `부족분 ${fmtNum(l.loan_principal)}만 대출이자 ${fmtNum(l.monthly_interest)}만 (연 ${fmtRate(l.rate_percent)}%${l.is_temporary_rate ? ", 기준금리 적용" : ""})` : "",
               `월세대출이자 ${Number(l.rent_loan_monthly_interest || 0).toLocaleString()}원 (24개월 환산)`,
             ], [
               `2년간 총 이자 ${Number(l.rent_loan_total_interest || 0).toLocaleString()}원 예상`,
@@ -391,7 +398,7 @@
           </div>
           <div class="commute-time">
             <span aria-hidden="true">🚇</span>
-            <span${autoLoadRef ? ` data-commute-listing-id="${esc(r.listing_id)}"` : ""} title="${esc(r.commute_source || "직선거리 추정")}">통근 약 ${r.commute_minutes}분</span>
+            <span${autoLoadRef ? ` data-commute-listing-id="${esc(r.listing_id)}"` : ""} title="${esc(r.commute_source ? r.commute_source : "직선거리 추정")}${autoLoadRef ? " - 화면에 보이면 카카오 길찾기 기준 정확한 시간으로 바뀌어요" : ""}">통근 약 ${r.commute_minutes}분${!r.commute_source || r.commute_source.includes("추정") ? " (추정)" : ""}</span>
             ${transportLabel ? `<span class="transport-tag">${esc(transportLabel)}</span>` : ""}
           </div>
         </div>

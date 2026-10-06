@@ -638,17 +638,40 @@ _NEWBORN_PREFS = {
 }
 
 
-def test_신생아_추가출산_자녀_3명이면_0_2퍼센트x3명_합산후_상한에_걸린다():
+# 2026-10-06: NEWBORN_ADDITIONAL_CHILD는 첫 번째 자녀는 차감이 없고 두 번째부터 1명씩 센다 -> 차감 = (입력 자녀 수 - 1) x 1명당 차감율.
+# (자격 판별은 그대로 1명 이상이면 해당)
+def test_신생아_2년내_출산_자녀는_두번째부터_차감한다_1명0_2명0_2_3명0_4():
     loans = [loan(type_="NEWBORN_BEOTIMMOK", preferences=_NEWBORN_PREFS)]
-    result = loan_matcher.match_eligible_loans(req(loans, newbornAdditionalChildCount=3), JEONSE)[0]
-    assert result["rate_percent"] == 2.5  # 3.0 - min(3*0.2, 0.5) = 3.0 - 0.5 = 2.5
+    got = {}
+    for n in (1, 2, 3):
+        r = loan_matcher.match_eligible_loans(req(loans, newbornAdditionalChildCount=n), JEONSE)[0]
+        got[n] = (r["discount_percent"], r["rate_percent"])
+    assert got == {1: (0.0, 3.0), 2: (0.2, 2.8), 3: (0.4, 2.6)}
 
 
-def test_신생아_추가출산_1명과_2년초과_미성년_1명은_sum되어_0_3퍼센트다():
+def test_신생아_2년내_출산_자녀_1명이어도_자격은_통과하고_차감_내역에는_안_나온다():
+    loans = [loan(type_="NEWBORN_BEOTIMMOK", preferences={"NEWBORN_ADDITIONAL_CHILD": {"required": True, "discount": 0.2}})]
+    r = loan_matcher.match_eligible_loans(req(loans, newbornAdditionalChildCount=1), JEONSE)[0]
+    assert r["discount_percent"] == 0.0 and r["discount_items"] == []
+    r3 = loan_matcher.match_eligible_loans(req(loans, newbornAdditionalChildCount=3), JEONSE)[0]
+    assert r3["discount_items"][0]["count"] == 3 and r3["discount_items"][0]["discount_percent"] == 0.4  # 화면에는 입력한 3명, 차감은 2명분
+
+
+def test_신생아_2년내_출산_자녀_4명이면_3명분_0_6이라_상한_0_5에_걸린다():
+    loans = [loan(type_="NEWBORN_BEOTIMMOK", preferences=_NEWBORN_PREFS)]
+    result = loan_matcher.match_eligible_loans(req(loans, newbornAdditionalChildCount=4), JEONSE)[0]
+    assert result["rate_percent"] == 2.5  # 3.0 - min(3*0.2, 0.5) = 2.5
+    assert result["discount_capped"] is True
+
+
+def test_신생아_추가출산_2명과_2년초과_미성년_1명은_sum되어_0_3퍼센트다():
     loans = [loan(type_="NEWBORN_BEOTIMMOK", preferences=_NEWBORN_PREFS)]
     result = loan_matcher.match_eligible_loans(
+        req(loans, newbornAdditionalChildCount=2, minorChildOver2YearsCount=1), JEONSE)[0]
+    assert result["rate_percent"] == 2.7  # 3.0 - ((2-1)*0.2 + 1*0.1) = 2.7 (상한 0.5% 안 넘음)
+    only_minor = loan_matcher.match_eligible_loans(
         req(loans, newbornAdditionalChildCount=1, minorChildOver2YearsCount=1), JEONSE)[0]
-    assert result["rate_percent"] == 2.7  # 3.0 - (1*0.2 + 1*0.1) = 2.7 (상한 0.5% 안 넘음)
+    assert only_minor["rate_percent"] == 2.9  # 2년내 출산 1명은 차감 0, 2년초과 미성년 1명만 0.1 -> 2.9
 
 
 def test_신생아_합산값도_다른_우대사항과_max로_경쟁한다():
@@ -742,11 +765,11 @@ def test_신생아_특례_우대로_1퍼센트_밑이_되면_최종금리_1퍼�
                "preferences": {"NEWBORN_ADDITIONAL_CHILD": {"required": True, "discount": 0.2}},
                "rateTable": [[1.3, 1.4, 1.5, 1.6]] + [[2.0] * 4] * 8}
     listing = {**JEONSE, "listing_deposit": 4000}
-    r2 = loan_matcher.match_eligible_loans(req([newborn], annualIncome=1500, deposit=4000, newbornAdditionalChildCount=2), listing)[0]
-    assert r2["base_rate_percent"] == 1.3 and r2["discount_percent"] == 0.4  # 1.3 - 0.4 = 0.9 -> 하한
+    r2 = loan_matcher.match_eligible_loans(req([newborn], annualIncome=1500, deposit=4000, newbornAdditionalChildCount=3), listing)[0]
+    assert r2["base_rate_percent"] == 1.3 and r2["discount_percent"] == 0.4  # 3명 -> (3-1)*0.2 = 0.4, 1.3 - 0.4 = 0.9 -> 하한
     assert r2["rate_percent"] == 1.0 and r2["rate_floor_applied"] is True
-    r1 = loan_matcher.match_eligible_loans(req([newborn], annualIncome=1500, deposit=4000, newbornAdditionalChildCount=1), listing)[0]
-    assert r1["rate_percent"] == 1.1 and r1["rate_floor_applied"] is False  # 1.3 - 0.2 = 1.1 (하한 아님)
+    r1 = loan_matcher.match_eligible_loans(req([newborn], annualIncome=1500, deposit=4000, newbornAdditionalChildCount=2), listing)[0]
+    assert r1["rate_percent"] == 1.1 and r1["rate_floor_applied"] is False  # 2명 -> 0.2, 1.3 - 0.2 = 1.1 (하한 아님)
 
 
 def test_우대가_없으면_기본금리가_1퍼센트_미만이어도_하한을_적용하지_않는다():
@@ -754,3 +777,32 @@ def test_우대가_없으면_기본금리가_1퍼센트_미만이어도_하한�
            "preferences": {}, "rateTable": [[0.8, 0.8, 0.8, 0.8]] + [[2.0] * 4] * 8}
     r = loan_matcher.match_eligible_loans(req([low], annualIncome=1500, deposit=4000), {**JEONSE, "listing_deposit": 4000})[0]
     assert r["rate_percent"] == 0.8 and r["rate_floor_applied"] is False
+
+
+# --- 군복무기간: 나이 제한(최대 나이)을 12개월마다 1년씩, 1개월만 넘겨도 1년으로 올림해서 늘려준다 ---
+def test_군복무_연장연수는_12개월마다_1년이고_1개월만_넘겨도_올림한다():
+    ext = loan_matcher.military_extension_years
+    assert [ext(m) for m in (None, 0, 1, 11, 12, 13, 18, 21, 24, 25, 36, 37)] == [0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4]
+
+
+def test_군복무기간만큼_나이_상한이_늘어난다():
+    youth = [loan("YOUTH_BEOTIMMOK", minAge=19, maxAge=34)]
+    assert names(req(youth, age=36)) == []                                              # 군복무 없으면 34세 초과 탈락
+    assert names(req(youth, age=36, militaryServiceMonths=18)) == ["YOUTH_BEOTIMMOK"]   # 18개월 = 2년 -> 36세까지
+    assert names(req(youth, age=37, militaryServiceMonths=18)) == []                    # 36세 초과는 여전히 탈락
+    assert names(req(youth, age=37, militaryServiceMonths=25)) == ["YOUTH_BEOTIMMOK"]   # 25개월 = 3년 -> 37세까지
+    assert names(req(youth, age=35, militaryServiceMonths=1)) == ["YOUTH_BEOTIMMOK"]    # 1개월도 1년으로 친다
+    assert names(req(youth, age=35, militaryServiceMonths=0)) == []                     # 0개월은 영향 없음
+
+
+def test_최대_나이가_공란이면_군복무기간은_아무_영향이_없다():
+    only_min = [loan("YOUTH_BEOTIMMOK", minAge=19)]
+    assert names(req(only_min, age=50)) == ["YOUTH_BEOTIMMOK"]                          # 상한 없음 = 원래도 통과
+    assert names(req(only_min, age=50, militaryServiceMonths=24)) == ["YOUTH_BEOTIMMOK"]
+    no_age = [loan()]
+    assert names(req(no_age, age=60, militaryServiceMonths=30)) == ["GENERAL_BEOTIMMOK"]
+
+
+def test_군복무는_최소_나이를_늘리지_않는다():
+    youth = [loan("YOUTH_BEOTIMMOK", minAge=19, maxAge=34)]
+    assert names(req(youth, age=18, militaryServiceMonths=24)) == []                    # 최소 나이 미달은 그대로 탈락

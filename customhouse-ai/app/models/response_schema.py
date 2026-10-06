@@ -45,7 +45,7 @@ class BuildingRecommendation(BaseModel):
     # 환산해 비교하는 기존 방식을 그대로 유지한다.
     rent: int              # 만원. 월세는 항상 listing_monthly_rent와 같음. 전세는 사용자 보증금 반영 후 월세(보통 0)
     maintenance_fee: int   # 만원
-    loan_interest: int     # 만원 (월 환산). 월세는 항상 0, 전세만 보증금 차액에 대한 대출이자 반영
+    loan_interest: int     # 만원 (월 환산). 보증금 차액(매물 보증금 - 보유 보증금)에 대한 대출이자 - 전세/월세 공통 (2026-10-06부터 월세도 반영, 차액이 없으면 0)
     transportation_cost: int  # 만원
     government_support: int   # 만원, 항상 0 (정책이 자유 텍스트라 실질 주거비 계산엔 미반영 - matched_policies 참고)
     real_housing_cost: int    # 만원 = rent + maintenance_fee + loan_interest + transportation_cost - government_support
@@ -173,7 +173,7 @@ class ListingRecommendation(BuildingRecommendation):
     """더미 매물 1건 단위 추천. 기존 BuildingRecommendation 필드(지도/차트/카드가 그대로 쓴다)에
     매물 상세 정보를 더한다. 기존 필드 의미: listing_deposit/listing_monthly_rent = 매물 보증금/월세,
     maintenance_fee = 이 매물의 관리비(구 평균이 아님), address = 도로명주소, deal_date = 빈 문자열,
-    loan_interest = 전세만 계산됨(월세는 항상 0) - 매물 보증금 중 사용자가 지금 가진 보증금(deposit)으로 못 채우는
+    loan_interest = 전세/월세 공통(2026-10-06부터 월세도 반영) - 매물 보증금 중 사용자가 지금 가진 보증금(deposit)으로 못 채우는
     부족분에 이자를 적용한 값. 금리는 deposit_opportunity_cost와 같은 값(응답의 deposit_conversion_rate, 한국부동산원
     R-ONE 수도권 전월세 전환율 API)을 쓰고, 원금(부족분 vs 보증금 전체)만 다르다 (2026-09-29).
 
@@ -184,7 +184,7 @@ class ListingRecommendation(BuildingRecommendation):
     transportation_cost: int = Field(0, exclude=True)  # 응답에 포함하지 않는다 (교통비 삭제)
     # 정책은 매물마다 반복해서 붙이지 않고(응답의 70%를 차지했다) 응답 최상위의 policies_by_region에 자치구별로 한 번만 담는다.
     matched_policies: list[MatchedPolicy] = Field(default_factory=list, exclude=True)
-    deposit_shortfall: int = 0  # 만원, 부족분(대출금액) = 매물 보증금 - 현재 보증금 (전세만, 월세는 0). loan_interest의 원금.
+    deposit_shortfall: int = 0  # 만원, 부족분(대출금액) = 매물 보증금 - 현재 보증금 (전세/월세 공통, 이하면 0). loan_interest의 원금.
     deposit_opportunity_cost: float = 0  # 만원/월 = 보증금 x 연 전환율% / 12 (전환율은 응답의 deposit_conversion_rate)
     deposit_opportunity_rate_percent: float = 0  # 연 %, deposit_opportunity_cost에 실제로 쓴 이율 (월세=정기예금 1년, 전세=전월세 전환율)
     deposit_converted_cost: float = 0    # 만원/월 = 월세 + 관리비 + 보증금 기회비용 (보증금전환 실질거주비)
@@ -282,6 +282,12 @@ class ListingDiagnosisResponse(BaseModel):
     used_distance_estimate: bool = False
     total_candidates: int = 0  # 조건(통근권/상태/희망가/유형)을 통과한 매물 수 - 화면에 "N건 중 상위 표시" 용
     deposit_limit: int = 0     # 만원, 이 금액을 넘는 보증금의 매물은 추천에서 제외됨 (희망 보증금, 없으면 현재 보유 보증금)
+    # 보증금 필터 (2026-10-06): show_all_deposits=False면 own_deposit(현재 보유 보증금) 이하이거나 초과해도 대출 가능한 매물만 추천한다.
+    own_deposit: int = 0                 # 만원, 현재 보유 보증금
+    show_all_deposits: bool = False      # True면 보증금 필터 없이 deposit_limit 이하 전부 표시
+    include_semi_jeonse: bool = True     # False면 월세 추천에서 반전세를 뺀다 (기본 포함)
+    excluded_no_loan: int = 0            # 보유 보증금을 넘는데 대출도 안 돼서 뺀 매물 수 (통근/유형 등 다른 조건은 통과한 것만 센다)
+    excluded_semi_jeonse: int = 0        # 반전세라서 뺀 월세 매물 수
     # 보증금을 월 비용으로 환산한 이율 = 한국부동산원 수도권 전월세 전환율(종합주택) 최신 월 값 (reb_conversion_rate.py)
     deposit_conversion_rate: float = 0          # 연 %, 예: 6.35
     deposit_conversion_rate_base: str = ""      # 통계 기준 월 "2026-07"
