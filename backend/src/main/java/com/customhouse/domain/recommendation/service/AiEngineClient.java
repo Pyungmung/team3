@@ -55,6 +55,20 @@ public class AiEngineClient {
     }
 
     /**
+     * 메인 홈의 "AI 주거 진단 미리보기"용 가벼운 요약 (2026-10-06) - 전체 진단과 달리 대출 조건/기타 설정은 읽지 않고(DB 조회 없음, 기준소득만 캐시된 값을 쓴다)
+     * 요약 몇 개(적정 월세 상한, 주거비 비율, 추천 지역, 평균 통근시간)만 돌려받는다. customhouse-ai POST /api/v1/diagnosis/home-preview.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> requestHomePreview(RecommendRequest request) {
+        return aiEngineRestClient.post()
+                .uri("/api/v1/diagnosis/home-preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new AiListingRequest(request, List.of(), incomeStandard(), null))
+                .retrieve()
+                .body(Map.class);
+    }
+
+    /**
      * 관심매물 새로고침 - 매물번호 1건을 사용자의 현재 조건으로 다시 계산한 카드를 받는다
      * (customhouse-ai POST /api/v1/diagnosis/listings/{listingId}). 같은 대출 조건/기준소득을 함께 실어 보낸다.
      * 매물이 없으면(삭제됨) AI 엔진이 404를 주고, 여기서 NOT_FOUND로 바꿔 던진다.

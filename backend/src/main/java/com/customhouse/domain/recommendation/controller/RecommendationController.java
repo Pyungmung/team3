@@ -31,4 +31,11 @@ public class RecommendationController {
         Map<String, Object> result = aiEngineClient.requestListingDiagnosis(request);
         return ResponseEntity.ok(ApiResponse.ok("더미 매물 기반 주거비 절약 진단이 완료되었습니다.", result));
     }
+
+    /** 메인 홈 미리보기용 가벼운 요약 (전체 진단을 돌리지 않는다). */
+    @PostMapping("/diagnosis/home-preview")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> homePreview(
+            @Valid @RequestBody RecommendRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(aiEngineClient.requestHomePreview(request)));
+    }
 }

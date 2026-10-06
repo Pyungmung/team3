@@ -4,6 +4,7 @@ import com.customhouse.domain.appsetting.dto.AppSettingRequest;
 import com.customhouse.domain.appsetting.dto.AppSettingResponse;
 import com.customhouse.domain.appsetting.entity.AppSetting;
 import com.customhouse.domain.appsetting.repository.AppSettingRepository;
+import com.customhouse.global.common.TtlCache;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,8 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class AppSettingService {
 
     private final AppSettingRepository appSettingRepository;
+    /** 진단 요청마다 읽던 값이라 5분 캐시한다(2026-10-06, 클라우드 DB 왕복이 느리다). 저장하면 비운다. */
+    private final TtlCache<AppSettingResponse> cache = new TtlCache<>(5 * 60 * 1000L);
 
     public AppSettingResponse get() {
+        return cache.get(this::load);
+    }
+
+    private AppSettingResponse load() {
         return appSettingRepository.findById(AppSetting.SINGLETON_ID)
                 .map(AppSettingService::toResponse)
                 .orElseGet(() -> new AppSettingResponse(AppSetting.DEFAULT_RECOMMENDATION_LIMIT, null));
@@ -29,7 +36,9 @@ public class AppSettingService {
         AppSetting entity = appSettingRepository.findById(AppSetting.SINGLETON_ID).orElseGet(AppSetting::singleton);
         entity.update(request.recommendationLimit());
         // saveAndFlush: 응답의 updatedAt이 방금 수정 시각이 되도록 즉시 flush (IncomeStandardService와 같은 이유)
-        return toResponse(appSettingRepository.saveAndFlush(entity));
+        AppSettingResponse saved = toResponse(appSettingRepository.saveAndFlush(entity));
+        cache.evictAfterCommit();
+        return saved;
     }
 
     private static AppSettingResponse toResponse(AppSetting e) {

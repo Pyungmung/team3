@@ -4,6 +4,7 @@ import com.customhouse.domain.incomestandard.dto.IncomeStandardRequest;
 import com.customhouse.domain.incomestandard.dto.IncomeStandardResponse;
 import com.customhouse.domain.incomestandard.entity.IncomeStandard;
 import com.customhouse.domain.incomestandard.repository.IncomeStandardRepository;
+import com.customhouse.global.common.TtlCache;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class IncomeStandardService {
 
     private final IncomeStandardRepository incomeStandardRepository;
+    /** 진단 요청마다 읽던 값이라 5분 캐시한다(2026-10-06, 클라우드 DB 왕복이 느리다). 저장하면 비운다. */
+    private final TtlCache<IncomeStandardResponse> cache = new TtlCache<>(5 * 60 * 1000L);
 
     public IncomeStandardResponse get() {
+        return cache.get(this::load);
+    }
+
+    private IncomeStandardResponse load() {
         return incomeStandardRepository.findById(IncomeStandard.SINGLETON_ID)
                 .map(IncomeStandardService::toResponse)
                 .orElseGet(() -> new IncomeStandardResponse(null, null, null, null, null, null, null, null, null));
@@ -36,6 +43,7 @@ public class IncomeStandardService {
         // save()만 쓰면 실제 UPDATE(및 감사 리스너)가 트랜잭션 커밋 시점까지 미뤄져, 이 응답의 updatedAt이
         // 방금 한 수정이 아니라 이전 값으로 내려가는 문제가 있었다(관리자 화면 "마지막 수정" 표시가 틀리게 됨).
         IncomeStandard saved = incomeStandardRepository.saveAndFlush(entity);
+        cache.evictAfterCommit();
         return toResponse(saved);
     }
 

@@ -7,7 +7,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import listing_commute, listing_reference, listing_registration, listings, market_price, policy
+from app.api.v1 import home_preview, listing_commute, listing_reference, listing_registration, listings, market_price, policy
 from app.core.config import settings
 
 app = FastAPI(
@@ -23,6 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(home_preview.router, prefix="/api/v1")  # /diagnosis/home-preview - listings의 /diagnosis/listings/{id}와 겹치지 않는 경로
 app.include_router(listings.router, prefix="/api/v1")
 app.include_router(listing_reference.router, prefix="/api/v1")
 app.include_router(listing_commute.router, prefix="/api/v1")
