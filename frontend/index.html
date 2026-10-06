@@ -514,6 +514,7 @@
   
   <script src="src/js/components/header.js?v=20260918a"></script>
   <script src="src/js/components/footer.js?v=20260928c"></script>
+  <script src="src/js/utils/address-match-util.js?v=20261006a"></script>
   <script src="src/js/api/auth.js?v=20260921d"></script>
   <script src="src/js/api/mypage.js?v=20260921d"></script>
   <script src="src/js/api/recommendation.js?v=20261006a"></script>
@@ -569,7 +570,8 @@
           deposit: c.deposit,
           desiredDeposit: c.desiredDeposit ?? null,
           desiredRent: c.desiredRent ?? null,
-          workLocation: c.workLocation,
+          // 주소에 구 이름이 있으면 그 구를 쓴다 (예전에 가까운 구청 기준으로 저장된 값 보정)
+          workLocation: (window.CustomHouseAddressMatchUtil && CustomHouseAddressMatchUtil.hubFromAddress(c.workAddress)) || c.workLocation,
           workAddress: c.workAddress || null,
           workLat: c.workLat ?? null,
           workLon: c.workLon ?? null,
