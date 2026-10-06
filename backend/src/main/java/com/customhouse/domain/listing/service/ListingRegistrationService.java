@@ -84,5 +84,11 @@ public class ListingRegistrationService {
             throw new CustomException(ErrorCode.VALIDATION_ERROR, "매물의 자치구 정보를 알 수 없어 삭제할 수 없습니다.");
         }
         aiEngineClient.markListingDeleted(listingId, effectiveRegion);
+        // 이 매물을 관심매물로 담은 회원에게 삭제를 알린다. 알림 처리 실패가 삭제를 되돌리거나 막으면 안 된다.
+        try {
+            alertService.notifyDeleted(listingId, userId);
+        } catch (RuntimeException e) {
+            log.warn("매물 삭제 알림 처리에 실패했습니다 (매물: {}): {}", listingId, e.toString());
+        }
     }
 }

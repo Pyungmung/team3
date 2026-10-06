@@ -171,11 +171,49 @@ class ListingAlertServiceTest {
     }
 
     @Test
+    void 매물_삭제는_담은_회원의_알림함에_쌓고_수신_켠_회원에게만_메일을_보낸다() {
+        when(favoriteRepository.findByListingId(LISTING)).thenReturn(List.of(favorite(1L, 5000, 80), favorite(2L, 5000, 80)));
+        mailEnabled(1L, true);
+        mailEnabled(2L, false);
+
+        int count = service.notifyDeleted(LISTING, 9L);
+
+        assertThat(count).isEqualTo(2);
+        verify(notificationService).notify(eq(1L), eq("관심 매물 삭제"), contains("삭제"));
+        verify(notificationService).notify(eq(2L), eq("관심 매물 삭제"), contains("삭제"));
+        verify(mailClient).send(eq("user1@example.com"), contains("삭제"), contains("잠원 하이츠"), isNull());
+        verify(mailClient, never()).send(eq("user2@example.com"), any(), any(), any());
+    }
+
+    @Test
+    void 매물을_삭제한_본인에게는_삭제_알림을_보내지_않는다() {
+        when(favoriteRepository.findByListingId(LISTING)).thenReturn(List.of(favorite(1L, 5000, 80), favorite(2L, 5000, 80)));
+        mailEnabled(2L, false);
+
+        assertThat(service.notifyDeleted(LISTING, 1L)).isEqualTo(1);
+
+        verify(notificationService, never()).notify(eq(1L), any(), any());
+        verify(notificationService).notify(eq(2L), eq("관심 매물 삭제"), anyString());
+    }
+
+    @Test
+    void 삭제_알림_메일이_실패해도_알림함_알림은_유지된다() {
+        when(favoriteRepository.findByListingId(LISTING)).thenReturn(List.of(favorite(1L, 5000, 80)));
+        mailEnabled(1L, true);
+        doThrow(new CustomException(ErrorCode.MAIL_SEND_FAILED)).when(mailClient).send(any(), any(), any(), any());
+
+        assertThat(service.notifyDeleted(LISTING, 9L)).isEqualTo(1);
+
+        verify(notificationService).notify(eq(1L), eq("관심 매물 삭제"), anyString());
+    }
+
+    @Test
     void 담은_회원이_없으면_아무것도_하지_않는다() {
         when(favoriteRepository.findByListingId(LISTING)).thenReturn(List.of());
 
         assertThat(service.notifyPriceChange(LISTING, 1, 1)).isZero();
         assertThat(service.notifyFlagged(LISTING, 2L)).isZero();
+        assertThat(service.notifyDeleted(LISTING, 9L)).isZero();
         verify(notificationService, never()).notify(any(), any(), any());
     }
 }
