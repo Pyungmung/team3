@@ -1,5 +1,5 @@
 """
-[담당: 송귀성] 더미 매물 CSV 스키마의 단일 출처 (dummyhouse_(자치구영문).csv, 54컬럼)
+[담당: 송귀성] 더미 매물 CSV 스키마의 단일 출처 (dummyhouse_(자치구영문).csv, 55컬럼)
 
 - 추천(listing_recommender.py)은 CSV 행을 읽어 내부 dict로 바꾸고(row_to_listing),
   신규 매물 등록(listing_repository.append_listing)과 생성 스크립트(scripts/gen_dummyhouses.py)는

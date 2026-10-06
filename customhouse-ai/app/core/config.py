@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     juso_api_key: str | None = None        # 행정안전부 도로명주소 검색 API(business.juso.go.kr) - services/juso_api.py
     juso_api_key_av: str | None = None     # 행정안전부 상세주소 API - 위와 별도 발급/승인키 (건물명 보완용)
     kosis_api_key: str | None = None       # KOSIS 국가통계포털 OpenAPI 인증키 (kosis.kr/openapi) - 수도권 기준 RIR 등 통계 조회용
+    # 회원 등록 매물 복원용 (2026-10-06): 서버가 켜질 때 백엔드 DB에 저장된 등록 매물을 받아 CSV에 되살린다 (services/listing_sync.py).
+    # 둘 다 있어야 동작한다 - 없으면(로컬 개발 등) 복원을 건너뛴다. 키는 백엔드의 INTERNAL_API_KEY와 같은 값.
+    backend_base_url: str | None = None    # 예: https://team3-q05z.onrender.com
+    internal_api_key: str | None = None
     pinecone_api_key: str | None = None    # Pinecone (RAG, 심화 단계). 서버리스 API라 environment 값은 불필요.
 
 

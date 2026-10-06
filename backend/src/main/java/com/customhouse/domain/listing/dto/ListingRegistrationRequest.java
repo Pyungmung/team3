@@ -34,6 +34,13 @@ public record ListingRegistrationRequest(
         @Size(max = 20) String moveInDate,
         @Size(max = 1000) String description,
         Boolean jeonseLoanAvailable,
-        @Size(max = 300) String photoUrl
+        @Size(max = 300) String photoUrl,
+        // 공인중개사 정보 - 모두 선택 입력 (더미 매물 CSV의 공인중개사_* 6컬럼)
+        @Size(max = 100) String brokerName,
+        @Size(max = 50) String brokerRepresentative,
+        @Size(max = 50) String brokerRegNo,
+        @Size(max = 30) String brokerPhone,
+        @Size(max = 200) String brokerAddress,
+        @Size(max = 500) String brokerComment
 ) {
 }

@@ -54,6 +54,13 @@ class ListingRegistrationRequest(BaseModel):
     description: str = ""
     jeonse_loan_available: bool = Field(True, alias="jeonseLoanAvailable")
     photo_url: str | None = Field(None, alias="photoUrl")  # ListingPhotoController 업로드 결과 URL
+    # 공인중개사 정보 (모두 선택 입력 - 더미 매물 CSV의 공인중개사_* 6컬럼, 2026-10-06 추가)
+    broker_name: str = Field("", alias="brokerName")
+    broker_representative: str = Field("", alias="brokerRepresentative")
+    broker_reg_no: str = Field("", alias="brokerRegNo")
+    broker_phone: str = Field("", alias="brokerPhone")
+    broker_address: str = Field("", alias="brokerAddress")
+    broker_comment: str = Field("", alias="brokerComment")
 
     class Config:
         populate_by_name = True
@@ -62,6 +69,9 @@ class ListingRegistrationRequest(BaseModel):
 class ListingRegistrationResponse(BaseModel):
     listing_id: str = Field(alias="listingId")
     region: str
+    # 저장한 CSV 행 전체(헤더 -> 값, 55컬럼). 백엔드가 DB(registered_listings.row_json)에 그대로 저장해 두었다가
+    # 서버가 다시 켜질 때 돌려준다 (listing_sync.py). 프론트에는 전달되지 않는다.
+    row: dict | None = None
 
     class Config:
         populate_by_name = True
@@ -136,6 +146,17 @@ def _build_listing_fields(request: ListingRegistrationRequest, info: dict, regio
         "move_in_date": request.move_in_date,
         "description": request.description,
         "jeonse_loan_available": request.jeonse_loan_available,
+        "broker_name": request.broker_name,
+        "broker_representative": request.broker_representative,
+        "broker_reg_no": request.broker_reg_no,
+        "broker_phone": request.broker_phone,
+        "broker_address": request.broker_address,
+        "broker_comment": request.broker_comment,
+        # 주소 조회가 이미 돌려주는 행안부 주소코드 (CSV의 참고_행안부_* 4컬럼)
+        "ref_bd_mgt_sn": info.get("bdMgtSn") or "",
+        "ref_adm_cd": info.get("admCd") or "",
+        "ref_rn_mgt_sn": info.get("rnMgtSn") or "",
+        "ref_detail_dong": info.get("dongNm") or "",
     }
     if request.photo_url:
         fields["photo"] = request.photo_url
@@ -158,7 +179,7 @@ def register_listing(request: ListingRegistrationRequest) -> ListingRegistration
     except listing_repository.ListingFileLockedError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
 
-    return ListingRegistrationResponse(listing_id=saved["매물등록번호"], region=region)
+    return ListingRegistrationResponse(listing_id=saved["매물등록번호"], region=region, row=saved)
 
 
 @router.get("/{listing_id}", response_model=ListingDetailResponse)
@@ -191,7 +212,7 @@ def update_listing(listing_id: str, request: ListingRegistrationRequest) -> List
     if saved is None:
         raise HTTPException(status_code=404, detail="매물을 찾을 수 없어요.")
 
-    return ListingRegistrationResponse(listing_id=listing_id, region=region)
+    return ListingRegistrationResponse(listing_id=listing_id, region=region, row=schema.listing_to_row(saved))
 
 
 class ListingStatusUpdateRequest(BaseModel):
@@ -207,4 +228,6 @@ def update_listing_status(listing_id: str, request: ListingStatusUpdateRequest) 
         raise HTTPException(status_code=503, detail=str(e)) from e
     if not found:
         raise HTTPException(status_code=404, detail="매물을 찾을 수 없어요.")
-    return {"listing_id": listing_id, "status": request.status}
+    updated = listing_repository.get_listing(listing_id)
+    return {"listing_id": listing_id, "status": request.status,
+            "row": schema.listing_to_row(updated) if updated else None}

@@ -61,10 +61,15 @@ support:
 ai-engine:
   base-url: http://localhost:8000
 
-# [담당: 송귀성] 매물 등록 사진 업로드 저장 위치(로컬 디스크). WebMvcConfig가 /uploads/**로 정적 서빙한다.
-# 알려진 제약: 로컬 디스크 저장이라 Render 같은 배포 환경은 재배포 시 유실될 수 있다(지금 범위 밖).
+# [담당: 송귀성] 매물 등록 사진은 DB(listing_photos)에 저장한다(2026-10-06). upload.dir은 예전에 디스크에 올린 사진을
+# ListingPhotoServeController가 폴백으로 읽는 위치일 뿐이다 (로컬 개발용).
 upload:
   dir: ${UPLOAD_DIR:uploads}
+
+# [담당: 송귀성] AI 엔진 전용 내부 API(/api/internal/**)의 비밀키. AI 엔진의 INTERNAL_API_KEY와 같은 값을 .env/Render에 둔다.
+# 비어 있으면 내부 API는 항상 거절된다.
+internal:
+  api-key: ${INTERNAL_API_KEY:}
 
 # [담당: 허겸] JWT 설정. JWT_SECRET은 backend/.env에 실제 값 설정 권장(기본값은 로컬 개발용 임시 키).
 jwt:
