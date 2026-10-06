@@ -1679,7 +1679,7 @@
 <script src="../../js/api/mypage.js?v=20260916a"></script>
 <script src="../../js/api/user.js?v=20260921a"></script>
 <script src="../../js/api/watchlist.js?v=20261005a"></script>
-<script src="../../js/utils/address-match-util.js?v=20260916a"></script>
+<script src="../../js/utils/address-match-util.js?v=20261006a"></script>
 
 <script>
   renderHeader("mypage");
@@ -2230,13 +2230,16 @@
 
               // 자치구 select는 그대로 저장하고(대략적인 위치 표시/폴백용), 실제 주소와 정확한
               // 좌표는 별도로 저장해서 진단 폼이 자치구 대표 좌표 대신 이 값을 쓸 수 있게 한다.
-              workSelect.value = nearest.hub;
+              // 주소에 적힌 실제 자치구가 우선이다 (가까운 구청만 보면 서초구 주소가 관악구로 저장돼 주거정책이 엉뚱한 구로 나왔다)
+              const exactHub = CustomHouseAddressMatchUtil.hubFromAddress(address);
+              workSelect.value = exactHub || nearest.hub;
               workAddressInput.value = address;
               workLatInput.value = lat;
               workLonInput.value = lon;
-              hubMatchEl.textContent =
-                `→ "${nearest.label}" 권역으로 분류돼요 (입력한 주소에서 직선거리 약 ${nearest.distanceKm.toFixed(1)}km). ` +
-                `AI 진단에서는 이 주소로 정확한 통근시간을 계산해요.`;
+              hubMatchEl.textContent = exactHub
+                ? `→ "${CustomHouseAddressMatchUtil.labelForHub(exactHub)}" 주소예요. AI 진단에서는 이 주소로 정확한 통근시간을 계산하고, 주거정책도 ${exactHub} 기준으로 보여드려요.`
+                : `→ "${nearest.label}" 권역으로 분류돼요 (입력한 주소에서 직선거리 약 ${nearest.distanceKm.toFixed(1)}km). ` +
+                  `AI 진단에서는 이 주소로 정확한 통근시간을 계산해요.`;
               hubMatchEl.classList.remove("hidden");
             });
           }
@@ -2280,7 +2283,9 @@
       form.age.value = condition.age ?? "";
       form.annualIncome.value = condition.annualIncome ?? "";
       form.coupleAnnualIncome.value = condition.coupleAnnualIncome ?? "";
-      form.workLocation.value = condition.workLocation ?? "";
+      // 예전에 가까운 구청 기준으로 저장된 값을 바로잡는다: 주소에 구 이름이 있으면 그 구를 쓴다 (저장하면 그 값으로 갱신된다)
+      const savedAddressHub = CustomHouseAddressMatchUtil.hubFromAddress(condition.workAddress);
+      form.workLocation.value = savedAddressHub || condition.workLocation || "";
       form.workAddress.value = condition.workAddress ?? "";
       form.workLat.value = condition.workLat ?? "";
       form.workLon.value = condition.workLon ?? "";
@@ -2289,7 +2294,7 @@
         const hubMatchEl = document.getElementById("work-hub-match");
         if (addressDisplay) addressDisplay.value = condition.workAddress;
         if (hubMatchEl) {
-          hubMatchEl.textContent = `→ "${condition.workLocation}" 권역으로 분류돼요. AI 진단에서는 이 주소로 정확한 통근시간을 계산해요.`;
+          hubMatchEl.textContent = `→ "${savedAddressHub || condition.workLocation}" 권역으로 분류돼요. AI 진단에서는 이 주소로 정확한 통근시간을 계산해요.`;
           hubMatchEl.classList.remove("hidden");
         }
       }

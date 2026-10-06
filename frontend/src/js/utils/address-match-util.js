@@ -60,6 +60,27 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 /**
+ * 주소 글자에서 실제 자치구를 찾는다 (2026-10-06). "서울 서초구 동작대로 132" -> "서초구", "경기 성남시 분당구 판교역로 1" -> "분당구".
+ * 직선거리로 "가장 가까운 구청"을 고르면 서초구처럼 구청이 한쪽 끝에 있는 큰 구의 주소가 이웃한 구(관악구)로 분류돼서
+ * 주거정책 추천이 엉뚱한 구로 나왔다 - 주소에 구 이름이 있으면 그걸 우선한다. 못 찾으면 null(호출하는 쪽이 가까운 구로 대신한다).
+ * @param {string} address
+ * @returns {string|null}
+ */
+function hubFromAddress(address) {
+  if (!address) return null;
+  // 먼저 공백으로 나눈 낱말이 구 이름과 정확히 같은 것을 찾는다 ("서울 서초구 서초중앙로 5" -> "서초구"; 도로명 속 글자에 우연히 들어 있는 경우는 피한다)
+  for (const token of String(address).split(/\s+/)) {
+    if (Object.prototype.hasOwnProperty.call(WORK_HUB_COORDS, token)) return token;
+  }
+  let best = null;
+  for (const hub of Object.keys(WORK_HUB_COORDS)) {
+    const idx = address.indexOf(hub);
+    if (idx >= 0 && (best === null || idx < best.idx)) best = { hub, idx };
+  }
+  return best ? best.hub : null;
+}
+
+/**
  * @param {number} lat
  * @param {number} lon
  * @returns {{hub: string, label: string, distanceKm: number}}
@@ -75,4 +96,4 @@ function findNearestWorkHub(lat, lon) {
   return best;
 }
 
-window.CustomHouseAddressMatchUtil = { findNearestWorkHub, WORK_HUB_LABELS, labelForHub };
+window.CustomHouseAddressMatchUtil = { findNearestWorkHub, hubFromAddress, WORK_HUB_LABELS, labelForHub };
