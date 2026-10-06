@@ -307,6 +307,42 @@ def refresh_listing_card(request, listing_id: str) -> dict | None:
     }
 
 
+HOME_PREVIEW_TOP_N = 200  # 홈 미리보기는 대충 보여주는 용도라 월세/전세 각각 상위 200건만 쓴다 (전체 진단은 DEFAULT_TOP_N=500)
+
+
+def run_home_preview(request) -> dict:
+    """메인 홈 미리보기용 요약 (2026-10-06): 적정 월세 상한/수도권 주거비 비율, 추천 지역(평균 통근시간이 짧은 자치구 3곳),
+    예상 평균 통근시간(+25~75번째 백분위 범위). 전체 진단(run_listing_diagnosis)과 같은 계산이지만 보증금 필터는 "모두 표시"로 두고
+    (대출 판별을 하지 않는다) 상위 HOME_PREVIEW_TOP_N건만 뽑는다 - 홈에서 로그인한 회원이 마이페이지 조건으로 바로 보는 대략적인 값이다."""
+    from app.models.request_schema import AppSettingCondition
+    light = request.model_copy(update={
+        "show_all_deposits": True,
+        "loan_products": [],
+        "app_settings": AppSettingCondition(recommendationLimit=HOME_PREVIEW_TOP_N),
+    })
+    data = run_listing_diagnosis(light)
+    listings = data["wolse_recommendations"] + data["jeonse_recommendations"]
+    by_region: dict[str, list[int]] = {}
+    for r in listings:
+        if r.get("region") and isinstance(r.get("commute_minutes"), (int, float)):
+            by_region.setdefault(r["region"], []).append(r["commute_minutes"])
+    regions = [name for name, _ in sorted(
+        ((n, sum(m) / len(m)) for n, m in by_region.items() if len(m) >= 3), key=lambda x: x[1])[:3]]
+    minutes = sorted(r["commute_minutes"] for r in listings if isinstance(r.get("commute_minutes"), (int, float)))
+    avg = lo = hi = None
+    if minutes:
+        avg = round(sum(minutes) / len(minutes))
+        lo = minutes[int(0.25 * (len(minutes) - 1))]
+        hi = minutes[int(0.75 * (len(minutes) - 1))]
+    return {
+        "affordable_rent": data["affordable_rent"],
+        "rent_to_income_ratio": data["rent_to_income_ratio"],
+        "regions": regions,
+        "avg_commute_minutes": avg,
+        "commute_range": (f"{lo}분" if lo == hi else f"{lo}~{hi}분") if avg is not None else None,
+    }
+
+
 def _loan_possible(request, listing: dict, cache: dict) -> bool:
     """이 매물에 신청 가능한 대출이 하나라도 있는가 (보증금 필터용, 2026-10-06). 순위/카드용 계산(match_eligible_loans)과 같은
     자격 판별(loan_matcher.is_eligible)을 쓰되 금리/이자 계산은 하지 않는다. 저장된 대출이 없거나 "정책 대출 활용"을 껐으면 False.

@@ -11,6 +11,7 @@ import com.customhouse.domain.loan.entity.LoanReferenceLink;
 import com.customhouse.domain.loan.entity.LoanType;
 import com.customhouse.domain.loan.repository.LoanProductRepository;
 import com.customhouse.domain.loan.repository.LoanReferenceLinkRepository;
+import com.customhouse.global.common.TtlCache;
 import com.customhouse.global.error.CustomException;
 import com.customhouse.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,9 @@ public class LoanProductService {
             LoanType.YOUTH_BEOTIMMOK, new int[]{4, 1},
             LoanType.NEWBORN_BEOTIMMOK, new int[]{9, 4}
     );
+
+    /** 진단 요청마다 DB에서 대출 4종 + 참고 링크를 읽으면 클라우드 DB 왕복 때문에 수 초가 걸려서(2026-10-06) 저장된 대출만 5분 캐시한다. 저장/삭제 때 비운다. */
+    private final TtlCache<List<LoanProductResponse>> savedLoansCache = new TtlCache<>(5 * 60 * 1000L);
 
     private final LoanProductRepository loanProductRepository;
     private final LoanReferenceLinkRepository loanReferenceLinkRepository;
@@ -89,6 +93,7 @@ public class LoanProductService {
                 request.monthlyRentLoanFreeThresholdManwon(), request.monthlyRentLoanRatePercent(),
                 serialize(request.preferences()), serializeRateTable(request.rateTable()));
         LoanProduct saved = loanProductRepository.save(product);
+        savedLoansCache.evictAfterCommit();
         String url = loanReferenceLinkRepository.findByLoanType(type.name()).map(LoanReferenceLink::getReferenceUrl).orElse(null);
         return toResponse(type, saved, url);
     }
@@ -107,6 +112,7 @@ public class LoanProductService {
                 .orElseGet(() -> LoanReferenceLink.of(type, null));
         link.updateUrl(url);
         loanReferenceLinkRepository.save(link);
+        savedLoansCache.evictAfterCommit();
 
         return loanProductRepository.findByLoanType(type.name())
                 .map(p -> toResponse(type, p, url))
@@ -115,13 +121,14 @@ public class LoanProductService {
 
     /** 저장된(saved) 대출만. 리포트 추천이 AI 엔진에 넘겨 매물별 대출 자격을 판별하는 데 쓴다. */
     public List<LoanProductResponse> getSavedLoans() {
-        return getAll().loans().stream().filter(LoanProductResponse::saved).toList();
+        return savedLoansCache.get(() -> getAll().loans().stream().filter(LoanProductResponse::saved).toList());
     }
 
     /** 삭제: 저장된 조건을 지운다 (참고 확인 페이지 주소는 남는다). 저장된 게 없어도 오류 없이 넘어간다. */
     @Transactional
     public void delete(String typeCode) {
         loanProductRepository.deleteByLoanType(parseType(typeCode).name());
+        savedLoansCache.evictAfterCommit();
     }
 
     private static LoanType parseType(String code) {
