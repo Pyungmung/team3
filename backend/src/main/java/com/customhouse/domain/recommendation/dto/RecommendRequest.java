@@ -1,5 +1,6 @@
 package com.customhouse.domain.recommendation.dto;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -43,6 +44,8 @@ public record RecommendRequest(
         @Min(value = 10, message = "희망 통근시간은 최소 10분 이상이어야 합니다.")
         Integer maxCommuteMinutes, // 선택, 기본값 30분
 
+        @Min(value = 0, message = "나이는 0 이상이어야 합니다.")
+        @Max(value = 120, message = "나이는 120 이하여야 합니다.")
         Integer age, // 선택, 정부 지원정책 자격 판별용
 
         Boolean noHouseholder, // 선택, 무주택 세대주 여부 (버팀목 대출 자격 판별용)
