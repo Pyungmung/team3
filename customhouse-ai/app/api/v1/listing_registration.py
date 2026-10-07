@@ -32,6 +32,12 @@ from app.services import listing_builder, listing_repository, listing_schema as 
 
 router = APIRouter(prefix="/listings", tags=["listing-registration"])
 
+MAX_DEPOSIT = 1_000_000        # 만원 (100억원)
+MAX_MONTHLY_RENT = 5_000       # 만원
+MAX_MAINTENANCE_FEE = 1_000    # 만원
+MAX_ROOMS = 20                 # 방/욕실 수
+MIN_BUILT_YEAR, MAX_BUILT_YEAR = 1900, 2035
+
 
 class ListingRegistrationRequest(BaseModel):
     address_keyword: str = Field(alias="addressKeyword")  # 사용자가 입력한 도로명/지번주소 검색어
@@ -97,8 +103,26 @@ def _validate(request: ListingRegistrationRequest) -> None:
         raise HTTPException(status_code=400, detail="매물유형이 올바르지 않습니다.")
     if request.lease_type not in {"전세", "월세"}:
         raise HTTPException(status_code=400, detail="거래유형이 올바르지 않습니다.")
+    if request.deposit < 0 or request.monthly_rent < 0:
+        raise HTTPException(status_code=400, detail="보증금과 월세는 0 이상이어야 합니다.")
+    if request.lease_type == "전세" and request.monthly_rent != 0:
+        raise HTTPException(status_code=400, detail="전세 매물은 월세를 0으로 입력해주세요.")
+    if request.lease_type == "월세" and request.monthly_rent == 0:
+        raise HTTPException(status_code=400, detail="월세 매물은 월세를 1만원 이상 입력해주세요.")
     if not schema.is_realistic_price(request.lease_type, request.deposit, request.monthly_rent):
         raise HTTPException(status_code=400, detail="입력한 보증금/월세가 현실적인 범위를 벗어났어요.")
+    # 상식 밖 값 차단 (백엔드 ListingRegistrationRequest와 같은 기준, 2026-10-07) - 음수 관리비는 추천 카드에 음수 주거비로 나타났다.
+    if not (1 <= request.exclusive_area <= 1000):  # NaN도 여기서 걸린다
+        raise HTTPException(status_code=400, detail="전용면적이 올바르지 않습니다.")
+    if request.deposit > MAX_DEPOSIT or request.monthly_rent > MAX_MONTHLY_RENT:
+        raise HTTPException(status_code=400, detail="입력한 보증금/월세가 너무 큽니다.")
+    if not (0 <= request.maintenance_fee <= MAX_MAINTENANCE_FEE):
+        raise HTTPException(status_code=400, detail="관리비는 0~1000만원 사이로 입력해주세요.")
+    for label, value in (("방 수", request.rooms), ("욕실 수", request.bathrooms)):
+        if value is not None and not (0 <= value <= MAX_ROOMS):
+            raise HTTPException(status_code=400, detail=f"{label}가 올바르지 않습니다.")
+    if request.built_year is not None and not (MIN_BUILT_YEAR <= request.built_year <= MAX_BUILT_YEAR):
+        raise HTTPException(status_code=400, detail="건축년도가 올바르지 않습니다.")
 
 
 def _resolve_address(address_keyword: str) -> tuple[dict, str]:
@@ -121,7 +145,7 @@ def _build_listing_fields(request: ListingRegistrationRequest, info: dict, regio
     fields = {
         "region": region,
         "dong": _extract_dong(info["jibunAddr"], region),
-        "building_name": request.building_name or info["bdNm"],
+        "building_name": request.building_name.strip() or info["bdNm"],  # 공백만 입력해도 주소의 건물명으로 대신한다
         "property_type": request.property_type,
         "road_address": info["roadAddr"],
         "jibun_address": info["jibunAddr"],
