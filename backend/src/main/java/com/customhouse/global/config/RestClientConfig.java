@@ -1,10 +1,15 @@
 package com.customhouse.global.config;
 
+import com.customhouse.domain.recommendation.service.AiEngineErrorMessage;
+import com.customhouse.global.error.CustomException;
+import com.customhouse.global.error.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * [담당: 허겸] 공통 인프라 - 외부 서버(Python AI 엔진) 호출용 RestClient 빈 설정.
@@ -32,6 +37,14 @@ public class RestClientConfig {
         return RestClient.builder()
                 .baseUrl(aiEngineBaseUrl)
                 .requestFactory(requestFactory)
+                // AI 엔진이 400/422("입력이 잘못됐다")로 답하면 502(서버 오류)가 아니라 400으로 돌려주고 문구만 뽑아 보여준다 (2026-10-07).
+                // 404는 그대로 두어 AiEngineClient의 "삭제된 매물" 처리가 계속 동작한다.
+                .defaultStatusHandler(
+                        status -> status.value() == 400 || status.value() == 422,
+                        (request, response) -> {
+                            String body = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+                            throw new CustomException(ErrorCode.VALIDATION_ERROR, AiEngineErrorMessage.from(body));
+                        })
                 .build();
     }
 
