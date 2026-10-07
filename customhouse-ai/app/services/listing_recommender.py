@@ -280,7 +280,8 @@ def refresh_listing_card(request, listing_id: str) -> dict | None:
     유형, 이사 일정, 계약중 여부)는 적용하지 않는다 - 이미 관심매물로 담은 매물의 가격/비용을 새 기준으로 갱신하는 용도라서
     조건에 안 맞게 되었어도 카드는 만들어 준다. 매물이 없으면(삭제됨) None."""
     listing = listing_repository.get_listing(listing_id)
-    if listing is None:
+    # 삭제는 행을 지우지 않고 상태만 "삭제됨"으로 바꾸므로 상태도 같이 본다 (2026-10-07)
+    if listing is None or listing["listing_status"] == listing_schema.LISTING_STATUS_DELETED:
         return None
     work_lat, work_lon = _resolve_work_coords(request)
     deposit_rate = reb_conversion_rate.get_metro_conversion_rate()

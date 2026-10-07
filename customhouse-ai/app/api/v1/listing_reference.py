@@ -25,7 +25,7 @@ from fastapi import APIRouter
 
 from app.core.config import settings
 from app.models.response_schema import ReferenceTransaction, ReferenceTransactionsResponse
-from app.services import api_collector, listing_repository
+from app.services import api_collector, listing_repository, listing_schema
 
 router = APIRouter(prefix="/listings", tags=["listing-reference"])
 
@@ -70,8 +70,8 @@ def _to_response(records: list[dict], property_type: str, jibun: str) -> list[Re
 @router.get("/{listing_id}/reference", response_model=ReferenceTransactionsResponse)
 def get_reference_transactions(listing_id: str) -> ReferenceTransactionsResponse:
     listing = listing_repository.get_listing(listing_id)
-    if listing is None:
-        # 매물 자체가 없다(삭제됨) - 관심매물 카드가 "삭제된 매물" 안내를 띄우는 데 쓴다 (2026-10-06)
+    if listing is None or listing["listing_status"] == listing_schema.LISTING_STATUS_DELETED:
+        # 매물 자체가 없거나 삭제 상태다 - 관심매물 카드가 "삭제된 매물" 안내를 띄우는 데 쓴다 (2026-10-06, 상태 확인 10-07)
         return ReferenceTransactionsResponse(scope="deleted", transactions=[])
 
     lawd_cd = _lawd_cd(listing["region"])
