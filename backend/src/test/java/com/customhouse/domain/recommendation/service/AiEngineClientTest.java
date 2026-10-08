@@ -1,5 +1,7 @@
 package com.customhouse.domain.recommendation.service;
 
+import com.customhouse.domain.housingpolicy.dto.HousingPolicyForEngine;
+import com.customhouse.domain.housingpolicy.service.HousingPolicyService;
 import com.customhouse.domain.incomestandard.service.IncomeStandardService;
 import com.customhouse.domain.loan.service.LoanProductService;
 import com.customhouse.domain.recommendation.dto.AiListingRequest;
@@ -46,8 +48,9 @@ class AiEngineClientTest {
         LoanProductService loans = mock(LoanProductService.class);
         when(loans.getSavedLoans()).thenThrow(new IllegalStateException("db down"));
         IncomeStandardService incomeStandard = mock(IncomeStandardService.class);
+        HousingPolicyService housingPolicies = mock(HousingPolicyService.class);
 
-        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class)).requestListingDiagnosis(request);
+        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies).requestListingDiagnosis(request);
 
         assertThat(result).containsEntry("ok", true);
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
@@ -63,13 +66,51 @@ class AiEngineClientTest {
         LoanProductService loans = mock(LoanProductService.class);
         when(loans.getSavedLoans()).thenReturn(List.of());
         IncomeStandardService incomeStandard = mock(IncomeStandardService.class);
+        HousingPolicyService housingPolicies = mock(HousingPolicyService.class);
         when(incomeStandard.get()).thenThrow(new IllegalStateException("db down"));
 
-        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class)).requestListingDiagnosis(request);
+        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies).requestListingDiagnosis(request);
 
         assertThat(result).containsEntry("ok", true);
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
         verify(spec).body(body.capture());
         assertThat(((AiListingRequest) body.getValue()).incomeStandard()).isNull();
+    }
+
+    @Test
+    void 주거지원정책을_읽지_못해도_빈_목록으로_추천을_계속한다() {
+        RestClient rest = mock(RestClient.class);
+        RestClient.RequestBodySpec spec = mockRestClient(rest, Map.of("ok", true));
+        LoanProductService loans = mock(LoanProductService.class);
+        when(loans.getSavedLoans()).thenReturn(List.of());
+        HousingPolicyService housingPolicies = mock(HousingPolicyService.class);
+        when(housingPolicies.getForEngine()).thenThrow(new IllegalStateException("db down"));
+
+        Map<String, Object> result = new AiEngineClient(rest, loans, mock(IncomeStandardService.class),
+                mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies).requestListingDiagnosis(request);
+
+        assertThat(result).containsEntry("ok", true);
+        ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
+        verify(spec).body(body.capture());
+        assertThat(((AiListingRequest) body.getValue()).housingPolicies()).isEmpty();
+    }
+
+    @Test
+    void 저장된_주거지원정책이_진단_요청에_실린다() {
+        RestClient rest = mock(RestClient.class);
+        RestClient.RequestBodySpec spec = mockRestClient(rest, Map.of("ok", true));
+        LoanProductService loans = mock(LoanProductService.class);
+        when(loans.getSavedLoans()).thenReturn(List.of());
+        HousingPolicyService housingPolicies = mock(HousingPolicyService.class);
+        HousingPolicyForEngine policy = new HousingPolicyForEngine(1L, "서울", "주택도시기금", "버팀목 전세 대출", "설명", 19, 34, 5000, 34500,
+                null, false, false, false, true, true, null);
+        when(housingPolicies.getForEngine()).thenReturn(List.of(policy));
+
+        new AiEngineClient(rest, loans, mock(IncomeStandardService.class),
+                mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies).requestListingDiagnosis(request);
+
+        ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
+        verify(spec).body(body.capture());
+        assertThat(((AiListingRequest) body.getValue()).housingPolicies()).containsExactly(policy);
     }
 }

@@ -2,6 +2,8 @@ package com.customhouse.domain.recommendation.service;
 
 import com.customhouse.domain.appsetting.dto.AppSettingResponse;
 import com.customhouse.domain.appsetting.service.AppSettingService;
+import com.customhouse.domain.housingpolicy.dto.HousingPolicyForEngine;
+import com.customhouse.domain.housingpolicy.service.HousingPolicyService;
 import com.customhouse.domain.incomestandard.dto.IncomeStandardResponse;
 import com.customhouse.domain.incomestandard.service.IncomeStandardService;
 import com.customhouse.domain.listing.dto.ListingRegistrationRequest;
@@ -37,6 +39,7 @@ public class AiEngineClient {
     private final LoanProductService loanProductService;
     private final IncomeStandardService incomeStandardService;
     private final AppSettingService appSettingService;
+    private final HousingPolicyService housingPolicyService;
 
     /**
      * 더미 매물(docs/samples/dummyhouses CSV) 기반 추천. 같은 요청 본문을 customhouse-ai의
@@ -49,7 +52,7 @@ public class AiEngineClient {
         return aiEngineRestClient.post()
                 .uri("/api/v1/diagnosis/listings")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings()))
+                .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings(), housingPolicies()))
                 .retrieve()
                 .body(Map.class);
     }
@@ -63,7 +66,7 @@ public class AiEngineClient {
         return aiEngineRestClient.post()
                 .uri("/api/v1/diagnosis/home-preview")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiListingRequest(request, List.of(), incomeStandard(), null))
+                .body(new AiListingRequest(request, List.of(), incomeStandard(), null, List.of()))
                 .retrieve()
                 .body(Map.class);
     }
@@ -79,7 +82,7 @@ public class AiEngineClient {
             return aiEngineRestClient.post()
                     .uri("/api/v1/diagnosis/listings/{listingId}", listingId)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings()))
+                    .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings(), housingPolicies()))
                     .retrieve()
                     .body(Map.class);
         } catch (HttpClientErrorException.NotFound e) {
@@ -178,6 +181,16 @@ public class AiEngineClient {
         } catch (RuntimeException e) {
             log.warn("기준소득 통계를 읽지 못해 폴백 없이 진단을 진행합니다: {}", e.getMessage());
             return null;
+        }
+    }
+
+    /** 주거지원정책(리포트 "주거정책 추천")을 읽지 못해도 진단 자체는 계속한다 (정책 표만 비어 보인다). */
+    private List<HousingPolicyForEngine> housingPolicies() {
+        try {
+            return housingPolicyService.getForEngine();
+        } catch (RuntimeException e) {
+            log.warn("주거지원정책을 읽지 못해 정책 추천 없이 진단을 진행합니다: {}", e.getMessage());
+            return List.of();
         }
     }
 

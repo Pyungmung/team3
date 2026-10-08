@@ -422,7 +422,7 @@
     };
 
     const TABS = [{ key: "ALL", label: "전체" }, ...API.CATEGORIES, { key: "SCRAPS", label: "내 스크랩" }];
-    const PAGE_SIZE = 10;
+    const PAGE_SIZE = 8; // 한 페이지에 8개씩 (2026-10-08, 예전엔 10개). 서버가 page/size로 잘라서 내려주고 아래 pager로 페이지를 넘긴다
 
     function tabButton(t, isMobile) {
       const on = t.key === state.tab;

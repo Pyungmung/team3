@@ -1,7 +1,7 @@
 """
 [담당: 송귀성] 기준중위소득(policy_matcher._median_income_100_percent_monthly_manwon/_median_income_ok) 테스트.
 관리자 수정 > 기준소득관리에 저장된 값(request.income_standard, 원 단위)이 있으면 그걸 쓰고, 없으면
-policies.json의 레거시 값(만원 단위)으로 폴백하는지 확인한다.
+DEFAULT_MEDIAN_INCOME_100_MONTHLY_MANWON(예전 policies.json에 있던 값, 만원 단위)으로 폴백하는지 확인한다.
 실행 (customhouse-ai 폴더에서):  python tests/test_policy_matcher_median_income.py
 """
 import sys
@@ -33,16 +33,16 @@ def test_기준소득관리에_저장된_값이_있으면_그_값을_원단위�
     assert policy_matcher._median_income_ok(POLICY_65_PERCENT, over) is False
 
 
-def test_기준소득관리_값이_없으면_기존_policiesjson_값으로_폴백한다():
+def test_기준소득관리_값이_없으면_기본값으로_폴백한다():
     r = req(income_standard=None)
-    legacy_manwon = policy_matcher._load_policy_data()["median_income_100_percent_monthly_manwon"]
+    legacy_manwon = policy_matcher.DEFAULT_MEDIAN_INCOME_100_MONTHLY_MANWON
     assert policy_matcher._median_income_100_percent_monthly_manwon(r) == legacy_manwon
 
 
 def test_기준소득관리에_중위소득값만_비어있어도_폴백한다():
     # income_standard 객체 자체는 있지만(RIR만 저장된 경우) 중위소득값이 None이면 폴백
     r = req(income_standard={"rirMetroPercent": 18.4})
-    legacy_manwon = policy_matcher._load_policy_data()["median_income_100_percent_monthly_manwon"]
+    legacy_manwon = policy_matcher.DEFAULT_MEDIAN_INCOME_100_MONTHLY_MANWON
     assert policy_matcher._median_income_100_percent_monthly_manwon(r) == legacy_manwon
 
 

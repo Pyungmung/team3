@@ -35,7 +35,6 @@ class Settings(BaseSettings):
     # 샘플 데이터 경로. data_go_kr_api_key가 없으면(또는 API 호출 실패 시) 이 파일로 폴백한다.
     data_dir: Path = Path(__file__).resolve().parent.parent / "data"
     regions_file: Path = data_dir / "regions.json"
-    policies_file: Path = data_dir / "policies.json"
     lawd_codes_file: Path = data_dir / "lawd_codes.json"
     region_coords_file: Path = data_dir / "region_coords.json"
     work_locations_file: Path = data_dir / "work_locations.json"

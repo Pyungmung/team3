@@ -70,6 +70,8 @@
 | `post_scraps` | `domain/board/entity/PostScrap.java` | 미정 | 게시글 스크랩 |
 | `listing_reports` | `domain/listing/entity/ListingReport.java` | 송귀성 | 추천 매물(더미 매물 CSV) 허위매물 신고 (회원당 매물 1번) |
 | `listing_favorites` | `domain/listing/entity/ListingFavorite.java` | 송귀성 | 추천 매물 관심매물 (마이페이지 관심 매물에 함께 표시) |
+| `housing_policies` | `domain/housingpolicy/entity/HousingPolicy.java` | 송귀성 | 주거지원정책 (2026-10-08, 예전 `docs/housing_policy_list.csv` → `policies.json`을 DB로 옮김. 관리자 수정 > 주거지원정책에서 관리) |
+| `favorite_policies` | `domain/policy/entity/FavoritePolicy.java` | 송귀성 | 관심정책 (리포트 "주거정책 추천" 표의 하트 → 관심매물 페이지 "관심정책 조회", 정책 id만 저장) |
 | `registered_listings` | `domain/listing/entity/RegisteredListing.java` | 송귀성 | 회원이 등록한 매물의 소유권 + **매물 원본**. `listing_id VARCHAR(40) UNIQUE`, `user_id BIGINT`, `region VARCHAR(10)`, **`row_json LONGTEXT`**(2026-10-06: AI 엔진이 저장한 CSV 한 행 55컬럼을 JSON으로). Render 무료 서버가 재배포/재시작돼 AI 엔진 CSV가 처음 상태로 돌아가면, 엔진이 켜질 때 `GET /api/internal/registered-listings`(헤더 `X-Internal-Key`=`INTERNAL_API_KEY`)로 이 값을 받아 CSV에 되살린다. 운영(validate)에는 `ALTER TABLE registered_listings ADD COLUMN row_json LONGTEXT;` 필요 |
 | `listing_photos` | `domain/listing/entity/ListingPhoto.java` | 송귀성 | 매물 등록 대표 사진 원본(2026-10-06, 예전엔 서버 디스크). `filename VARCHAR(80) PK`(UUID.확장자), `content_type VARCHAR(40)`, `data MEDIUMBLOB`, created_at/updated_at. `/uploads/listings/{filename}`으로 서빙. 운영(validate)에는 `CREATE TABLE listing_photos (filename VARCHAR(80) PRIMARY KEY, content_type VARCHAR(40) NOT NULL, data MEDIUMBLOB NOT NULL, created_at DATETIME(6), updated_at DATETIME(6));` 필요 |
 | `app_settings` | `domain/appsetting/entity/AppSetting.java` | 송귀성 | 관리자 수정 > 기타 설정 (싱글톤 1행, id=1). `recommendation_limit INT` = 추천 개수 상한(월세·전세 각각, 기본 500, 10~1000). 서버 최초 기동 때 시더가 기본값으로 만들고, 진단 요청마다 AI 엔진에 실어 보낸다. 운영(validate)에는 `CREATE TABLE app_settings (id BIGINT PRIMARY KEY, recommendation_limit INT, created_at DATETIME(6), updated_at DATETIME(6));` 필요 |
@@ -257,6 +259,25 @@ VARCHAR를 의도했지만, 실제 Aiven 운영 DB를 열어보니 Hibernate가 
 
 > 회원 탈퇴 시 `listing_favorites`는 함께 지우고, `listing_reports`는 신고 누적 집계를 위해 남깁니다.
 
+#### housing_policies / favorite_policies (주거지원정책·관심정책, 2026-10-08)
+주거정책은 매달 바뀌거나 사라지는 데이터라 CSV(`docs/housing_policy_list.csv`) → `policies.json` 변환 방식을 버리고 DB로 옮겼습니다.
+최초 기동 때 `HousingPolicySeeder`가 `backend/src/main/resources/seed/housing_policies.json`(기존 CSV 439건, CSV 줄 순서 그대로)을 **테이블이 비어 있을 때만** 한 번 넣고,
+이후에는 **관리자 수정 > 주거지원정책 탭만이 정책의 편집 창구**입니다. 백엔드가 진단 요청 때마다 이 목록을 읽어 AI 엔진 요청(`housingPolicies`)에 실어 보내고(5분 캐시, 저장/삭제 시 즉시 갱신),
+AI 엔진은 파일/CSV를 읽지 않고 그 목록으로 조건(나이·소득·자산·중위소득%·기초수급·중소기업·신혼부부·무주택)을 판별해 "주거정책 추천" 표를 만듭니다.
+관심정책은 정책 내용을 복사해 두지 않고 정책 id만 들고 있어서, 정책을 고치면 관심정책 조회에 바로 반영되고 삭제하면 함께 빠집니다. 회원/정책은 FK 없이 id만 저장합니다.
+
+| 테이블 | 컬럼 | 제약 |
+|---|---|---|
+| housing_policies | id PK, region VARCHAR(30) (`서울`=서울 공통 또는 자치구명), agency VARCHAR(100), name VARCHAR(150), description TEXT, min_age INT, max_age INT, max_annual_income INT(만원), max_asset INT(만원), median_income_percent INT, require_basic_livelihood / require_sme / require_newlywed / require_no_household / is_loan BOOLEAN, note VARCHAR(300)(관리자 메모), link VARCHAR(500), created_at/updated_at | 인덱스 `idx_housing_policy_region`. 숫자 칸이 NULL이면 "제한 없음". id 순서 = 리포트 표시 순서 |
+| favorite_policies | id PK, user_id BIGINT, policy_id BIGINT, created_at/updated_at | **UNIQUE(user_id, policy_id)** `uk_favorite_policy_user_policy` = 중복 담기 방지, 인덱스 `idx_favorite_policy_user`, `idx_favorite_policy_policy`. 회원당 최대 200건 |
+
+- 정책을 **수정**하면(지역·기관명·정책명·지원혜택·조건·링크 중 하나라도 바뀌면) 그 정책을 관심정책으로 담은 회원에게 "관심 정책 변경" 알림(`notifications`)이 갑니다. 관리자 메모(`note`)나 대출 구분만 바꾸면 알림이 가지 않습니다.
+- 정책을 **삭제**하면 담은 회원의 관심정책에서 함께 빠지고 "관심 정책 삭제" 알림이 갑니다.
+- 회원 탈퇴 시 `favorite_policies`는 함께 지웁니다.
+- 운영(validate)에는 `CREATE TABLE housing_policies (id BIGINT AUTO_INCREMENT PRIMARY KEY, region VARCHAR(30) NOT NULL, agency VARCHAR(100) NOT NULL, name VARCHAR(150) NOT NULL, description TEXT NOT NULL, min_age INT, max_age INT, max_annual_income INT, max_asset INT, median_income_percent INT, require_basic_livelihood BIT NOT NULL, require_sme BIT NOT NULL, require_newlywed BIT NOT NULL, require_no_household BIT NOT NULL, is_loan BIT NOT NULL, note VARCHAR(300), link VARCHAR(500), created_at DATETIME(6), updated_at DATETIME(6), KEY idx_housing_policy_region (region));` 와 `CREATE TABLE favorite_policies (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, policy_id BIGINT NOT NULL, created_at DATETIME(6), updated_at DATETIME(6), UNIQUE KEY uk_favorite_policy_user_policy (user_id, policy_id), KEY idx_favorite_policy_user (user_id), KEY idx_favorite_policy_policy (policy_id));` 가 필요합니다 (dev/local-mysql은 서버를 켜면 자동 생성).
+- 개발 중 잠깐 만들어졌던 `policy_favorites` 테이블(정책 내용을 복사해 담던 옛 방식)은 더 쓰지 않습니다. 공유 DB에 남아 있어도 비어 있으니 지워도 됩니다.
+- 예전 CSV(`docs/housing_policy_list.csv`)와 변환 스크립트는 삭제했습니다 (CSV 원본은 git 기록에, 최초 시드는 `backend/src/main/resources/seed/housing_policies.json`).
+
 #### loan_products (전세자금대출 조건, 관리자 수정)
 대출 4종(`GENERAL_BEOTIMMOK`, `YOUTH_BEOTIMMOK`, `NEWBORN_BEOTIMMOK`, `YOUTH_MONTHLY_RENT`)은 코드(`LoanType`)에 고정이고, 저장된 조건만 행으로 있다(삭제하면 행이 지워져 "미설정"). 중소기업 청년 버팀목 전세대출(`SME_YOUTH_BEOTIMMOK`)은 상품이 없어져 코드에서 제거됨 - 저장된 행이 있었어도 더는 조회되지 않는다.
 값이 NULL이면 그 조건은 "제한 없음"이다. 이후 이자 계산식이 이 조건으로 자격 판별과 우대금리 차감을 한다.
@@ -306,6 +327,7 @@ posts 1 ─── N   post_metas / comments / vote_options
 vote_options 1 ─── N vote_records     (post_id+user_id 유니크 = 1인 1표)
 users N ─── N   posts                 (post_likes, post_scraps 로 연결)
 users 1 ─── N   listing_reports / listing_favorites  (user_id, FK 없음. 매물은 CSV의 매물등록번호 문자열)
+users 1 ─── N   favorite_policies ─── N 1 housing_policies   (user_id, policy_id, FK 없음. 정책을 고치면 관심정책 조회에 바로 반영)
 loan_products / loan_reference_links   (대출 종류 코드 5종 고정, 다른 테이블과 연결 없음)
 ```
 
