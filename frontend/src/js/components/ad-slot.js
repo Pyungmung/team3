@@ -118,6 +118,14 @@
     return true;
   }
 
+  /** 배너 이미지를 미리 받아 브라우저 캐시에 둔다 (이미지는 서버가 DB에서 읽어 처음 받을 때 몇 초 걸릴 수 있어서, 보여 주기 전에 미리 받아 두는 용도) */
+  function preloadBanner(banner) {
+    if (!banner || !banner.imageUrl) return;
+    const img = new Image();
+    img.decoding = "async";
+    img.src = imageSrc(banner.imageUrl);
+  }
+
   /**
    * 자리 하나를 채운다.
    * @param {HTMLElement} el data-ad-slot 요소
@@ -144,7 +152,7 @@
     return Promise.all([...(container || document).querySelectorAll("[data-ad-slot]")].map((el) => mount(el)));
   }
 
-  root.CustomHouseAdSlot = { mount, mountAll, fetchBanners, loadProfile };
+  root.CustomHouseAdSlot = { mount, mountAll, fetchBanners, loadProfile, preloadBanner };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => mountAll());
   } else {
