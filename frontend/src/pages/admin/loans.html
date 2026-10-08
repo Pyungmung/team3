@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- [담당: 송귀성] 관리자 수정 > 전세자금대출: 대출 5종의 자격 조건/우대사항을 입력한다 (관리자 계정 전용) -->
+<!-- [담당: 송귀성] 관리자 수정 > 전세자금대출 / 기준소득관리 / 주거지원정책 / 기타 설정 (관리자 계정 전용) -->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -77,12 +77,36 @@
     .adm-msg { font-size: 13px; font-weight: 700; }
     .adm-msg.ok { color: #16a34a; }
     .adm-msg.err { color: #dc2626; }
+    /* 주거지원정책 탭: 정책 1건 = 표의 한 줄 */
+    .hp-wrap { overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 10px; }
+    .hp-table { border-collapse: collapse; font-size: 13px; min-width: 1580px; width: 100%; table-layout: fixed; }
+    .hp-table th { background: #f8fafc; color: #0f172a; font-size: 12px; font-weight: 800; padding: 9px 6px; border-bottom: 1px solid #cbd5e1; text-align: center; white-space: nowrap; }
+    .hp-table td { padding: 7px 5px; border-top: 1px solid #e2e8f0; vertical-align: middle; text-align: center; }
+    .hp-table tr.hp-new td { background: #eff6ff; }
+    .hp-table tr.hp-dirty td { background: #fffbeb; }
+    .hp-table tr.hp-error td { background: #fef2f2; }
+    .hp-table input[type=text], .hp-table input[type=number], .hp-table textarea { width: 100%; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 7px; padding: 6px 7px; background: #fff; }
+    .hp-table textarea { resize: vertical; min-height: 54px; line-height: 1.4; font-weight: 800; color: #2563eb; font-family: inherit; }
+    .hp-table input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brand-600, #1B2A4A); }
+    .hp-table .hp-age { display: flex; align-items: center; gap: 3px; }
+    .hp-table .hp-age em { font-style: normal; color: #94a3b8; }
+    .hp-table .hp-act { display: flex; flex-direction: column; gap: 5px; }
+    .hp-link { display: flex; align-items: center; gap: 5px; }
+    .hp-link input { flex: 1; min-width: 0; }
+    .hp-go { flex: none; display: inline-block; font-size: 12px; font-weight: 800; line-height: 1; white-space: nowrap; border-radius: 999px; padding: 6px 9px; text-decoration: none; background: #fff; color: #1B2A4A; border: 1px solid #1B2A4A; }
+    .hp-go:hover { background: #1B2A4A; color: #fff; }
+    .hp-go.off { color: #b8bec8; border-color: #e5e7eb; background: #fff; cursor: default; pointer-events: none; }
+    .hp-btn { font-size: 12px; font-weight: 800; border-radius: 7px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+    .hp-btn:disabled { opacity: .45; cursor: default; }
+    .hp-save { border: 1px solid #1d4ed8; background: #1d4ed8; color: #fff; }
+    .hp-del { border: 1px solid #fca5a5; background: #fff; color: #dc2626; }
+    .hp-del:hover:not(:disabled) { background: #fef2f2; }
   </style>
 </head>
 <body>
   <div id="app-header"></div>
 
-  <main class="max-w-4xl mx-auto px-4 py-10">
+  <main id="adm-main" class="max-w-4xl mx-auto px-4 py-10">
     <h1 class="text-2xl font-extrabold mb-1">관리자 수정</h1>
     <p class="text-sm text-gray-500 mb-6">리포트의 "[대출이름] 실질주거비" 계산에 쓰이는 대출 조건을 설정합니다. 관리자 계정만 볼 수 있어요.</p>
 
@@ -94,6 +118,7 @@
       <div id="top-tabs" class="flex border-b border-slate-200 mb-6 overflow-x-auto" role="tablist">
         <button type="button" class="adm-tab active" role="tab" aria-selected="true" data-top-tab="loans">전세자금대출</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="income-standard">기준소득관리</button>
+        <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="housing-policies">주거지원정책</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="app-settings">기타 설정</button>
       </div>
 
@@ -165,6 +190,48 @@
         </form>
       </section>
 
+      <section id="tab-housing-policies" class="hidden">
+        <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+          <h2 class="text-lg font-extrabold">주거지원정책</h2>
+          <span class="text-xs text-slate-400" id="hp-total"></span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">
+          리포트 "주거정책 추천" 표에 나오는 정책이에요. 한 줄이 정책 1건이고, 줄마다 <b>저장</b>/<b>삭제</b>해요. 저장하면 다음 진단부터 바로 반영돼요.
+          숫자 칸을 <b>비우면 "제한 없음"</b>, 체크 칸은 체크하면 그 조건에 해당하는 사람만 추천돼요.
+          지원혜택·링크 등 사용자에게 보이는 내용이나 조건을 고치면 이 정책을 <b>관심정책으로 담은 회원에게 알림</b>이 가고, 삭제하면 그 회원의 관심정책에서도 빠져요.
+        </p>
+        <div id="hp-subtabs" class="adm-subtabs mb-4" role="tablist" aria-label="지역"></div>
+        <div class="flex items-center gap-3 flex-wrap mb-3">
+          <button type="button" id="hp-add" class="adm-btn adm-save" style="padding:8px 16px">+ 정책 추가</button>
+          <span class="adm-msg" id="hp-msg" role="status"></span>
+        </div>
+        <div class="hp-wrap">
+          <table class="hp-table">
+            <thead>
+              <tr>
+                <th style="width:110px">기관명</th>
+                <th style="width:150px">지원정책명</th>
+                <th style="width:240px">지원혜택</th>
+                <th style="width:112px">나이<br />(최소~최대 세)</th>
+                <th style="width:84px">연소득<br />(만원 이하)</th>
+                <th style="width:84px">총자산<br />(만원 이하)</th>
+                <th style="width:84px">기준중위소득<br />(% 이하)</th>
+                <th style="width:58px">기초<br />수급</th>
+                <th style="width:58px">중소<br />기업</th>
+                <th style="width:58px">신혼<br />부부</th>
+                <th style="width:58px">무주택</th>
+                <th style="width:50px">대출</th>
+                <th style="width:120px">특이사항<br />(관리자 메모)</th>
+                <th style="width:240px">링크 (이동 버튼으로 확인)</th>
+                <th style="width:76px">저장 / 삭제</th>
+              </tr>
+            </thead>
+            <tbody id="hp-body"></tbody>
+          </table>
+        </div>
+        <p id="hp-empty" class="hidden text-sm text-slate-400 mt-3">이 지역에는 아직 정책이 없어요. [+ 정책 추가]로 등록해 보세요.</p>
+      </section>
+
       <section id="tab-app-settings" class="hidden">
         <form id="app-settings-form" class="card p-6 space-y-6" novalidate>
           <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -204,6 +271,7 @@
   <script src="../../js/api/admin-loans.js?v=20260928a"></script>
   <script src="../../js/api/admin-income-standard.js?v=20260930a"></script>
   <script src="../../js/api/admin-app-settings.js?v=20261005a"></script>
+  <script src="../../js/api/admin-housing-policies.js?v=20261008a"></script>
   <script>
     renderHeader("admin");
     renderFooter();
@@ -689,7 +757,7 @@
       if (btn) selectSubtab(btn.dataset.type);
     });
 
-    // ---------- 상단 탭 (전세자금대출 / 기준소득관리 / 기타 설정) ----------
+    // ---------- 상단 탭 (전세자금대출 / 기준소득관리 / 주거지원정책 / 기타 설정) ----------
     function selectTopTab(tab) {
       topTabsEl.querySelectorAll(".adm-tab").forEach((b) => {
         const on = b.dataset.topTab === tab;
@@ -698,6 +766,11 @@
       });
       document.getElementById("tab-loans").classList.toggle("hidden", tab !== "loans");
       document.getElementById("tab-income-standard").classList.toggle("hidden", tab !== "income-standard");
+      document.getElementById("tab-housing-policies").classList.toggle("hidden", tab !== "housing-policies");
+      // 주거지원정책 표는 칸이 많아서 이 탭에서만 화면 폭을 넓힌다
+      document.getElementById("adm-main").classList.toggle("max-w-4xl", tab !== "housing-policies");
+      document.getElementById("adm-main").classList.toggle("max-w-[1620px]", tab === "housing-policies");
+      if (tab === "housing-policies") loadHousingPolicies();
       document.getElementById("tab-app-settings").classList.toggle("hidden", tab !== "app-settings");
     }
 
@@ -888,6 +961,239 @@
         if (!url) return setRefMsg(form, "먼저 참고 페이지 주소를 입력해주세요.", "err");
         if (!/^https?:\/\/.+/.test(url)) return setRefMsg(form, "http:// 또는 https://로 시작하는 주소를 입력해주세요.", "err");
         window.open(url, "_blank", "noopener,noreferrer");
+      }
+    });
+
+    // ---------- 주거지원정책 (서울공통 + 25개 자치구 하위탭, 한 줄 = 정책 1건) ----------
+    const HP_REGIONS = ["서울", "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구",
+      "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"];
+    const hpRegionLabel = (r) => (r === "서울" ? "서울공통" : r);
+    const hpSubtabsEl = document.getElementById("hp-subtabs");
+    const hpBodyEl = document.getElementById("hp-body");
+    const hpMsgEl = document.getElementById("hp-msg");
+    const hpEmptyEl = document.getElementById("hp-empty");
+    let hpPolicies = null; // 서버에 저장된 전체 정책 (처음 이 탭을 열 때 한 번 불러온다)
+    let hpRegion = "서울";
+    let hpLoading = false;
+
+    function setHpMsg(text, kind) {
+      hpMsgEl.textContent = text || "";
+      hpMsgEl.className = "adm-msg" + (kind ? " " + kind : "");
+    }
+
+    /** 링크 칸 옆 [이동] 버튼: 입력된 주소(http/https)를 새 탭으로 열어 바로 확인한다. 비었거나 형식이 아니면 회색(누를 수 없음). */
+    const HP_URL_RE = /^https?:\/\/\S+$/i;
+    function hpGoHtml(link) {
+      const url = (link || "").trim();
+      return HP_URL_RE.test(url)
+        ? `<a class="hp-go" data-hp-go href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(url)} 열기">이동</a>`
+        : `<a class="hp-go off" data-hp-go title="http:// 또는 https://로 시작하는 주소를 입력하면 이동할 수 있어요" aria-disabled="true">이동</a>`;
+    }
+
+    function hpRowHtml(p, region) {
+      const n = (v) => (v === null || v === undefined ? "" : v);
+      const chk = (f) => `<input type="checkbox" data-f="${f}" ${p && p[f] ? "checked" : ""} />`;
+      return `
+        <tr class="${p ? "" : "hp-new"}" data-id="${p ? p.id : ""}" data-region="${esc(region)}">
+          <td><input type="text" data-f="agency" maxlength="100" value="${esc(p?.agency ?? "")}" placeholder="기관명" /></td>
+          <td><input type="text" data-f="name" maxlength="150" value="${esc(p?.name ?? "")}" placeholder="정책명" /></td>
+          <td><textarea data-f="description" maxlength="5000" placeholder="지원혜택">${esc(p?.description ?? "")}</textarea></td>
+          <td><div class="hp-age"><input type="number" data-f="minAge" min="0" max="120" value="${n(p?.minAge)}" /><em>~</em><input type="number" data-f="maxAge" min="0" max="120" value="${n(p?.maxAge)}" /></div></td>
+          <td><input type="number" data-f="maxAnnualIncome" min="0" value="${n(p?.maxAnnualIncome)}" /></td>
+          <td><input type="number" data-f="maxAsset" min="0" value="${n(p?.maxAsset)}" /></td>
+          <td><input type="number" data-f="medianIncomePercent" min="0" max="1000" value="${n(p?.medianIncomePercent)}" /></td>
+          <td>${chk("requireBasicLivelihood")}</td>
+          <td>${chk("requireSme")}</td>
+          <td>${chk("requireNewlywed")}</td>
+          <td>${chk("requireNoHousehold")}</td>
+          <td>${chk("loan")}</td>
+          <td><input type="text" data-f="note" maxlength="300" value="${esc(p?.note ?? "")}" placeholder="메모" /></td>
+          <td><div class="hp-link"><input type="text" data-f="link" maxlength="500" value="${esc(p?.link ?? "")}" placeholder="https://..." />${hpGoHtml(p?.link)}</div></td>
+          <td><div class="hp-act">
+            <button type="button" class="hp-btn hp-save" data-hp-save ${p ? "disabled" : ""}>저장</button>
+            <button type="button" class="hp-btn hp-del" data-hp-del>삭제</button>
+          </div></td>
+        </tr>`;
+    }
+
+    /** 한 줄의 입력값 -> 저장 요청 본문 (숫자 칸을 비우면 null = 제한 없음) */
+    function readHpRow(tr) {
+      const get = (f) => tr.querySelector(`[data-f="${f}"]`);
+      const text = (f) => get(f).value.trim();
+      const num = (f) => (get(f).value.trim() === "" ? null : Number(get(f).value));
+      const flag = (f) => get(f).checked;
+      return {
+        region: tr.dataset.region, agency: text("agency"), name: text("name"), description: text("description"),
+        minAge: num("minAge"), maxAge: num("maxAge"), maxAnnualIncome: num("maxAnnualIncome"), maxAsset: num("maxAsset"),
+        medianIncomePercent: num("medianIncomePercent"), requireBasicLivelihood: flag("requireBasicLivelihood"), requireSme: flag("requireSme"),
+        requireNewlywed: flag("requireNewlywed"), requireNoHousehold: flag("requireNoHousehold"), loan: flag("loan"),
+        note: text("note") || null, link: text("link") || null,
+      };
+    }
+
+    function validateHpPolicy(p) {
+      if (!p.agency) return "기관명을 입력해주세요.";
+      if (!p.name) return "지원정책명을 입력해주세요.";
+      if (!p.description) return "지원혜택을 입력해주세요.";
+      const intOk = (v, max) => v === null || (Number.isInteger(v) && v >= 0 && v <= max);
+      if (!intOk(p.minAge, 120) || !intOk(p.maxAge, 120)) return "나이는 0~120 사이의 정수로 입력해주세요.";
+      if (p.minAge !== null && p.maxAge !== null && p.minAge > p.maxAge) return "최소 나이가 최대 나이보다 클 수 없어요.";
+      if (!intOk(p.maxAnnualIncome, 1000000) || !intOk(p.maxAsset, 1000000)) return "연소득/총자산은 0 이상의 정수(만원)로 입력해주세요.";
+      if (!intOk(p.medianIncomePercent, 1000)) return "기준중위소득은 0~1000 사이의 정수(%)로 입력해주세요.";
+      if (p.link && !/^https?:\/\/\S+$/i.test(p.link)) return "링크는 http:// 또는 https://로 시작해야 해요.";
+      return "";
+    }
+
+    /** 링크 칸을 고치면 [이동] 버튼도 바로 그 주소로 바꾼다 (저장하기 전에도 주소가 맞는지 확인할 수 있다) */
+    function refreshHpGo(tr) {
+      const go = tr.querySelector("[data-hp-go]");
+      const url = tr.querySelector('[data-f="link"]').value.trim();
+      const ok = HP_URL_RE.test(url);
+      go.classList.toggle("off", !ok);
+      go.setAttribute("aria-disabled", String(!ok));
+      if (ok) {
+        go.href = url;
+        go.target = "_blank";
+        go.rel = "noopener noreferrer";
+        go.title = `${url} 열기`;
+      } else {
+        go.removeAttribute("href");
+        go.title = "http:// 또는 https://로 시작하는 주소를 입력하면 이동할 수 있어요";
+      }
+    }
+
+    /** 저장된 값과 다르면(또는 새 줄이면) 저장 버튼을 켜고 노란 배경으로 표시한다 */
+    function refreshHpRowState(tr) {
+      refreshHpGo(tr);
+      const id = tr.dataset.id;
+      const saved = id ? hpPolicies.find((x) => String(x.id) === id) : null;
+      const now = readHpRow(tr);
+      let dirty = true;
+      if (saved) {
+        const keys = Object.keys(now);
+        dirty = keys.some((k) => (now[k] ?? null) !== ((saved[k] ?? null) === "" ? null : saved[k] ?? null));
+      }
+      tr.classList.toggle("hp-dirty", !!saved && dirty);
+      tr.classList.remove("hp-error");
+      tr.querySelector("[data-hp-save]").disabled = !dirty;
+    }
+
+    function hpHasUnsaved() {
+      return [...hpBodyEl.querySelectorAll("tr")].some((tr) => !tr.dataset.id || tr.querySelector("[data-hp-save]:not(:disabled)"));
+    }
+
+    function renderHpSubtabs() {
+      const counts = {};
+      hpPolicies.forEach((p) => (counts[p.region] = (counts[p.region] || 0) + 1));
+      hpSubtabsEl.innerHTML = HP_REGIONS.map(
+        (r) => `<button type="button" class="adm-subtab ${r === hpRegion ? "active" : ""}" role="tab" data-region="${esc(r)}">${esc(hpRegionLabel(r))} ${counts[r] || 0}</button>`
+      ).join("");
+      document.getElementById("hp-total").textContent = `전체 ${hpPolicies.length}건`;
+    }
+
+    function renderHpTable() {
+      const rows = hpPolicies.filter((p) => p.region === hpRegion).sort((a, b) => a.id - b.id);
+      hpBodyEl.innerHTML = rows.map((p) => hpRowHtml(p, hpRegion)).join("");
+      hpEmptyEl.classList.toggle("hidden", rows.length > 0);
+    }
+
+    async function loadHousingPolicies() {
+      if (hpPolicies || hpLoading) return;
+      hpLoading = true;
+      setHpMsg("불러오는 중...", "");
+      try {
+        hpPolicies = await CustomHouseAdminHousingPolicyApi.getHousingPolicies();
+        setHpMsg("", "");
+        renderHpSubtabs();
+        renderHpTable();
+      } catch (err) {
+        setHpMsg(err.message || "주거지원정책을 불러오지 못했어요.", "err");
+      } finally {
+        hpLoading = false;
+      }
+    }
+
+    hpSubtabsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-region]");
+      if (!btn || btn.dataset.region === hpRegion) return;
+      if (hpHasUnsaved() && !confirm("저장하지 않은 수정이 있어요. 버리고 다른 지역으로 이동할까요?")) return;
+      hpRegion = btn.dataset.region;
+      setHpMsg("", "");
+      renderHpSubtabs();
+      renderHpTable();
+    });
+
+    document.getElementById("hp-add").addEventListener("click", () => {
+      if (!hpPolicies) return;
+      hpEmptyEl.classList.add("hidden");
+      hpBodyEl.insertAdjacentHTML("beforeend", hpRowHtml(null, hpRegion));
+      const tr = hpBodyEl.lastElementChild;
+      tr.scrollIntoView({ block: "center", behavior: "smooth" });
+      tr.querySelector('[data-f="agency"]').focus();
+      setHpMsg(`${hpRegionLabel(hpRegion)}에 새 정책 줄을 추가했어요. 내용을 채우고 [저장]을 눌러주세요.`, "");
+    });
+
+    hpBodyEl.addEventListener("input", (e) => {
+      const tr = e.target.closest("tr");
+      if (tr) refreshHpRowState(tr);
+    });
+    hpBodyEl.addEventListener("change", (e) => {
+      const tr = e.target.closest("tr");
+      if (tr) refreshHpRowState(tr);
+    });
+
+    const notifiedText = (n) => (n > 0 ? ` · 관심정책으로 담은 회원 ${n}명에게 알림을 보냈어요` : "");
+
+    hpBodyEl.addEventListener("click", async (e) => {
+      const saveBtn = e.target.closest("[data-hp-save]");
+      const delBtn = e.target.closest("[data-hp-del]");
+      if (!saveBtn && !delBtn) return;
+      const tr = e.target.closest("tr");
+      const id = tr.dataset.id;
+
+      if (delBtn) {
+        if (!id) { // 아직 저장 안 한 새 줄은 그냥 지운다
+          tr.remove();
+          hpEmptyEl.classList.toggle("hidden", hpBodyEl.children.length > 0);
+          return;
+        }
+        const name = tr.querySelector('[data-f="name"]').value.trim() || "이 정책";
+        if (!confirm(`"${name}" 정책을 삭제할까요?\n\n삭제하면 이 정책을 관심정책으로 담은 회원의 관심정책에서도 빠지고 알림이 가요. 되돌릴 수 없어요.`)) return;
+        delBtn.disabled = true;
+        try {
+          const res = await CustomHouseAdminHousingPolicyApi.deleteHousingPolicy(id);
+          hpPolicies = hpPolicies.filter((p) => String(p.id) !== id);
+          tr.remove();
+          renderHpSubtabs();
+          hpEmptyEl.classList.toggle("hidden", hpBodyEl.children.length > 0);
+          setHpMsg(`"${name}" 정책을 삭제했어요${notifiedText(res.notifiedUsers)}.`, "ok");
+        } catch (err) {
+          delBtn.disabled = false;
+          setHpMsg(err.message || "삭제하지 못했어요.", "err");
+        }
+        return;
+      }
+
+      const payload = readHpRow(tr);
+      const problem = validateHpPolicy(payload);
+      if (problem) {
+        tr.classList.add("hp-error");
+        return setHpMsg(problem, "err");
+      }
+      saveBtn.disabled = true;
+      try {
+        const res = id
+          ? await CustomHouseAdminHousingPolicyApi.updateHousingPolicy(id, payload)
+          : await CustomHouseAdminHousingPolicyApi.createHousingPolicy(payload);
+        const saved = res.policy;
+        hpPolicies = id ? hpPolicies.map((p) => (String(p.id) === id ? saved : p)) : [...hpPolicies, saved];
+        tr.outerHTML = hpRowHtml(saved, saved.region);
+        renderHpSubtabs();
+        setHpMsg(`"${saved.name}" 정책을 ${id ? "저장" : "추가"}했어요${notifiedText(res.notifiedUsers)}.`, "ok");
+      } catch (err) {
+        tr.classList.add("hp-error");
+        saveBtn.disabled = false;
+        setHpMsg(err.message || "저장하지 못했어요.", "err");
       }
     });
 

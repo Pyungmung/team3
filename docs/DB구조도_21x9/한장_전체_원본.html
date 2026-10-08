@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>맞집 DB 구조도 21:9</title>
+<style>
+  :root {
+    --bg: #f8fafc; --ink: #0f172a; --ink2: #475569; --ink3: #94a3b8; --line: #475569; --border: #e2e8f0;
+    --head: #0f172a; --pk: #b45309; --uq-bg: #fef3c7; --uq-fg: #92400e; --fk-bg: #e2e8f0; --fk-fg: #475569;
+    --A: #2563eb; --E: #0891b2; --B: #059669; --C: #d97706; --D: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { width: 3360px; height: 1440px; background: var(--bg); font-family: "Malgun Gothic", "Noto Sans KR", sans-serif; color: var(--ink); position: relative; overflow: hidden; }
+  .title { position: absolute; left: 40px; top: 20px; font-size: 68px; font-weight: 800; letter-spacing: -1px; }
+  .title small { font-size: 34px; font-weight: 500; color: var(--ink2); margin-left: 18px; letter-spacing: 0; }
+  .zone { z-index: 0; position: absolute; border-radius: 22px; border: 2.5px solid; }
+  .zone .zlabel { position: absolute; left: 20px; top: 8px; font-size: 40px; font-weight: 800; }
+  .zone .zlabel span { font-size: 27px; font-weight: 600; margin-left: 10px; opacity: .85; }
+  .zone .zsub { position: absolute; left: 20px; top: 60px; font-size: 22px; color: var(--ink2); }
+  .tbl { z-index: 2; position: absolute; background: #fff; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 6px rgba(15,23,42,.10); }
+  .tbl .head { height: 56px; background: var(--head); color: #f8fafc; display: flex; align-items: center; padding: 0 14px; font-family: Consolas, "Courier New", monospace; font-weight: 700; font-size: 32px; }
+  .tbl .row { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-top: 1px solid var(--border); font-size: 25px; white-space: nowrap; }
+  .tbl .row.more { height: 34px; color: var(--ink2); font-style: italic; font-size: 20px; background: #f8fafc; }
+  .tbl .row .mark { width: 18px; text-align: center; flex: none; color: var(--ink3); font-size: 11px; }
+  .tbl .row .mark.pk { color: var(--pk); font-size: 17px; }
+  .tbl .row .nm { font-family: Consolas, "Courier New", monospace; font-weight: 700; }
+  .tbl .row .ty { margin-left: auto; font-family: Consolas, "Courier New", monospace; color: var(--ink2); font-size: 17px; }
+  .b { font-size: 15px; font-weight: 800; padding: 0 6px; border-radius: 5px; font-family: "Malgun Gothic", sans-serif; }
+  .b.fk { background: var(--fk-bg); color: var(--fk-fg); }
+  .b.uq { background: var(--uq-bg); color: var(--uq-fg); }
+  .b.ref { background: #dbeafe; color: #1d4ed8; }
+  .chip { z-index: 3; position: absolute; transform: translate(-50%, -100%); background: #fff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 2px 6px; text-align: center; line-height: 1.15; white-space: nowrap; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+  .chip .v { font-size: 24px; font-weight: 800; color: var(--ink); }
+  .chip .c { font-size: 17px; color: var(--ink2); font-weight: 600; }
+  .chip.mid { transform: translate(-50%, -50%); }
+  .note { z-index: 3; position: absolute; background: #ecfdf5; border: 2px dashed #34d399; border-radius: 12px; padding: 16px 20px; font-size: 25px; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; color: #064e3b; }
+  .pill { z-index: 3; position: absolute; border: 3px solid; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800; }
+  .zchip { z-index: 3; position: absolute; transform: translate(-50%, -50%); background: #fff; border: 2px solid #94a3b8; border-radius: 10px; padding: 2px 14px; font-size: 23px; white-space: nowrap; color: #0f172a; box-shadow: 0 1px 3px rgba(15,23,42,.1); }
+  .zchip small { font-size: 16px; color: #475569; margin-left: 6px; }
+  .tbl.ghost { border: 2.5px dashed #22a6c4; box-shadow: none; }
+  .pill { font-size: 30px !important; }
+  .legend { position: absolute; left: 2170px; top: 14px; right: 30px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; font-size: 20px; color: var(--ink2); }
+  .legend .it { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  #svg { position: absolute; left: 0; top: 0; z-index: 1; }
+  .legend svg { position: static; }
+</style>
+</head>
+<body>
+<div class="title">맞집(CustomHouse) 데이터베이스 구조도<small>MySQL(Aiven) · JPA ddl-auto: update</small></div>
+<svg id="svg" width="3360" height="1440" viewBox="0 0 3360 1440">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="17" markerHeight="17" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+  </defs>
+  <g id="lines"></g>
+</svg>
+<div id="stage"></div>
+<div class="legend">
+  <div class="it"><span style="font-size:26px">🔑</span> 기본키</div>
+  <div class="it"><span class="b fk">FK</span> 다른 테이블 id</div>
+  <div class="it"><span class="b ref">→users</span> 영역 밖 참조</div>
+  <div class="it"><span class="b uq">UQ</span> 중복 불가</div>
+  <div class="it"><svg width="56" height="14"><line x1="0" y1="7" x2="56" y2="7" stroke="#475569" stroke-width="3.8"/></svg> 1:N 관계</div>
+  <div class="it"><svg width="56" height="14"><line x1="0" y1="7" x2="56" y2="7" stroke="#475569" stroke-width="3.8" stroke-dasharray="8 6"/></svg> 값으로만 연결</div>
+  <div class="it"><i>+N개 더</i> 생략 컬럼(시간 컬럼 제외)</div>
+  <div class="it"><span style="display:inline-block;width:34px;height:20px;border:2.5px dashed #22a6c4;border-radius:4px"></span> DB 밖 데이터(파일·API)</div>
+  <div class="it">※ FK 제약 없이 id 값으로 연결</div>
+</div>
+<script>
+const TW = 335, HEAD = 56, ROW = 41, MORE = 36, LANE = 96, PAD = 16;
+const ZTOP = 118, ZH = 1162;                   // 영역 위치/높이
+const Y0 = ZTOP + 92;                          // 영역 안 첫 테이블 y
+const AVAIL = ZTOP + ZH - 24 - Y0;             // 한 열에 쓸 수 있는 높이
+const ZONES = {
+  C: { x: 24,   cols: 1, lanes: 0, color: "var(--C)", tint: "#fffbeb", label: "커뮤니티", sub: "게시글 · 댓글 · 투표" },
+  A: { x: 439,  cols: 3, lanes: 2, color: "var(--A)", tint: "#eff6ff", label: "회원 · 결제 · 알림", sub: "로그인 계정, 마이페이지 조건, 결제, 알림" },
+  B: { x: 1716, cols: 2, lanes: 1, color: "var(--B)", tint: "#ecfdf5", label: "매물 등록 · 관심 · 신고", sub: "회원 등록 매물·사진, 관심매물 가격 추적, 허위매물 신고" },
+  E: { x: 2562, cols: 1, lanes: 0, color: "var(--E)", tint: "#ecfeff", label: "추천 데이터", sub: "AI 엔진 · 파일 / 외부 API (DB 밖)" },
+  D: { x: 2977, cols: 1, lanes: 0, color: "var(--D)", tint: "#f5f3ff", label: "관리자 설정", short: true, sub: "관리자가 저장 → 진단에 반영" },
+};
+function zoneW(z) { return z.cols * TW + z.lanes * LANE + PAD * 2; }
+function colX(zk, i) { return ZONES[zk].x + PAD + i * (TW + LANE); }
+
+// row: [이름, 타입, 플래그("pk fk uq ref:users")]   rh: 이 표의 행 높이(기본 ROW)   compact: 작게 그리는 표(커뮤니티)
+const T = {
+  housing_conditions: { z: "A", c: 0, more: 4, rh: 52, rows: [["id","BIGINT","pk"],["user_id","BIGINT","fk uq"],["age","INT",""],["annual_income","INT",""],["couple_annual_income","INT",""],["work_location","VARCHAR(255)",""],["work_address","VARCHAR(255)",""],["work_lat","DOUBLE",""],["work_lon","DOUBLE",""],["deposit","INT",""],["desired_deposit","INT",""],["desired_rent","INT",""],["real_estate_asset","INT",""],["car_asset","INT",""],["financial_asset","INT",""],["financial_debt","INT",""],["job_type","VARCHAR(255)",""],["no_householder","BOOLEAN",""]] },
+  housing_condition_preferences: { z: "A", c: 1, more: 0, rh: 62, rows: [["id","BIGINT","pk"],["housing_condition_id","BIGINT","fk"],["preferential_status","VARCHAR(30)",""]] },
+  users: { z: "A", c: 1, more: 0, rh: 62, rows: [["id","BIGINT","pk"],["email","VARCHAR(191)","uq"],["password","VARCHAR(100)",""],["nickname","VARCHAR(50)",""],["phone","VARCHAR(20)",""],["provider","VARCHAR(20)",""],["provider_id","VARCHAR(100)",""],["refresh_token","VARCHAR(500)",""],["marketing_consent","BOOLEAN",""],["role","VARCHAR(20)",""]] },
+  email_verifications: { z: "A", c: 2, more: 0, rh: 44, rows: [["id","BIGINT","pk"],["email","VARCHAR(191)",""],["code","VARCHAR(6)",""],["purpose","VARCHAR(20)",""],["expires_at","DATETIME",""],["verified","BOOLEAN",""]] },
+  payments: { z: "A", c: 2, more: 0, rh: 44, rows: [["id","BIGINT","pk"],["user_id","BIGINT","fk"],["payment_key","VARCHAR(200)","uq"],["order_id","VARCHAR(64)","uq"],["order_name","VARCHAR(100)",""],["amount","BIGINT",""],["status","VARCHAR(20)",""]] },
+  notifications: { z: "A", c: 2, more: 0, rh: 44, rows: [["id","BIGINT","pk"],["user_id","BIGINT","fk"],["title","VARCHAR(100)",""],["content","VARCHAR(500)",""],["is_read","BOOLEAN",""]] },
+
+  registered_listings: { z: "B", c: 0, more: 0, rh: 48, rows: [["id","BIGINT","pk"],["listing_id","VARCHAR(40)","uq"],["user_id","BIGINT","ref:users"],["region","VARCHAR(10)",""],["row_json","LONGTEXT",""]] },
+  listing_photos: { z: "B", c: 0, more: 0, rh: 48, rows: [["filename","VARCHAR(80)","pk"],["content_type","VARCHAR(40)",""],["data","MEDIUMBLOB",""]] },
+  listing_reports: { z: "B", c: 0, more: 0, rh: 48, rows: [["id","BIGINT","pk"],["listing_id","VARCHAR(40)","fk uq"],["user_id","BIGINT","ref:users uq"],["report_type","VARCHAR(30)",""],["message","VARCHAR(1500)",""]] },
+  listing_favorites: { z: "B", c: 1, more: 0, rh: 56, rows: [["id","BIGINT","pk"],["user_id","BIGINT","ref:users uq"],["listing_id","VARCHAR(40)","fk uq"],["address","VARCHAR(300)",""],["region","VARCHAR(30)",""],["lease_type","VARCHAR(10)",""],["building_name","VARCHAR(100)",""],["property_type","VARCHAR(30)",""],["unit_label","VARCHAR(60)",""],["deposit","INT",""],["monthly_rent","INT",""],["maintenance_fee","INT",""],["snapshot","TEXT",""],["previous_deposit","INT",""],["previous_monthly_rent","INT",""],["price_changed_at","DATETIME",""]] },
+
+  // 커뮤니티는 중요도가 낮아 작게 표시 (핵심 컬럼만)
+  posts: { z: "C", c: 0, compact: true, more: 6, rows: [["id","BIGINT","pk"],["category","VARCHAR(20)",""],["title","VARCHAR(100)",""],["writer_id","BIGINT","ref:users"]] },
+  comments: { z: "C", c: 0, compact: true, more: 0, rows: [["id","BIGINT","pk"],["post_id","BIGINT","ref:posts"],["writer_id","BIGINT","ref:users"]] },
+  post_metas: { z: "C", c: 0, compact: true, more: 0, rows: [["id","BIGINT","pk"],["post_id","BIGINT","ref:posts"],["meta_key","VARCHAR(40)",""]] },
+  post_likes: { z: "C", c: 0, compact: true, more: 0, rows: [["id","BIGINT","pk"],["post_id","BIGINT","ref:posts"],["user_id","BIGINT","ref:users"]] },
+  post_scraps: { z: "C", c: 0, compact: true, more: 0, rows: [["id","BIGINT","pk"],["post_id","BIGINT","ref:posts"],["user_id","BIGINT","ref:users"]] },
+  vote_options: { z: "C", c: 0, compact: true, more: 0, rows: [["id","BIGINT","pk"],["post_id","BIGINT","ref:posts"],["label","VARCHAR(50)",""]] },
+  vote_records: { z: "C", c: 0, compact: true, more: 0, rows: [["id","BIGINT","pk"],["post_id","BIGINT","ref:posts"],["option_id","BIGINT","ref:options"]] },
+
+  loan_products: { z: "D", c: 0, more: 12, rows: [["id","BIGINT","pk"],["loan_type","VARCHAR(30)","uq"],["min_age","INT",""],["max_age","INT",""],["max_income_single","INT",""],["rate_table","TEXT",""]] },
+  loan_reference_links: { z: "D", c: 0, more: 0, rows: [["id","BIGINT","pk"],["loan_type","VARCHAR(30)","uq"],["reference_url","VARCHAR(500)",""]] },
+  income_standards: { z: "D", c: 0, more: 5, rows: [["id","BIGINT","pk"],["rir_overall_percent","DOUBLE",""],["rir_metro_percent","DOUBLE",""],["rir_year","INT",""]] },
+  app_settings: { z: "D", c: 0, more: 0, rows: [["id","BIGINT","pk"],["recommendation_limit","INT",""]] },
+
+  // DB 밖 데이터 (점선 박스): 이름만 표시
+  "dummyhouse_*.csv": { z: "E", c: 0, ghost: true, more: 1, moreText: "총 55컬럼 · 25개 파일 · 72,596건", rows: [["매물등록번호","","pk"],["매물상태 · 거래유형","",""],["자치구 · 법정동","",""],["보증금 · 월세 · 관리비","",""],["전용면적 · 방수 · 층","",""],["전세대출가능여부","",""],["위도 · 경도","",""],["공인중개사_* 6컬럼","",""]] },
+  "policies.json": { z: "E", c: 0, ghost: true, more: 1, moreText: "정책 439건", rows: [["id · name · agency","","pk"],["region","",""],["min_age · max_age","",""],["max_annual_income","",""],["max_asset","",""],["require_* 자격 조건","",""]] },
+  "지역 · 금리 데이터": { z: "E", c: 0, ghost: true, more: 0, rows: [["법정동코드 · 좌표 JSON","",""],["직장 위치 JSON","",""],["전환율 캐시 JSON","",""],["예금금리 캐시 JSON","",""]] },
+  "외부 API (실시간)": { z: "E", c: 0, ghost: true, more: 0, rows: [["국토부 실거래가","",""],["행안부 · 카카오 주소","",""],["카카오 통근 경로","",""],["한국부동산원 전환율","",""],["한국은행 예금금리","",""]] },
+};
+for (const [name, t] of Object.entries(T)) {
+  t.name = name; t.x = colX(t.z, t.c); t.w = TW;
+  t.hd = t.compact ? 38 : (t.ghost ? 46 : HEAD);
+  t.rh = t.compact ? 30 : (t.ghost ? 31 : (t.rh || ROW));
+  t.mh = t.compact ? 26 : (t.ghost ? 30 : MORE);
+  t.h = t.hd + t.rows.length * t.rh + (t.more ? t.mh : 0);
+}
+// 같은 열의 표를 위에서부터 쌓는다. spread=true면 남는 높이를 표 사이 간격에 고르게 나눈다.
+function stack(names, minGaps, spread) {
+  const total = names.reduce((s, n) => s + T[n].h, 0) + minGaps.reduce((s, g) => s + g, 0);
+  const extra = spread && names.length > 1 ? Math.max(0, (AVAIL - total) / (names.length - 1)) : 0;
+  let y = Y0;
+  names.forEach((n, i) => { T[n].y = y; y += T[n].h + (minGaps[i] ?? 0) + extra; });
+}
+stack(["housing_conditions"], [], false);
+stack(["users", "housing_condition_preferences"], [72], true);
+stack(["payments", "notifications", "email_verifications"], [46, 46], true);
+stack(["registered_listings", "listing_photos", "listing_reports"], [72, 50], true);
+stack(["listing_favorites"], [], false);
+stack(["posts", "comments", "post_metas", "post_likes", "post_scraps", "vote_options", "vote_records"], [12, 12, 12, 12, 12, 12], true);
+stack(["dummyhouse_*.csv", "policies.json", "지역 · 금리 데이터", "외부 API (실시간)"], [14, 14, 14], true);
+stack(["loan_products", "loan_reference_links", "income_standards", "app_settings"], [56, 24, 24], true);
+
+const stage = document.getElementById("stage");
+for (const [k, z] of Object.entries(ZONES)) {
+  const d = document.createElement("div");
+  d.className = "zone"; d.style.cssText = `left:${z.x}px;top:${ZTOP}px;width:${zoneW(z)}px;height:${ZH}px;border-color:${z.color};background:${z.tint}`;
+  d.innerHTML = `<div class="zlabel" style="color:${z.color}">${z.label}</div><div class="zsub">${z.sub}</div>`;
+  stage.appendChild(d);
+}
+const CW = 0.56;  // Consolas 글자 폭 / 글자 크기
+for (const t of Object.values(T)) {
+  const d = document.createElement("div");
+  d.className = "tbl" + (t.ghost ? " ghost" : ""); d.style.cssText = `left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px`;
+  const zc = ZONES[t.z].color;
+  let headHtml = t.name, hs;
+  if (t.ghost) hs = Math.min(27, Math.floor((TW - 28) / (t.name.length * (/[ㄱ-힣]/.test(t.name) ? 0.95 : 0.56))));
+  else hs = Math.min(t.compact ? 24 : 32, Math.floor((TW - 28) / (t.name.length * CW)));
+  if (t.name.length > 24 && !t.ghost) { headHtml = t.name.replace("condition_", "condition_<br>"); hs = 24; }
+  let h = `<div class="head" style="height:${t.hd}px;border-bottom:${t.compact ? 4 : 5}px solid ${zc};font-size:${hs}px;line-height:1.02${t.ghost ? ";font-family:'Malgun Gothic',sans-serif;background:#0e7490" : ""}">${headHtml}</div>`;
+  for (const [n, ty0, fl] of t.rows) {
+    const ty = ty0.replace(/\(\d+\)/, "");
+    const f = fl.split(" ").filter(Boolean);
+    const pk = f.includes("pk");
+    let badges = "", bw = 0;
+    if (f.includes("fk")) { badges += `<span class="b fk">FK</span>`; bw += 38; }
+    const ref = f.find(x => x.startsWith("ref:"));
+    if (ref) { badges += `<span class="b ref">→${ref.slice(4)}</span>`; bw += 70; }
+    if (f.includes("uq")) { badges += `<span class="b uq">UQ</span>`; bw += 40; }
+    let fs, nameFont = "";
+    if (t.ghost) { fs = Math.min(21, Math.floor((TW - 24 - 26 - 10) / (n.length * (/[ㄱ-힣]/.test(n) ? 0.98 : 0.56)))); nameFont = "font-family:'Malgun Gothic',sans-serif;font-weight:600;"; }
+    else {
+      const avail = TW - 24 - 24 - bw - ty.length * 9.6 - 14;
+      fs = Math.min(t.compact ? 21 : 26, Math.floor(avail / (n.length * CW)));
+    }
+    h += `<div class="row" style="height:${t.rh}px"><span class="mark ${pk ? "pk" : ""}">${pk ? "🔑" : "●"}</span><span class="nm" style="font-size:${fs}px;${nameFont}">${n}</span>${badges}<span class="ty">${ty}</span></div>`;
+  }
+  if (t.more) h += `<div class="row more" style="height:${t.mh}px;font-size:${t.compact || t.ghost ? 17 : 20}px"><span class="mark"></span>${t.moreText ? t.moreText : "+" + t.more + "개 더"}</div>`;
+  d.innerHTML = h; stage.appendChild(d);
+}
+const L = document.getElementById("lines");
+const mid = t => t.y + t.hd / 2;
+function path(d, dashed) {
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", d); p.setAttribute("fill", "none"); p.setAttribute("stroke", "#475569"); p.setAttribute("stroke-width", "3.8");
+  p.setAttribute("marker-end", "url(#arr)");
+  if (dashed) p.setAttribute("stroke-dasharray", "9 7");
+  L.appendChild(p);
+}
+function chip(x, y, v, c, centered) {
+  const d = document.createElement("div");
+  d.className = "chip" + (centered ? " mid" : ""); d.style.left = x + "px"; d.style.top = y + "px";
+  d.innerHTML = `<div class="v">${v}</div><div class="c">${c}</div>`; stage.appendChild(d);
+}
+const right = t => t.x + t.w, bottom = t => t.y + t.h;
+function branch(trunkX, y0, to, v, c, dashed) {
+  const y = mid(to);
+  path(`M${trunkX},${y0} V${y} H${to.x}`, dashed);
+  chip(trunkX, y, v, c, true);
+}
+// A: 회원 중심
+{
+  const y = mid(T.users), x1 = T.users.x, x2 = right(T.housing_conditions);
+  path(`M${x1},${y} H${x2}`, false); chip((x1 + x2) / 2, y, "설정", "1 : 1", true);
+}
+{
+  const trunkX = right(T.users) + LANE / 2, y0 = mid(T.users);
+  path(`M${right(T.users)},${y0} H${T.payments.x}`, false); chip(trunkX, y0, "결제", "1 : N", true);
+  branch(trunkX, y0, T.notifications, "수신", "1 : N", false);
+  branch(trunkX, y0, T.email_verifications, "인증", "email 값", true);
+}
+{
+  const y = mid(T.housing_condition_preferences), x1 = right(T.housing_conditions), x2 = T.housing_condition_preferences.x;
+  path(`M${x1},${y} H${x2}`, false); chip((x1 + x2) / 2, y, "우대", "1 : N", true);
+}
+// B: 등록 매물 (신고 표는 왼쪽 열 아래라 화살표가 왼쪽을 향한다)
+{
+  const trunkX = right(T.registered_listings) + LANE / 2, y0 = mid(T.registered_listings);
+  path(`M${right(T.registered_listings)},${y0} H${T.listing_favorites.x}`, true); chip(trunkX, y0, "관심", "listing_id", true);
+  const yr = mid(T.listing_reports);
+  path(`M${trunkX},${y0} V${yr} H${right(T.listing_reports)}`, true); chip(trunkX, yr, "신고", "listing_id", true);
+}
+{
+  const x = T.registered_listings.x + TW / 2;
+  path(`M${x},${bottom(T.registered_listings)} V${T.listing_photos.y}`, true);
+  chip(x, (bottom(T.registered_listings) + T.listing_photos.y) / 2, "사진 파일명으로 연결", "row_json의 photo 주소", true);
+}
+// D: 대출
+{
+  const x = T.loan_products.x + TW / 2;
+  path(`M${x},${bottom(T.loan_products)} V${T.loan_reference_links.y}`, true);
+  chip(x, (bottom(T.loan_products) + T.loan_reference_links.y) / 2, "참고 확인 페이지", "loan_type 값으로 연결", true);
+}
+
+// ---- 영역 간 연결 띠 (아래쪽) ----
+const zc = k => ZONES[k].x + zoneW(ZONES[k]) / 2;
+const PILL = { C: [300, "커뮤니티"], A: [520, "회원 · 결제 · 알림"], B: [380, "매물 등록 · 관심 · 신고"], E: [300, "추천 데이터"], D: [220, "관리자 설정"] };
+const PY = 1306, PH = 76;
+for (const [k, [w, text]] of Object.entries(PILL)) {
+  const d = document.createElement("div");
+  d.className = "pill"; d.style.cssText = `left:${zc(k) - w / 2}px;top:${PY}px;width:${w}px;height:${PH}px;border-color:${ZONES[k].color};color:${ZONES[k].color};background:${ZONES[k].tint}`;
+  d.textContent = text; stage.appendChild(d);
+}
+const pl = k => zc(k) - PILL[k][0] / 2, pr = k => zc(k) + PILL[k][0] / 2;
+function zarrow(x1, x2, y, html) {
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", `M${x1},${y} H${x2}`); p.setAttribute("fill", "none"); p.setAttribute("stroke", "#334155"); p.setAttribute("stroke-width", "5");
+  p.setAttribute("marker-end", "url(#arr)"); L.appendChild(p);
+  const c = document.createElement("div");
+  c.className = "zchip"; c.style.left = (x1 + x2) / 2 + "px"; c.style.top = y + "px"; c.innerHTML = html; stage.appendChild(c);
+}
+zarrow(pl("A"), pr("C"), PY + PH / 2, `<b>회원이 글 · 댓글 · 투표 작성</b>`);
+zarrow(pr("A"), pl("B"), PY + 20, `<b>회원이 매물 등록 · 관심 · 신고</b> <small>users.id ← user_id</small>`);
+zarrow(pl("B"), pr("A"), PY + PH - 20, `<b>가격 변동 · 허위매물 · 삭제 → 알림</b> <small>notifications</small>`);
+zarrow(pr("B"), pl("E"), PY + PH / 2, `<b>등록 매물 복원</b>`);
+zarrow(pl("D"), pr("E"), PY + PH / 2, `<b>진단 반영</b>`);
+// 회원 -> 추천 데이터 (마이페이지 조건이 진단 입력): 매물 알약 아래로 돌아가는 화살표
+{
+  const yb = PY + PH, ya = yb + 30;
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", `M${zc("A") + 140},${yb} V${ya} H${zc("E") - 100} V${yb}`); p.setAttribute("fill", "none"); p.setAttribute("stroke", "#334155"); p.setAttribute("stroke-width", "5");
+  p.setAttribute("marker-end", "url(#arr)"); L.appendChild(p);
+  const c = document.createElement("div");
+  c.className = "zchip"; c.style.left = (zc("B")) + "px"; c.style.top = ya + "px"; c.innerHTML = `<b>마이페이지 조건 → 진단 입력</b> <small>housing_conditions</small>`; stage.appendChild(c);
+}
+// 알약과 위쪽 영역을 잇는 가는 선
+for (const k of Object.keys(PILL)) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  s.setAttribute("d", `M${zc(k)},${ZTOP + ZH} V${PY}`); s.setAttribute("fill", "none");
+  s.setAttribute("stroke", ({ A: "#2563eb", B: "#059669", C: "#d97706", D: "#7c3aed", E: "#0891b2" })[k]);
+  s.setAttribute("stroke-width", "5"); s.setAttribute("stroke-dasharray", "2 8"); s.setAttribute("stroke-linecap", "round");
+  L.appendChild(s);
+}
+</script>
+</body>
+</html>

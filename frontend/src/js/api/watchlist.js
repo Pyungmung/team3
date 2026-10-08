@@ -224,7 +224,42 @@ async function getListingCommute(listingId, workLat, workLon, transportType) {
   return listingUnwrap(res, "통근시간을 불러오지 못했어요.");
 }
 
+// ---------- 관심정책 (주거진단 리포트 "주거정책 추천" 표의 하트 / 관심매물 페이지 "관심정책 조회") ----------
+// 정책은 관리자 수정 > 주거지원정책(DB)에서 관리하고, 정책 id로 가리킨다. 관심정책 목록은 정책의 "현재" 내용을 돌려주므로
+// 관리자가 고치면 바로 반영되고, 정책이 삭제되면 목록에서 빠지며 알림함에 알림이 온다. (백엔드 domain/policy, domain/housingpolicy)
+
+/** 내가 담은 정책의 id 목록 (리포트 표의 하트 표시용). */
+async function getFavoritePolicyIds() {
+  const res = await watchlistFetch(`${WATCHLIST_API_BASE}/policies/ids`);
+  return (await listingUnwrap(res, "관심 정책을 불러오지 못했어요.")) || [];
+}
+
+/** 관심매물 페이지에 그릴 내 관심정책 목록(최근에 담은 순): [{policyId, region, agency, name, description, link}] */
+async function getFavoritePolicies() {
+  const res = await watchlistFetch(`${WATCHLIST_API_BASE}/policies`);
+  return (await listingUnwrap(res, "관심 정책을 불러오지 못했어요.")) || [];
+}
+
+/** @param {number} policyId 리포트 표의 정책 한 줄(policies_by_region의 항목)의 id */
+async function addPolicyFavorite(policyId) {
+  const res = await watchlistFetch(`${WATCHLIST_API_BASE}/policies`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ policyId }),
+  });
+  return listingUnwrap(res, "관심 정책으로 담지 못했어요.");
+}
+
+async function removePolicyFavorite(policyId) {
+  const res = await watchlistFetch(`${WATCHLIST_API_BASE}/policies/${encodeURIComponent(policyId)}`, { method: "DELETE" });
+  return listingUnwrap(res, "관심 정책에서 빼지 못했어요.");
+}
+
 window.CustomHouseWatchlistApi = {
+  getFavoritePolicyIds,
+  getFavoritePolicies,
+  addPolicyFavorite,
+  removePolicyFavorite,
   getNotifications,
   getUnreadNotificationCount,
   markNotificationAsRead,

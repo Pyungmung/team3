@@ -1,6 +1,7 @@
 package com.customhouse.domain.user.service;
 
 import com.customhouse.domain.listing.repository.ListingFavoriteRepository;
+import com.customhouse.domain.policy.repository.FavoritePolicyRepository;
 import com.customhouse.domain.mypage.repository.HousingConditionRepository;
 import com.customhouse.domain.notification.repository.NotificationRepository;
 import com.customhouse.domain.payment.repository.PaymentRepository;
@@ -39,6 +40,7 @@ public class UserService {
     private final PaymentRepository paymentRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final ListingFavoriteRepository listingFavoriteRepository;
+    private final FavoritePolicyRepository favoritePolicyRepository;
 
     @Transactional
     public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
@@ -104,6 +106,7 @@ public class UserService {
         subscriptionRepository.findByUserId(userId).ifPresent(subscriptionRepository::delete);
         paymentRepository.deleteByUserId(userId);
         listingFavoriteRepository.deleteByUserId(userId);
+        favoritePolicyRepository.deleteByUserId(userId);
         notificationRepository.deleteByUserId(userId);
         // preferentialStatuses(HousingConditionPreference)는 HousingCondition에 cascade+orphanRemoval로
         // 걸려있어 아래 delete 한 번으로 함께 지워진다.
