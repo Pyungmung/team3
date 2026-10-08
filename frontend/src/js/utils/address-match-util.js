@@ -96,4 +96,17 @@ function findNearestWorkHub(lat, lon) {
   return best;
 }
 
-window.CustomHouseAddressMatchUtil = { findNearestWorkHub, hubFromAddress, WORK_HUB_LABELS, labelForHub };
+/**
+ * 저장된 조건의 직장 구(workLocation)를 직장 주소(workAddress)의 구 이름에 맞춘다 (2026-10-08).
+ * 2026-10-06 이전에 저장된 조건은 "가장 가까운 구청" 기준이라 서초구 주소가 관악구로 남아 있다 - 홈 미리보기/광고 노출/정책 추천이
+ * 엉뚱한 구 기준으로 동작하는 원인이라, 조건을 읽는 곳마다 주소의 구를 우선해 바로잡는다. 바꿀 게 없으면 같은 객체를 돌려준다.
+ * @param {object|null} condition
+ * @returns {object|null}
+ */
+function normalizeWorkLocation(condition) {
+  if (!condition || !condition.workAddress) return condition;
+  const hub = hubFromAddress(condition.workAddress);
+  return hub && hub !== condition.workLocation ? { ...condition, workLocation: hub } : condition;
+}
+
+window.CustomHouseAddressMatchUtil = { findNearestWorkHub, hubFromAddress, normalizeWorkLocation, WORK_HUB_LABELS, labelForHub };

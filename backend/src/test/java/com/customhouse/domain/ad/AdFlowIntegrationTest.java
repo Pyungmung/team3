@@ -4,6 +4,8 @@ package com.customhouse.domain.ad;
 // 주문 -> 승인 -> 내 광고 현황 -> 관리자 환불, 관리자가 아니면 광고 현황/환불 403, 남의 매물 주문 403을 확인한다 (2026-10-08).
 // 운영/로컬 공유 DB가 아니라 테스트용 H2에서만 돈다.
 
+import com.customhouse.domain.ad.entity.ListingAd;
+import com.customhouse.domain.ad.repository.ListingAdRepository;
 import com.customhouse.domain.ad.service.ActiveAdService;
 import com.customhouse.domain.listing.entity.RegisteredListing;
 import com.customhouse.domain.listing.repository.RegisteredListingRepository;
@@ -24,6 +26,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -51,6 +54,8 @@ class AdFlowIntegrationTest {
     private JwtTokenProvider jwt;
     @Autowired
     private ActiveAdService activeAds;
+    @Autowired
+    private ListingAdRepository listingAds;
 
     @MockitoBean
     private TossPaymentsClient toss;
@@ -139,6 +144,25 @@ class AdFlowIntegrationTest {
 
         body(post("/api/ads/orders").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"listingId\":\"" + listingId + "\"}"), token(other), 403);
+    }
+
+    @Test
+    void 관리자_광고_매물_목록에는_결제_없이_접수된_광고도_나오고_일반_사용자는_못_본다() throws Exception {
+        User owner = saveUser("owner", User.ROLE_USER);
+        User admin = saveUser("admin", User.ROLE_ADMIN);
+        String listingId = registerListing(owner);
+        // 주문 없이 접수된 예시 광고 (관리자가 DB로 접수한 경우와 같은 모양)
+        listingAds.save(ListingAd.start(listingId, owner.getId(), LocalDateTime.now(), 30, "DEMO_SEED"));
+
+        body(get("/api/admin/ads/listings"), token(owner), 403);
+        body(get("/api/admin/ads/listings"), null, 401);
+        JsonNode list = body(get("/api/admin/ads/listings"), token(admin), 200).get("data");
+        JsonNode row = null;
+        for (JsonNode n : list) if (n.get("listingId").asText().equals(listingId)) row = n;
+        assertThat(row).isNotNull();
+        assertThat(row.get("active").asBoolean()).isTrue();
+        assertThat(row.get("lastOrderId").asText()).isEqualTo("DEMO_SEED");
+        assertThat(row.get("userEmail").asText()).isEqualTo(owner.getEmail());
     }
 
     @Test
