@@ -298,13 +298,12 @@
         </div>
         <p class="text-xs text-slate-400 mb-3">
           이사·인터넷·청소·생필품 같은 생활형 상품 배너예요. 사진과 링크를 올리고 <b>누구에게 보일지</b> 조건을 정하면, 광고 자리가 방문자 조건에 맞는 배너 중 하나를 무작위로 보여줘요.
-          조건을 비워 두면 모든 방문자에게 보여요. 노출·클릭 횟수는 집계하지 않아요. 광고 자리는 페이지에 <code>&lt;div data-ad-slot="자리이름" data-ad-kind="both"&gt;&lt;/div&gt;</code> 한 줄을 넣으면 생겨요(아직 어느 페이지에도 넣지 않았어요).
+          조건을 비워 두면 모든 방문자에게 보여요. 노출·클릭 횟수는 집계하지 않아요. 광고 자리는 페이지에 <code>&lt;div data-ad-slot="자리이름"&gt;&lt;/div&gt;</code> 한 줄을 넣으면 생겨요(아직 어느 페이지에도 넣지 않았어요).
         </p>
         <ul class="text-xs text-slate-500 mb-4 list-disc pl-5 space-y-1">
           <li><b>월세 성향</b>: 방문자가 입력한 최대 매물 월세가 <b>적정 월세 상한 이하면 절약형</b>(최저가가 강점인 서비스), <b>초과면 프리미엄형</b>(프리미엄 서비스). 최대 월세를 비웠거나 로그인하지 않았으면 <b>성향 구분 없이 모든 배너가 후보</b>(랜덤).</li>
           <li><b>직장 자치구 / 이사 일정</b>: 지정하면 해당 조건의 방문자에게만 보여요(방문자의 직장 구·이사 일정을 모르면 제외).</li>
         </ul>
-        <div id="bn-adsense" class="card p-4 mb-4 text-xs text-slate-600"></div>
         <div class="flex items-center gap-3 flex-wrap mb-3">
           <button type="button" id="bn-add" class="adm-btn adm-save" style="padding:8px 16px">+ 배너 추가</button>
           <button type="button" id="bn-reload" class="adm-btn" style="padding:8px 16px;border:1px solid #cbd5e1;background:#fff">새로고침</button>
@@ -431,7 +430,6 @@
   <script src="../../js/api/admin-income-standard.js?v=20260930a"></script>
   <script src="../../js/api/admin-app-settings.js?v=20261008a"></script>
   <script src="../../js/api/admin-ads.js?v=20261008b"></script>
-  <script src="../../js/config.js?v=20261008a"></script>
   <script src="../../js/api/watchlist.js?v=20261008b"></script>
   <script src="../../js/utils/ad-targeting.js?v=20261008a"></script>
   <script src="../../js/components/ad-slot.js?v=20261008a"></script>
@@ -1475,15 +1473,6 @@
       el.className = "adm-msg" + (kind ? " " + kind : "");
     }
 
-    function renderAdsenseStatus() {
-      const cfg = window.CUSTOMHOUSE_CONFIG || {};
-      const ok = /^ca-pub-\d+$/.test(cfg.ADSENSE_CLIENT || "");
-      const slotOk = /^\d+$/.test(cfg.ADSENSE_SLOT || "");
-      bnEl("bn-adsense").innerHTML = `<b>구글(AdSense) 광고</b> · 게시자 ID: <b>${ok ? "설정됨" : "미설정"}</b> · 기본 광고 단위: <b>${slotOk ? "설정됨" : "미설정"}</b><br />
-        ${ok && slotOk ? "광고 자리(data-ad-kind=\"google\" 또는 \"both\")에 구글 광고가 붙어요. 어떤 광고가 나올지는 구글이 정해요(원치 않는 업종은 AdSense 화면에서 차단)."
-          : "구글 광고를 쓰려면 AdSense 가입·사이트 심사를 마치고, Vercel 환경변수 <code>ADSENSE_CLIENT</code>(ca-pub-숫자)와 <code>ADSENSE_SLOT</code>(광고 단위 ID 숫자)를 넣은 뒤 다시 배포해 주세요. 그 전에는 구글 광고 자리가 아무것도 그리지 않아요."}`;
-    }
-
     function bannerPeriodText(b) {
       if (!b.startsOn && !b.endsOn) return "상시";
       return `${b.startsOn || "…"} ~ ${b.endsOn || "…"}`;
@@ -1516,7 +1505,6 @@
     }
 
     async function loadBanners() {
-      renderAdsenseStatus();
       setBnMsg("불러오는 중...", "");
       try {
         bannerList = await CustomHouseAdminBannersApi.listBanners();

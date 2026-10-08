@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- [담당: 송귀성] 광고 자리 테스트 페이지 (2026-10-08): 홈/메뉴에는 연결하지 않은 확인용 페이지다.
-     직접 배너(조건별 노출), 구글 샘플 광고(데모), 두 가지를 함께 쓰는 자리를 한 화면에서 시험한다. 광고 자리를 실제 페이지에 넣을 때는
+     직접 배너 광고 자리(조건별 노출, 크기별)를 한 화면에서 시험한다. 광고 자리를 실제 페이지에 넣을 때는
      이 페이지의 data-ad-slot 한 줄 + 아래 스크립트 순서를 그대로 옮기면 된다. -->
 <html lang="ko">
 <head>
@@ -16,13 +16,13 @@
   <main class="max-w-4xl mx-auto px-4 py-10 space-y-8">
     <div>
       <h1 class="text-2xl font-extrabold">광고 자리 테스트</h1>
-      <p class="text-sm text-gray-500 mt-1">홈페이지에는 연결하지 않은 확인용 페이지예요. 광고 자리는 <code>&lt;div data-ad-slot="이름" data-ad-kind="..."&gt;&lt;/div&gt;</code> 한 줄이면 생겨요.</p>
+      <p class="text-sm text-gray-500 mt-1">홈페이지에는 연결하지 않은 확인용 페이지예요. 광고 자리는 <code>&lt;div data-ad-slot="이름" data-ad-size="banner"&gt;&lt;/div&gt;</code> 한 줄이면 생겨요.</p>
     </div>
 
     <!-- 1. 직접 배너 -->
     <section class="card p-5 space-y-4">
       <div>
-        <h2 class="text-lg font-extrabold">1. 직접 배너 광고 <span class="text-xs font-normal text-gray-400">data-ad-kind="direct"</span></h2>
+        <h2 class="text-lg font-extrabold">1. 직접 배너 광고 <span class="text-xs font-normal text-gray-400">data-ad-size="banner"</span></h2>
         <p class="text-xs text-gray-500 mt-1">관리자가 올린 사진·링크 배너 중 방문자 조건에 맞는 것을 무작위로 하나 보여줘요. 최대 월세를 비우면 성향 구분 없이 랜덤이에요.</p>
       </div>
       <div class="grid gap-3 md:grid-cols-5 items-end text-sm">
@@ -40,35 +40,24 @@
       <div id="t-direct-box"></div>
     </section>
 
-    <!-- 2. 구글 샘플 광고 -->
+    <!-- 2. 카드형 자리 -->
     <section class="card p-5 space-y-3">
       <div>
-        <h2 class="text-lg font-extrabold">2. 구글 광고 (공식 샘플, 데모) <span class="text-xs font-normal text-gray-400">data-ad-kind="gpt-demo"</span></h2>
-        <p class="text-xs text-gray-500 mt-1">광고 차단 프로그램(애드블록 등)이 켜져 있으면 안 보일 수 있어요. 구글이 개발자 문서에 공개한 샘플 광고 단위예요. 계정·승인 없이 뜨지만 수익이 없는 데모용이고, 어떤 광고가 나올지는 구글이 정해요. 정식 운영에서는 AdSense 승인 후 <code>google</code>/<code>both</code>로 바꿔요.</p>
+        <h2 class="text-lg font-extrabold">2. 카드형 자리 <span class="text-xs font-normal text-gray-400">data-ad-size="card"</span></h2>
+        <p class="text-xs text-gray-500 mt-1">같은 방문자 조건으로 작은 카드 크기 자리를 하나 더 뽑아요. 맞는 배너가 없으면 접혀요.</p>
       </div>
-      <div id="t-gpt-box"><div id="t-gpt" data-ad-slot="test-gpt" data-ad-kind="gpt-demo"></div></div>
+      <div id="t-card-box"></div>
     </section>
 
-    <!-- 3. both -->
-    <section class="card p-5 space-y-3">
-      <div>
-        <h2 class="text-lg font-extrabold">3. 직접 배너 우선 + 구글 데모 대체 <span class="text-xs font-normal text-gray-400">data-ad-kind="both" data-ad-demo="true" data-ad-size="card"</span></h2>
-        <p class="text-xs text-gray-500 mt-1">맞는 직접 배너가 있으면 그것을, 없으면 구글 샘플 광고를 보여줘요. 위 1번에서 "배너 출처"를 관리자 배너로 두고 서버에 배너가 없으면 이 자리는 구글 샘플로 채워져요.</p>
-      </div>
-      <div id="t-both-box"></div>
-    </section>
-
-    <p class="text-xs text-gray-400">설정된 AdSense: <span id="t-adsense"></span></p>
   </main>
 
   <div id="app-footer"></div>
 
-  <script src="../../js/config.js?v=20261008a"></script>
   <script src="../../js/components/header.js?v=20261008a"></script>
   <script src="../../js/components/footer.js?v=20260928c"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/utils/ad-targeting.js?v=20261008a"></script>
-  <script src="../../js/components/ad-slot.js?v=20261008b"></script>
+  <script src="../../js/components/ad-slot.js?v=20261008c"></script>
   <script>
     renderHeader("");
     renderFooter();
@@ -131,19 +120,16 @@
       const banners = await pool();
       const candidates = banners.filter((b) => T.matchBanner(b, profile, "test-direct"));
       const shown = await CustomHouseAdSlot.mount(
-        freshSlot($("t-direct-box"), { "data-ad-slot": "test-direct", "data-ad-kind": "direct", "data-ad-size": "banner" }), { profile, banners });
+        freshSlot($("t-direct-box"), { "data-ad-slot": "test-direct", "data-ad-size": "banner" }), { profile, banners });
       const emptyNote = usedSampleBecauseEmpty ? " 지금 서버에 등록된 배너가 없어서 내장 샘플 배너로 보여주는 중이에요(관리자 수정 > 배너 광고에서 등록하면 그 배너가 나와요)." : "";
       $("t-info").textContent = (shown
         ? `이 조건에 맞는 배너 ${candidates.length}개 중 무작위 1개를 보여줘요 (전체 ${banners.length}개). "다시 뽑기"를 누르면 다른 배너가 나올 수 있어요.`
         : `이 조건에 맞는 배너가 없어서 광고 자리가 접혀 있어요 (전체 ${banners.length}개 중 0개). 조건을 바꿔 보세요.`) + emptyNote;
-      await CustomHouseAdSlot.mount(
-        freshSlot($("t-both-box"), { "data-ad-slot": "test-both", "data-ad-kind": "both", "data-ad-demo": "true", "data-ad-size": "card" }), { profile, banners });
+      await CustomHouseAdSlot.mount(freshSlot($("t-card-box"), { "data-ad-slot": "test-card", "data-ad-size": "card" }), { profile, banners });
     }
 
     ["t-segment", "t-region", "t-move", "t-source"].forEach((id) => $(id).addEventListener("change", redraw));
     $("t-redraw").addEventListener("click", redraw);
-    const cfg = window.CUSTOMHOUSE_CONFIG || {};
-    $("t-adsense").textContent = cfg.ADSENSE_CLIENT ? "게시자 ID 설정됨" : "미설정 (구글 정식 광고는 AdSense 승인 후)";
     redraw();
   </script>
 </body>

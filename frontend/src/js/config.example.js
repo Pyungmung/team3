@@ -14,7 +14,4 @@
  */
 window.CUSTOMHOUSE_CONFIG = {
   KAKAO_MAP_APP_KEY: "",
-  // 구글 AdSense (광고 자리 data-ad-kind="google"/"both"에서 쓴다. 비워 두면 구글 광고는 나오지 않는다. 둘 다 공개 값이다)
-  ADSENSE_CLIENT: "",   // 게시자 ID, 예: "ca-pub-1234567890123456"
-  ADSENSE_SLOT: "",     // 기본 광고 단위 ID(숫자). 자리마다 data-adsense-slot로 바꿀 수 있다
 };
