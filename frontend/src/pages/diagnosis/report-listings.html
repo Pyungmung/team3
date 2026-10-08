@@ -579,7 +579,10 @@
     // listing-register.html에서 매물 등록을 마치고 돌아올 때 ?justRegistered=1을 붙인다 - 조건은
     // 안 바뀌었어도 방금 등록한 매물이 결과에 반영되게 강제로 한 번 더 조회한다.
     const justRegistered = new URLSearchParams(location.search).get("justRegistered") === "1";
-    const isStale = !!raw && !!currentConditionText && (currentConditionText !== listingConditionText || justRegistered);
+    // 광고하기 기능이 생기기 전에 저장된 결과는 광고 항목(ad_wolse_recommendations)이 아예 없다 - 그대로 보여주면 광고가 영영 안 보이므로 한 번 다시 조회한다 (2026-10-08)
+    let cachedLacksAds = false;
+    try { cachedLacksAds = !!raw && !("ad_wolse_recommendations" in JSON.parse(raw)); } catch (e) { cachedLacksAds = false; }
+    const isStale = !!raw && !!currentConditionText && (currentConditionText !== listingConditionText || justRegistered || cachedLacksAds);
 
     if (!raw) {
       document.getElementById("empty-state").classList.remove("hidden");
