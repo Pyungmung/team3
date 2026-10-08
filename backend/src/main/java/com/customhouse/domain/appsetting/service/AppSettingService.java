@@ -34,7 +34,7 @@ public class AppSettingService {
     @Transactional
     public AppSettingResponse save(AppSettingRequest request) {
         AppSetting entity = appSettingRepository.findById(AppSetting.SINGLETON_ID).orElseGet(AppSetting::singleton);
-        entity.update(request.recommendationLimit());
+        entity.update(request.recommendationLimit(), request.adPriceWon(), request.adPeriodDays());
         // saveAndFlush: 응답의 updatedAt이 방금 수정 시각이 되도록 즉시 flush (IncomeStandardService와 같은 이유)
         AppSettingResponse saved = toResponse(appSettingRepository.saveAndFlush(entity));
         cache.evictAfterCommit();
@@ -43,6 +43,8 @@ public class AppSettingService {
 
     private static AppSettingResponse toResponse(AppSetting e) {
         Integer limit = e.getRecommendationLimit() != null ? e.getRecommendationLimit() : AppSetting.DEFAULT_RECOMMENDATION_LIMIT;
-        return new AppSettingResponse(limit, e.getUpdatedAt());
+        Integer price = e.getAdPriceWon() != null ? e.getAdPriceWon() : AppSetting.DEFAULT_AD_PRICE_WON;
+        Integer period = e.getAdPeriodDays() != null ? e.getAdPeriodDays() : AppSetting.DEFAULT_AD_PERIOD_DAYS;
+        return new AppSettingResponse(limit, price, period, e.getUpdatedAt());
     }
 }

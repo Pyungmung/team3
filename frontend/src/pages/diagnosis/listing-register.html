@@ -82,6 +82,15 @@
       background: var(--brand-600); border: none; cursor: pointer;
     }
     .reg-submit:disabled { opacity: 0.6; cursor: default; }
+    /* 광고하기 매물등록 (2026-10-08): 등록하기와 같은 알약형, 테두리형으로 구분 */
+    .reg-ad-submit {
+      padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--brand-600);
+      background: #fff; border: 1.5px solid var(--brand-600); cursor: pointer;
+    }
+    .reg-ad-submit:hover { background: #f1f6fd; }
+    .reg-ad-submit:disabled { opacity: 0.6; cursor: default; }
+    .reg-ad-note { font-size: 12px; color: #64748b; text-align: right; margin: 8px 0 0; }
+    .reg-ad-note:empty { display: none; }
     .reg-done { text-align: center; padding: 28px 0 12px; }
     .reg-done .ico { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%; background: #e8f3ec; color: #2f855a; display: flex; align-items: center; justify-content: center; }
     .reg-done-msg { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0; }
@@ -252,8 +261,10 @@
         <div class="reg-error hidden" id="reg-error" role="alert"></div>
         <div class="reg-actions">
           <a href="report-listings.html" class="reg-cancel">취소</a>
+          <button type="button" class="reg-ad-submit" id="reg-ad-submit">📢 광고하기 매물등록</button>
           <button type="submit" class="reg-submit" id="reg-submit">등록하기</button>
         </div>
+        <p class="reg-ad-note" id="reg-ad-note"></p>
       </form>
 
       <div id="reg-done" class="reg-done hidden">
@@ -272,6 +283,8 @@
   <script src="../../js/components/footer.js?v=20260928c"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/watchlist.js?v=20261001b"></script>
+  <!-- 광고하기 결제 (주문 생성 후 결제 화면으로 이동) -->
+  <script src="../../js/api/ads.js?v=20261008a"></script>
   <script src="../../js/utils/map-cluster-util.js?v=20261008e"></script>
 
   <script>
@@ -291,6 +304,7 @@
       el("reg-title").textContent = "매물 수정";
       el("reg-sub").textContent = "바꾸고 싶은 항목만 고쳐서 저장하세요.";
       el("reg-submit").textContent = "수정하기";
+      el("reg-ad-submit").classList.add("hidden");   // 광고는 마이페이지 등록한 매물 관리의 "광고하기"에서 신청한다
       (async () => {
         try {
           const existing = await CustomHouseWatchlistApi.getListing(editingListingId);
@@ -526,9 +540,8 @@
       box.classList.toggle("hidden", !text);
     }
 
-    el("reg-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-
+    // 입력 검증 + 서버로 보낼 payload 만들기 (등록하기 / 광고하기 매물등록 공용). 문제가 있으면 오류를 띄우고 null.
+    function buildPayload() {
       const addressKeyword = confirmedAddress || el("reg-address").value.trim();
       const propertyType = el("reg-property-type").value;
       const leaseType = el("reg-lease-type").value;
@@ -536,9 +549,9 @@
       const monthlyRent = Number(el("reg-monthly-rent").value || 0);
       const exclusiveArea = Number(el("reg-area").value);
 
-      if (!addressKeyword) return setError("주소 검색으로 주소를 입력해주세요.");
-      if (!deposit || deposit <= 0) return setError("보증금을 입력해주세요.");
-      if (!exclusiveArea || exclusiveArea <= 0) return setError("전용면적을 입력해주세요.");
+      if (!addressKeyword) return setError("주소 검색으로 주소를 입력해주세요."), null;
+      if (!deposit || deposit <= 0) return setError("보증금을 입력해주세요."), null;
+      if (!exclusiveArea || exclusiveArea <= 0) return setError("전용면적을 입력해주세요."), null;
       setError("");
 
       const elevatorValue = el("reg-elevator").value;
@@ -569,6 +582,13 @@
         brokerAddress: el("reg-broker-address").value.trim(),
         brokerComment: el("reg-broker-comment").value.trim(),
       };
+      return payload;
+    }
+
+    el("reg-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = buildPayload();
+      if (!payload) return;
 
       const submitBtn = el("reg-submit");
       submitBtn.disabled = true;
@@ -595,6 +615,41 @@
         submitBtn.disabled = false;
         submitBtn.textContent = editingListingId ? "수정하기" : "등록하기";
       }
+    });
+
+    // ---------- 광고하기 매물등록 (2026-10-08): 결제 -> (성공 시 서버가) 매물 등록 + 광고 접수 ----------
+    // 토스 결제창은 이 페이지를 떠났다가 ad-success.html로 돌아온다. 그래서 폼 내용은 주문과 함께 서버에 저장해 두고,
+    // 결제가 승인된 뒤에 서버가 그 내용으로 매물을 등록한다 (결제하지 않으면 매물도 등록되지 않는다).
+    let adConfig = null;
+    if (window.CustomHouseAuthApi && CustomHouseAuthApi.isLoggedIn() && !editingListingId) {
+      CustomHouseAdsApi.getConfig().then((cfg) => {
+        adConfig = cfg;
+        el("reg-ad-note").textContent = `광고하기 매물등록: ${Number(cfg.priceWon).toLocaleString()}원 결제 후 매물이 등록되고, ${cfg.periodDays}일 동안 추천 목록 중간에 노출돼요.`;
+      }).catch(() => { /* 가격 안내만 못 보여줄 뿐이라 조용히 넘어간다 - 결제 시 서버가 다시 정한다 */ });
+    }
+
+    el("reg-ad-submit").addEventListener("click", async () => {
+      const payload = buildPayload();
+      if (!payload) return;
+      const priceText = adConfig ? `${Number(adConfig.priceWon).toLocaleString()}원` : "광고 요금";
+      const periodText = adConfig ? `${adConfig.periodDays}일 동안 ` : "";
+      if (!confirm(`${priceText}을 결제하면 매물이 등록되고 ${periodText}추천 목록 중간에 '광고하기 매물'로 노출돼요.
+결제창으로 이동할까요?`)) return;
+
+      const adBtn = el("reg-ad-submit");
+      const submitBtn = el("reg-submit");
+      adBtn.disabled = true;
+      submitBtn.disabled = true;
+      adBtn.textContent = "결제창을 여는 중...";
+      try {
+        await CustomHouseAdsApi.payForAd({ listing: payload });   // 결제창으로 이동하면 이 페이지는 떠난다
+      } catch (err) {
+        setError(err.message || "결제를 시작하지 못했어요. 잠시 후 다시 시도해주세요.");
+      }
+      // 결제창을 닫았거나 오류가 난 경우에만 여기로 돌아온다
+      adBtn.disabled = false;
+      submitBtn.disabled = false;
+      adBtn.textContent = "📢 광고하기 매물등록";
     });
   </script>
 </body>

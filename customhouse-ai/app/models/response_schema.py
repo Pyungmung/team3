@@ -205,6 +205,7 @@ class ListingRecommendation(BuildingRecommendation):
     jeonse_loan_available: bool = True  # 전세대출 가능여부(매물 등록 시 체크하는 고정 속성 - 조회 시
     # 사용자 조건으로 동적 계산되는 eligible_loans(loan_matcher)와는 별개). 더미 매물은 전부 True.
     description: str = ""            # 상세설명
+    is_ad: bool = False              # 광고하기 매물 카드 여부 (2026-10-08) - 화면에서 #순번 대신 "광고하기 매물" 배지를 보여준다
     broker: BrokerInfo = BrokerInfo()
     road_address: str = ""
     jibun_address: str = ""
@@ -287,6 +288,10 @@ class ListingDiagnosisResponse(BaseModel):
     rent_to_income_ratio: float   # 수도권 RIR(%) - docs/RIR.csv(국토교통부 주거실태조사). 파일이 없으면 20.0(기본값)
     wolse_recommendations: list[ListingRecommendation]
     jeonse_recommendations: list[ListingRecommendation]
+    # 광고하기 매물 (2026-10-08): 일반 추천과 별개로 조건(직장 자치구/통근시간/보증금 한도)에 맞는 광고 중 매물을 무작위 순서로 담는다.
+    # 화면이 일반 카드 5개마다 다음 칸에 끼워 넣는다.
+    ad_wolse_recommendations: list[ListingRecommendation] = []
+    ad_jeonse_recommendations: list[ListingRecommendation] = []
     used_distance_estimate: bool = False
     total_candidates: int = 0  # 조건(통근권/상태/희망가/유형)을 통과한 매물 수 - 화면에 "N건 중 상위 표시" 용
     deposit_limit: int = 0     # 만원, 이 금액을 넘는 보증금의 매물은 추천에서 제외됨 (희망 보증금, 없으면 현재 보유 보증금)

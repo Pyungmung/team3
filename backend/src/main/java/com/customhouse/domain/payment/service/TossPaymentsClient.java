@@ -44,6 +44,11 @@ public class TossPaymentsClient {
         ));
     }
 
+    /** 결제 취소(전액 환불). 광고하기 결제 후 매물 등록이 실패했을 때와 관리자 환불에 쓴다. @see https://docs.tosspayments.com/reference#결제-취소 */
+    public Map<String, Object> cancelPayment(String paymentKey, String cancelReason) {
+        return post("/v1/payments/" + paymentKey + "/cancel", Map.of("cancelReason", cancelReason));
+    }
+
     /** authKey로 빌링키(자동결제 수단) 발급. @see https://docs.tosspayments.com/reference#자동결제-빌링키-발급 */
     public Map<String, Object> issueBillingKey(String customerKey, String authKey) {
         return post("/v1/billing/authorizations/issue", Map.of(
