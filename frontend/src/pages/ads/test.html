@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!-- [담당: 송귀성] 광고 자리 테스트 페이지 (2026-10-08): 홈/메뉴에는 연결하지 않은 확인용 페이지다.
+     직접 배너(조건별 노출), 구글 샘플 광고(데모), 두 가지를 함께 쓰는 자리를 한 화면에서 시험한다. 광고 자리를 실제 페이지에 넣을 때는
+     이 페이지의 data-ad-slot 한 줄 + 아래 스크립트 순서를 그대로 옮기면 된다. -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 광고 자리 테스트</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-4xl mx-auto px-4 py-10 space-y-8">
+    <div>
+      <h1 class="text-2xl font-extrabold">광고 자리 테스트</h1>
+      <p class="text-sm text-gray-500 mt-1">홈페이지에는 연결하지 않은 확인용 페이지예요. 광고 자리는 <code>&lt;div data-ad-slot="이름" data-ad-kind="..."&gt;&lt;/div&gt;</code> 한 줄이면 생겨요.</p>
+    </div>
+
+    <!-- 1. 직접 배너 -->
+    <section class="card p-5 space-y-4">
+      <div>
+        <h2 class="text-lg font-extrabold">1. 직접 배너 광고 <span class="text-xs font-normal text-gray-400">data-ad-kind="direct"</span></h2>
+        <p class="text-xs text-gray-500 mt-1">관리자가 올린 사진·링크 배너 중 방문자 조건에 맞는 것을 무작위로 하나 보여줘요. 최대 월세를 비우면 성향 구분 없이 랜덤이에요.</p>
+      </div>
+      <div class="grid gap-3 md:grid-cols-5 items-end text-sm">
+        <label class="block"><span class="block text-xs font-bold mb-1">월세 성향</span>
+          <select id="t-segment" class="select w-full"><option value="">구분 없음 (최대 월세 비움)</option><option value="SAVING">절약형 (최대 월세 ≤ 상한)</option><option value="PREMIUM">프리미엄형 (최대 월세 &gt; 상한)</option></select></label>
+        <label class="block"><span class="block text-xs font-bold mb-1">직장 자치구</span>
+          <select id="t-region" class="select w-full"><option value="">모름</option><option>서초구</option><option>강남구</option><option>관악구</option><option>마포구</option></select></label>
+        <label class="block"><span class="block text-xs font-bold mb-1">이사 일정</span>
+          <select id="t-move" class="select w-full"><option value="">모름</option><option value="IMMEDIATE">1개월 이내</option><option value="WITHIN_3M">3개월 이내</option><option value="EXPLORING">미정</option></select></label>
+        <label class="block"><span class="block text-xs font-bold mb-1">배너 출처</span>
+          <select id="t-source" class="select w-full"><option value="server">관리자가 등록한 배너</option><option value="sample">내장 샘플 배너</option></select></label>
+        <button type="button" id="t-redraw" class="px-4 py-2 rounded-full text-white brand-gradient text-sm font-semibold">다시 뽑기</button>
+      </div>
+      <p id="t-info" class="text-xs text-gray-500"></p>
+      <div id="t-direct-box"></div>
+    </section>
+
+    <!-- 2. 구글 샘플 광고 -->
+    <section class="card p-5 space-y-3">
+      <div>
+        <h2 class="text-lg font-extrabold">2. 구글 광고 (공식 샘플, 데모) <span class="text-xs font-normal text-gray-400">data-ad-kind="gpt-demo"</span></h2>
+        <p class="text-xs text-gray-500 mt-1">구글이 개발자 문서에 공개한 샘플 광고 단위예요. 계정·승인 없이 뜨지만 수익이 없는 데모용이고, 어떤 광고가 나올지는 구글이 정해요. 정식 운영에서는 AdSense 승인 후 <code>google</code>/<code>both</code>로 바꿔요.</p>
+      </div>
+      <div id="t-gpt-box"><div id="t-gpt" data-ad-slot="test-gpt" data-ad-kind="gpt-demo"></div></div>
+    </section>
+
+    <!-- 3. both -->
+    <section class="card p-5 space-y-3">
+      <div>
+        <h2 class="text-lg font-extrabold">3. 직접 배너 우선 + 구글 데모 대체 <span class="text-xs font-normal text-gray-400">data-ad-kind="both" data-ad-demo="true" data-ad-size="card"</span></h2>
+        <p class="text-xs text-gray-500 mt-1">맞는 직접 배너가 있으면 그것을, 없으면 구글 샘플 광고를 보여줘요. 위 1번에서 "배너 출처"를 관리자 배너로 두고 서버에 배너가 없으면 이 자리는 구글 샘플로 채워져요.</p>
+      </div>
+      <div id="t-both-box"></div>
+    </section>
+
+    <p class="text-xs text-gray-400">설정된 AdSense: <span id="t-adsense"></span></p>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/config.js?v=20261008a"></script>
+  <script src="../../js/components/header.js?v=20261008a"></script>
+  <script src="../../js/components/footer.js?v=20260928c"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/utils/ad-targeting.js?v=20261008a"></script>
+  <script src="../../js/components/ad-slot.js?v=20261008b"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+
+    // ---- 내장 샘플 배너 (이미지는 브라우저에서 SVG로 그린다 - 서버에 배너가 없어도 화면을 시험할 수 있다) ----
+    function svgBanner(title, sub, c1, c2) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="970" height="250" viewBox="0 0 970 250">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
+        <rect width="970" height="250" fill="url(#g)"/>
+        <text x="60" y="115" font-family="sans-serif" font-size="46" font-weight="800" fill="#fff">${title}</text>
+        <text x="60" y="170" font-family="sans-serif" font-size="26" fill="#ffffffcc">${sub}</text></svg>`;
+      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    }
+    const sample = (id, title, sub, c1, c2, extra) => ({
+      id, title, altText: title, category: "ETC", linkUrl: "https://example.com/sample-" + id, imageUrl: svgBanner(title, sub, c1, c2),
+      segment: "ALL", regions: [], moveWithin: "ANY", slots: [], ...extra,
+    });
+    const SAMPLE_BANNERS = [
+      sample(1, "포장이사 최저가 보장", "절약형 · 비교견적 3분 컷", "#0ea5e9", "#2563eb", { segment: "SAVING" }),
+      sample(2, "프리미엄 이사 + 입주청소", "프리미엄형 · 전담 매니저 서비스", "#7c3aed", "#db2777", { segment: "PREMIUM" }),
+      sample(3, "인터넷 + TV 결합 사은품", "신규 가입 최대 혜택 (전체)", "#16a34a", "#0d9488"),
+      sample(4, "서초구 입주청소 20% 할인", "서초구 직장 · 이사 3개월 이내", "#f59e0b", "#ea580c", { regions: ["서초구"], moveWithin: "WITHIN_3M" }),
+      sample(5, "생필품 최저가 모음전", "절약형 · 오늘만 특가", "#ef4444", "#be185d", { segment: "SAVING" }),
+    ];
+
+    const $ = (id) => document.getElementById(id);
+    const T = window.CustomHouseAdTargeting;
+
+    function currentProfile() {
+      const segment = $("t-segment").value;
+      const region = $("t-region").value;
+      const move = $("t-move").value;
+      return T.buildProfile({
+        loggedIn: !!(segment || region || move),
+        workRegion: region || null,
+        moveSchedule: move || null,
+        desiredRent: segment === "SAVING" ? 40 : segment === "PREMIUM" ? 70 : null,
+        affordableRent: segment ? 46 : null,
+      });
+    }
+
+    async function pool() {
+      return $("t-source").value === "sample" ? SAMPLE_BANNERS : await CustomHouseAdSlot.fetchBanners();
+    }
+
+    function freshSlot(box, attrs) {
+      const el = document.createElement("div");
+      Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+      box.replaceChildren(el);
+      return el;
+    }
+
+    async function redraw() {
+      const profile = currentProfile();
+      const banners = await pool();
+      const candidates = banners.filter((b) => T.matchBanner(b, profile, "test-direct"));
+      const shown = await CustomHouseAdSlot.mount(
+        freshSlot($("t-direct-box"), { "data-ad-slot": "test-direct", "data-ad-kind": "direct", "data-ad-size": "banner" }), { profile, banners });
+      $("t-info").textContent = shown
+        ? `이 조건에 맞는 배너 ${candidates.length}개 중 무작위 1개를 보여줘요 (전체 ${banners.length}개). "다시 뽑기"를 누르면 다른 배너가 나올 수 있어요.`
+        : `이 조건에 맞는 배너가 없어서 광고 자리가 접혀 있어요 (전체 ${banners.length}개 중 0개).` + ($("t-source").value === "server" && banners.length === 0 ? " 관리자 수정 > 배너 광고에서 배너를 등록하거나, 배너 출처를 \"내장 샘플 배너\"로 바꿔 보세요." : "");
+      await CustomHouseAdSlot.mount(
+        freshSlot($("t-both-box"), { "data-ad-slot": "test-both", "data-ad-kind": "both", "data-ad-demo": "true", "data-ad-size": "card" }), { profile, banners });
+    }
+
+    ["t-segment", "t-region", "t-move", "t-source"].forEach((id) => $(id).addEventListener("change", redraw));
+    $("t-redraw").addEventListener("click", redraw);
+    const cfg = window.CUSTOMHOUSE_CONFIG || {};
+    $("t-adsense").textContent = cfg.ADSENSE_CLIENT ? "게시자 ID 설정됨" : "미설정 (구글 정식 광고는 AdSense 승인 후)";
+    redraw();
+  </script>
+</body>
+</html>
