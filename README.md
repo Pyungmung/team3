@@ -221,6 +221,24 @@ curl http://localhost:8080/api/payments/subscriptions/me -H "Authorization: Bear
 curl -X DELETE http://localhost:8080/api/payments/subscriptions -H "Authorization: Bearer {accessToken}"
 ```
 
+### 배너 광고 + 구글 광고 자리 (2026-10-08)
+
+생활형 상품(이사 / 인터넷 / 청소 / 생필품) 광고를 페이지 어디든 붙일 수 있는 **광고 자리**입니다. 아직 어느 페이지에도 넣지 않았고, 자리만 정해지면 한 줄이면 됩니다.
+
+```html
+<div data-ad-slot="home-bottom" data-ad-kind="both" data-ad-size="banner"></div>
+<!-- 페이지 하단에 스크립트 (순서 중요): config.js → auth.js → address-match-util.js → mypage.js → ad-targeting.js → ad-slot.js -->
+```
+
+- `data-ad-kind`: `direct`(직접 배너만) / `google`(구글 AdSense만) / `both`(기본: 직접 배너 우선, 맞는 배너가 없으면 구글 광고). 보여 줄 광고가 없으면 자리가 접혀 빈 공간이 생기지 않습니다. 모든 배너에는 "광고" 표시가 붙고 링크는 새 탭(`rel="sponsored noopener nofollow"`)으로 열립니다. 노출·클릭은 집계하지 않습니다.
+- **직접 광고(우리가 사진·링크를 올림)**: 관리자 수정 > **배너 광고** 탭에서 배너를 등록합니다(사진 업로드, 링크, 카테고리, 노출 조건, 기간, 자리 이름). 방문자 조건에 맞는 배너 중 무작위 1개를 보여 줍니다.
+  - **월세 성향**: 방문자가 입력한 최대 매물 월세 ≤ 적정 월세 상한(소득 × 수도권 RIR)이면 **절약형**(최저가가 강점인 서비스), 초과면 **프리미엄형**(프리미엄 서비스). **최대 월세를 비웠거나 로그인하지 않았으면 성향 구분 없이 랜덤**(모든 배너가 후보).
+  - 직장 자치구, 이사 일정(1개월 이내 / 3개월 이내까지), 광고 자리 이름은 선택 조건이며 비우면 제한 없음입니다. 관리자 탭의 "방문자 조건별 미리보기"로 조건마다 어떤 배너가 나오는지 확인할 수 있습니다.
+- **구글 광고(AdSense)**: Google Ads API는 광고주용이라 쓰지 않습니다. AdSense는 키가 아니라 **게시자 ID와 광고 단위 ID**를 쓰고, 어떤 광고가 나올지는 구글이 정합니다(원치 않는 업종은 AdSense 화면에서 차단).
+  1. AdSense 가입 → 사이트 심사 통과 → 게시자 ID(`ca-pub-숫자`)와 광고 단위 ID(숫자) 확인, `ads.txt` 게시
+  2. Vercel 환경변수 `ADSENSE_CLIENT`(게시자 ID), `ADSENSE_SLOT`(기본 광고 단위 ID) 입력 후 재배포 (`frontend/generate-config.js`가 `config.js`에 넣음. 로컬은 `config.js`에 직접). 자리마다 다른 광고 단위는 `data-adsense-slot`
+  3. 설정 전에는 구글 광고 자리가 아무것도 그리지 않습니다. 개인정보 처리방침에 광고·쿠키 안내 문구 추가가 필요합니다.
+
 ## 8. 관심 매물(WatchList) / 알림 (curl, JWT 인증 필요)
 
 실제 매물 크롤링/외부 API 연동 전이라, 사용자가 직접 매물 정보를 입력해 등록하고

@@ -16,12 +16,18 @@ const fs = require("fs");
 const path = require("path");
 
 const kakaoMapAppKey = process.env.KAKAO_MAP_APP_KEY || "";
+// 구글 AdSense (2026-10-08): 게시자 ID(ca-pub-숫자)와 기본 광고 단위 ID(숫자). 둘 다 브라우저에 노출되는 공개 값이라 Vercel 일반 환경변수로 둔다.
+// 형식이 맞지 않으면(잘못 붙여넣은 값) 빈 값으로 두어 광고 자리가 AdSense를 불러오지 않게 한다.
+const adsenseClient = /^ca-pub-\d+$/.test(process.env.ADSENSE_CLIENT || "") ? process.env.ADSENSE_CLIENT : "";
+const adsenseSlot = /^\d+$/.test(process.env.ADSENSE_SLOT || "") ? process.env.ADSENSE_SLOT : "";
 
 const content = `window.CUSTOMHOUSE_CONFIG = {
   KAKAO_MAP_APP_KEY: "${kakaoMapAppKey}",
+  ADSENSE_CLIENT: "${adsenseClient}",
+  ADSENSE_SLOT: "${adsenseSlot}",
 };
 `;
 
 const outPath = path.join(__dirname, "src", "js", "config.js");
 fs.writeFileSync(outPath, content);
-console.log(`generate-config.js: wrote ${outPath} (KAKAO_MAP_APP_KEY ${kakaoMapAppKey ? "set" : "empty"})`);
+console.log(`generate-config.js: wrote ${outPath} (KAKAO_MAP_APP_KEY ${kakaoMapAppKey ? "set" : "empty"}, ADSENSE_CLIENT ${adsenseClient ? "set" : "empty"}, ADSENSE_SLOT ${adsenseSlot ? "set" : "empty"})`);
