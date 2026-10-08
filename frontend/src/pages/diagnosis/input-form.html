@@ -635,6 +635,8 @@
     .an-step { min-height: 22px; font-size: 14px; color: #475569; margin: 0 0 4px; }
     .an-sub { font-size: 12px; color: #94a3b8; margin: 0 0 24px; }
     .an-ad-wrap:empty { display: none; }
+    /* 분석 화면의 광고는 본문보다 작게 (광고 자리 기본 최대 폭 970px보다 우선하도록 선택자를 구체적으로 쓴다) */
+    .an-overlay .an-ad-wrap .ch-ad-slot[data-ad-size="banner"] { max-width: 540px; margin-top: 8px; }
     @keyframes an-spin { to { transform: rotate(360deg); } }
     @keyframes an-pulse { 0%, 100% { transform: scale(.92); opacity: .7; } 50% { transform: scale(1.04); opacity: 1; } }
     @keyframes an-dot { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
