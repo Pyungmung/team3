@@ -285,6 +285,7 @@
    * 카드 본문(사진 ~ 실거래 참고). 가격 표시: 월세는 "월세/보증금", 전세는 "전세 보증금"을 가장 크게. 관리비는 이 매물의 실제 관리비다.
    * @param r 리포트의 추천 매물 1건 (ListingRecommendation)
    * @param opts.idx 리포트 목록에서의 순번(0부터). 있으면 "#순위"와 지도 이동 링크가 붙고, 없으면(마이페이지) 건물명만 표시한다.
+   * @param opts.isAd 광고하기 매물 카드면 true (2026-10-08): "#순위" 대신 "광고하기 매물" 배지를 달고, 순위가 없으니 idx는 넘기지 않는다.
    * @param opts.conversionRate 보증금전환 이율(연 %). 없으면 매물에 함께 저장된 값(_conversion_rate)을 쓴다.
    */
   function renderBody(r, opts = {}) {
@@ -415,7 +416,9 @@
       <div class="flex items-start justify-between mb-2">
         <div class="min-w-0">
           <div class="flex items-center flex-wrap gap-1">
-            ${idx == null ? "" : `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:var(--brand-100);color:var(--brand-700)">#${idx + 1}</span>`}
+            ${opts.isAd
+              ? `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ad-badge" style="background:#fff7ed;color:#c2410c">📢 광고하기 매물</span>`
+              : idx == null ? "" : `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:var(--brand-100);color:var(--brand-700)">#${idx + 1}</span>`}
             ${nameHtml}
           </div>
           <div class="badge-row">

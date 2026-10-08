@@ -1,5 +1,6 @@
 package com.customhouse.domain.recommendation.service;
 
+import com.customhouse.domain.ad.service.ActiveAdService;
 import com.customhouse.domain.housingpolicy.dto.HousingPolicyForEngine;
 import com.customhouse.domain.housingpolicy.service.HousingPolicyService;
 import com.customhouse.domain.incomestandard.service.IncomeStandardService;
@@ -50,7 +51,7 @@ class AiEngineClientTest {
         IncomeStandardService incomeStandard = mock(IncomeStandardService.class);
         HousingPolicyService housingPolicies = mock(HousingPolicyService.class);
 
-        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies).requestListingDiagnosis(request);
+        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies, mock(ActiveAdService.class)).requestListingDiagnosis(request);
 
         assertThat(result).containsEntry("ok", true);
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
@@ -69,7 +70,7 @@ class AiEngineClientTest {
         HousingPolicyService housingPolicies = mock(HousingPolicyService.class);
         when(incomeStandard.get()).thenThrow(new IllegalStateException("db down"));
 
-        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies).requestListingDiagnosis(request);
+        Map<String, Object> result = new AiEngineClient(rest, loans, incomeStandard, mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies, mock(ActiveAdService.class)).requestListingDiagnosis(request);
 
         assertThat(result).containsEntry("ok", true);
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
@@ -87,7 +88,7 @@ class AiEngineClientTest {
         when(housingPolicies.getForEngine()).thenThrow(new IllegalStateException("db down"));
 
         Map<String, Object> result = new AiEngineClient(rest, loans, mock(IncomeStandardService.class),
-                mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies).requestListingDiagnosis(request);
+                mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies, mock(ActiveAdService.class)).requestListingDiagnosis(request);
 
         assertThat(result).containsEntry("ok", true);
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
@@ -107,10 +108,31 @@ class AiEngineClientTest {
         when(housingPolicies.getForEngine()).thenReturn(List.of(policy));
 
         new AiEngineClient(rest, loans, mock(IncomeStandardService.class),
-                mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies).requestListingDiagnosis(request);
+                mock(com.customhouse.domain.appsetting.service.AppSettingService.class), housingPolicies, mock(ActiveAdService.class)).requestListingDiagnosis(request);
 
         ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
         verify(spec).body(body.capture());
         assertThat(((AiListingRequest) body.getValue()).housingPolicies()).containsExactly(policy);
+    }
+
+    @Test
+    void 광고_중인_매물번호가_진단_요청에_실리고_읽지_못해도_빈_목록으로_계속한다() {
+        RestClient rest = mock(RestClient.class);
+        RestClient.RequestBodySpec spec = mockRestClient(rest, Map.of("ok", true));
+        LoanProductService loans = mock(LoanProductService.class);
+        when(loans.getSavedLoans()).thenReturn(List.of());
+        ActiveAdService ads = mock(ActiveAdService.class);
+        AiEngineClient client = new AiEngineClient(rest, loans, mock(IncomeStandardService.class),
+                mock(com.customhouse.domain.appsetting.service.AppSettingService.class), mock(HousingPolicyService.class), ads);
+
+        when(ads.activeListingIds()).thenReturn(List.of("SEOCHO-202610-0001", "SEOCHO-202610-0002"));
+        client.requestListingDiagnosis(request);
+        when(ads.activeListingIds()).thenThrow(new IllegalStateException("db down"));
+        client.requestListingDiagnosis(request);
+
+        ArgumentCaptor<Object> body = ArgumentCaptor.forClass(Object.class);
+        verify(spec, org.mockito.Mockito.times(2)).body(body.capture());
+        assertThat(((AiListingRequest) body.getAllValues().get(0)).adListingIds()).containsExactly("SEOCHO-202610-0001", "SEOCHO-202610-0002");
+        assertThat(((AiListingRequest) body.getAllValues().get(1)).adListingIds()).isEmpty();
     }
 }

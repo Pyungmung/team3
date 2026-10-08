@@ -239,6 +239,10 @@ class DiagnosisRequest(BaseModel):
     # 보내며 브라우저 입력이 아니다. 비어 있으면(저장된 정책 없음/조회 실패) 추천 표가 비어 보인다.
     housing_policies: list[HousingPolicyCondition] = Field(default_factory=list, alias="housingPolicies")
 
+    # 지금 "광고하기"로 접수돼 노출 중인 매물번호 (2026-10-08). 백엔드가 DB(listing_ads)에서 읽어 실어 보내며 브라우저 입력이 아니다.
+    # 이 중 사용자 조건(직장 자치구/통근시간/보증금 한도)에 맞는 매물만 응답의 ad_wolse/jeonse_recommendations로 내려간다.
+    ad_listing_ids: list[str] = Field(default_factory=list, alias="adListingIds")
+
     class Config:
         populate_by_name = True
 
@@ -247,7 +251,7 @@ class DiagnosisRequest(BaseModel):
     def _default_max_commute(cls, v):
         return 30 if v is None else v
 
-    @field_validator("preferential_statuses", "preferred_building_types", "loan_products", "housing_policies", mode="before")
+    @field_validator("preferential_statuses", "preferred_building_types", "loan_products", "housing_policies", "ad_listing_ids", mode="before")
     @classmethod
     def _default_empty_list(cls, v):
         return [] if v is None else v

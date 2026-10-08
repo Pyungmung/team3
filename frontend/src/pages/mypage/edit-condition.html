@@ -757,6 +757,11 @@
     .mylist-btn { font-size:12px; font-weight:600; padding:6px 12px; border-radius:999px; border:1px solid var(--line,#e7edf4); background:#fff; color:#475569; cursor:pointer; text-decoration:none; }
     .mylist-btn:hover { border-color:var(--navy); color:var(--navy); }
     .mylist-btn.danger:hover { border-color:#dc2626; color:#dc2626; }
+    /* 광고하기 (2026-10-08): 수정 버튼 왼쪽 버튼 + 광고중 표시 */
+    .mylist-btn.ad { border-color:var(--navy); color:var(--navy); }
+    .mylist-btn.ad:hover { background:#eef2ff; }
+    .mylist-btn:disabled { opacity:.6; cursor:default; }
+    .mylist-ad-badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; background:#fff7ed; color:#c2410c; }
     .mylist-empty { text-align:center; color:#94a3b8; padding:40px 0; font-size:14px; }
   </style>
 </head>
@@ -1679,6 +1684,8 @@
 <script src="../../js/api/mypage.js?v=20260916a"></script>
 <script src="../../js/api/user.js?v=20260921a"></script>
 <script src="../../js/api/watchlist.js?v=20261005a"></script>
+<!-- 광고하기 결제 (주문 생성 후 결제 화면으로 이동) -->
+<script src="../../js/api/ads.js?v=20261008a"></script>
 <script src="../../js/utils/address-match-util.js?v=20261006a"></script>
 
 <script>
@@ -1693,7 +1700,7 @@
       return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
     }
 
-    function cardHtml(r) {
+    function cardHtml(r, ad) {
       const price = r.lease_type === "전세"
         ? `전세 ${(r.deposit || 0).toLocaleString()}만원`
         : `보증금 ${(r.deposit || 0).toLocaleString()}만원 / 월세 ${r.monthly_rent || 0}만원`;
@@ -1701,15 +1708,21 @@
       const photo = r.photo && r.photo !== "PHOTO_PLACEHOLDER"
         ? `<img class="mylist-photo" src="${esc(r.photo)}" alt="" />`
         : `<div class="mylist-photo">사진 없음</div>`;
+      const adActive = !!(ad && ad.active);
+      const adBadge = adActive ? `<span class="mylist-ad-badge">📢 광고중 · D-${esc(ad.remainingDays)}</span>` : "";
+      const adExpire = adActive ? `<div class="mylist-sub">광고 만료일 ${esc(String(ad.expiresAt || "").slice(0, 10))}</div>` : "";
+      const adBtn = isDeleted ? "" : `<button type="button" class="mylist-btn ad" data-ad="${esc(r.listing_id)}">${adActive ? "📢 광고 연장" : "📢 광고하기"}</button>`;
       return `
         <div class="mylist-card" data-listing-id="${esc(r.listing_id)}" data-region="${esc(r.region)}">
           ${photo}
           <div class="mylist-body">
-            <div class="mylist-title">${esc(r.building_name || r.road_address)} <span class="mylist-status${isDeleted ? " deleted" : ""}">${esc(r.listing_status)}</span></div>
+            <div class="mylist-title">${esc(r.building_name || r.road_address)} <span class="mylist-status${isDeleted ? " deleted" : ""}">${esc(r.listing_status)}</span>${adBadge}</div>
             <div class="mylist-sub">${esc(r.property_type)} · ${price} · ${esc(r.exclusive_area)}㎡</div>
             <div class="mylist-sub">${esc(r.road_address)}</div>
             <div class="mylist-sub">등록일 ${esc(r.registered_date)} · 매물번호 ${esc(r.listing_id)}</div>
+            ${adExpire}
             <div class="mylist-actions">
+              ${adBtn}
               <a class="mylist-btn" href="../diagnosis/listing-register.html?id=${encodeURIComponent(r.listing_id)}">✏️ 수정</a>
               <button type="button" class="mylist-btn danger" data-del="${esc(r.listing_id)}">🗑 삭제</button>
             </div>
@@ -1723,12 +1736,37 @@
         return;
       }
       try {
-        const listings = await CustomHouseWatchlistApi.getMyListings();
+        const [listings, myAds] = await Promise.all([
+          CustomHouseWatchlistApi.getMyListings(),
+          CustomHouseAdsApi.getMyAds().catch(() => []),   // 광고 현황을 못 읽어도 매물 목록은 보여준다
+        ]);
+        const adByListing = new Map(myAds.map((a) => [a.listingId, a]));
         if (!listings.length) {
           box.innerHTML = `<p class="mylist-empty">아직 등록한 매물이 없어요. <a href="../diagnosis/listing-register.html">매물을 등록</a>해보세요.</p>`;
           return;
         }
-        box.innerHTML = listings.map(cardHtml).join("");
+        box.innerHTML = listings.map((r) => cardHtml(r, adByListing.get(r.listing_id))).join("");
+        box.querySelectorAll("[data-ad]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const label = btn.textContent;
+            let cfg = null;
+            try { cfg = await CustomHouseAdsApi.getConfig(); } catch (e) { /* 안내 문구만 단순해진다 */ }
+            const price = cfg ? `${Number(cfg.priceWon).toLocaleString()}원` : "광고 요금";
+            const period = cfg ? `${cfg.periodDays}일 동안 ` : "";
+            const extend = label.includes("연장") ? "남은 기간에 이어서 " : "";
+            if (!confirm(`${price}을 결제하면 ${extend}${period}추천 목록 중간에 '광고하기 매물'로 노출돼요.
+결제창으로 이동할까요?`)) return;
+            btn.disabled = true;
+            btn.textContent = "결제창을 여는 중...";
+            try {
+              await CustomHouseAdsApi.payForAd({ listingId: btn.dataset.ad });   // 결제창으로 이동하면 이 페이지는 떠난다
+            } catch (err) {
+              alert(err.message || "결제를 시작하지 못했어요. 잠시 후 다시 시도해주세요.");
+            }
+            btn.disabled = false;   // 결제창을 닫았거나 오류가 난 경우에만 여기로 돌아온다
+            btn.textContent = label;
+          });
+        });
         box.querySelectorAll("[data-del]").forEach((btn) => {
           btn.addEventListener("click", async () => {
             if (!confirm("정말 이 매물을 삭제할까요?")) return;

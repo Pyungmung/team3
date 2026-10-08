@@ -39,6 +39,7 @@ docs/samples/dummyhouses/*.csv 의 더미 매물을 추천한다. 국토부 실�
 "실거래 참고"와 같은 패턴.
 """
 import logging
+import random
 import time
 from datetime import date
 
@@ -49,6 +50,7 @@ from app.services import (
 
 logger = logging.getLogger(__name__)
 
+MAX_AD_CARDS = 100  # 월세/전세 각각 응답에 담는 광고 매물 최대 수 (2026-10-08)
 DEFAULT_TOP_N = 500  # 월세/전세 각각 최대 추천 수 기본값 (2026-10-05: 1000 -> 500 - 응답 4MB/연속 요청 시 Render 무료 인스턴스 헬스체크 타임아웃 완화)
 MAX_TOP_N = 1000  # 관리자 설정으로도 넘을 수 없는 상한 (지도 마커/카드 렌더링이 버틸 수 있는 한계)
 MIN_TOP_N = 10
@@ -274,6 +276,40 @@ def _attach_details(record: dict, listing: dict) -> dict:
     return record
 
 
+def _build_ad_cards(request, ad_listing_ids: list[str], taken_ids: set[str], work_lat: float, work_lon: float,
+                    deposit_limit: int, deposit_rate, monthly_deposit_rate) -> tuple[list[dict], list[dict]]:
+    """광고하기 매물 카드 (2026-10-08): 광고 중인 매물 중 이 사용자에게 보여줄 수 있는 것만 월세/전세로 나눠 무작위 순서로 돌려준다.
+    조건 = 직장 자치구에 있고, 이 매물 자신의 직선거리 추정 통근시간이 희망 통근시간 이내이며, 보증금이 한도 이하이고, 계약가능 상태.
+    추천 순위/유형/월세 필터와는 무관하다(광고는 추천 로직과 상관없이 끼워 넣는다). 이미 일반 추천에 나온 매물(taken_ids)은 빼서
+    같은 매물이 두 번 보이지 않게 한다. 광고 매물 정보는 복사해 두지 않고 매번 원본 매물에서 읽으므로 원본을 고치면 그대로 반영된다."""
+    wolse_ads: list[dict] = []
+    jeonse_ads: list[dict] = []
+    for listing_id in dict.fromkeys(ad_listing_ids):  # 중복 제거(순서 유지)
+        if listing_id in taken_ids:
+            continue
+        listing = listing_repository.get_listing(listing_id)
+        if listing is None or listing["listing_status"] != listing_schema.LISTING_STATUS_AVAILABLE:
+            continue
+        if listing["region"] != request.work_location:
+            continue
+        if listing["lat"] is None or listing["lon"] is None:
+            continue
+        if (listing["deposit"] or 0) > deposit_limit:
+            continue
+        minutes = calculator._estimate_commute_minutes_fallback(work_lat, work_lon, listing["lat"], listing["lon"], request.transport_type)
+        if minutes > request.max_commute_minutes:
+            continue
+        card = _clean_nan(_to_result(listing, minutes, calculator.ESTIMATE_SOURCE_LABEL, deposit_rate.rate_percent, request.deposit,
+                                     monthly_deposit_rate.rate_percent))
+        _attach_details(card, listing)
+        card["eligible_loans"] = loan_matcher.match_eligible_loans(request, card, deposit_rate.rate_percent)
+        card["is_ad"] = True
+        (wolse_ads if listing["lease_type"] == "월세" else jeonse_ads).append(card)
+    random.shuffle(wolse_ads)
+    random.shuffle(jeonse_ads)
+    return wolse_ads[:MAX_AD_CARDS], jeonse_ads[:MAX_AD_CARDS]
+
+
 def refresh_listing_card(request, listing_id: str) -> dict | None:
     """관심매물 새로고침 - 매물번호로 그 매물 1건의 추천 카드를 사용자의 현재 조건으로 다시 만든다 (2026-10-05).
     run_listing_diagnosis와 같은 계산(_to_result/_attach_details/대출 판별)을 쓰되, 순위/필터(보증금 한도, 통근시간,
@@ -320,6 +356,7 @@ def run_home_preview(request) -> dict:
         "show_all_deposits": True,
         "loan_products": [],
         "app_settings": AppSettingCondition(recommendationLimit=HOME_PREVIEW_TOP_N),
+        "ad_listing_ids": [],  # 홈 요약 통계에는 광고 카드를 만들 필요가 없다
     })
     data = run_listing_diagnosis(light)
     listings = data["wolse_recommendations"] + data["jeonse_recommendations"]
@@ -506,13 +543,18 @@ def run_listing_diagnosis(request) -> dict:
     wolse = _finalize(wolse)
     jeonse = _finalize(jeonse)
 
+    # 광고하기 매물 (2026-10-08): 일반 추천과 별개로 만든다. 프론트가 일반 카드 5개마다 다음 칸에 끼워 넣는다.
+    ad_wolse, ad_jeonse = _build_ad_cards(
+        request, request.ad_listing_ids, {r["listing_id"] for r in wolse + jeonse}, work_lat, work_lon, deposit_limit,
+        deposit_rate, monthly_deposit_rate) if request.ad_listing_ids else ([], [])
+
     # 주거정책 추천: 직장 위치 자치구(work_region) 정책을 기본으로 보여주고, 매물을 클릭하면 그 매물 자치구 정책으로 바꾼다.
     # 지역값이 "서울"인 정책은 어느 자치구든(25개 모두) match_display_policies가 함께 돌려준다. 추천 결과에 나온 자치구와
     # 직장 자치구의 정책만 내려준다 (직장 자치구가 통근권 목록에 없어도 기본 표시가 비지 않게 따로 계산).
     work_region = request.work_location
     if work_region not in policies_by_region:
         policies_by_region[work_region] = policy_matcher.match_display_policies(request, building_region=work_region)
-    wanted = {r["region"] for r in wolse + jeonse} | {work_region}
+    wanted = {r["region"] for r in wolse + jeonse + ad_wolse + ad_jeonse} | {work_region}
     policies_by_region = {name: pols for name, pols in policies_by_region.items() if name in wanted}
 
     # 2026-10-01부터 이 응답의 통근시간은 항상 직선거리 추정치다 (모듈 docstring 참고) - 정확한 값은
@@ -526,6 +568,8 @@ def run_listing_diagnosis(request) -> dict:
         "rent_to_income_ratio": rir,
         "wolse_recommendations": wolse,
         "jeonse_recommendations": jeonse,
+        "ad_wolse_recommendations": ad_wolse,
+        "ad_jeonse_recommendations": ad_jeonse,
         "used_distance_estimate": used_distance_estimate,
         "total_candidates": total_candidates,
         "deposit_limit": deposit_limit,

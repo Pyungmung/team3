@@ -79,6 +79,15 @@
     .adm-msg.err { color: #dc2626; }
     /* 주거지원정책 탭: 정책 1건 = 표의 한 줄 */
     .hp-wrap { overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 10px; }
+    /* 광고 현황 표 (2026-10-08) */
+    .ad-table { border-collapse: collapse; font-size: 13px; min-width: 980px; width: 100%; }
+    .ad-table th { background: #f8fafc; color: #0f172a; font-size: 12px; font-weight: 800; padding: 9px 8px; border-bottom: 1px solid #cbd5e1; text-align: center; white-space: nowrap; }
+    .ad-table td { padding: 8px; border-top: 1px solid #e2e8f0; text-align: center; vertical-align: middle; }
+    .ad-table .ad-status { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: #e2e8f0; color: #334155; }
+    .ad-table .ad-status.DONE { background: #dcfce7; color: #166534; }
+    .ad-table .ad-status.FAILED { background: #fee2e2; color: #991b1b; }
+    .ad-table .ad-status.CANCELED { background: #fef3c7; color: #92400e; }
+    .ad-table .ad-live { color: #c2410c; font-weight: 800; }
     .hp-table { border-collapse: collapse; font-size: 13px; min-width: 1580px; width: 100%; table-layout: fixed; }
     .hp-table th { background: #f8fafc; color: #0f172a; font-size: 12px; font-weight: 800; padding: 9px 6px; border-bottom: 1px solid #cbd5e1; text-align: center; white-space: nowrap; }
     .hp-table td { padding: 7px 5px; border-top: 1px solid #e2e8f0; vertical-align: middle; text-align: center; }
@@ -119,6 +128,7 @@
         <button type="button" class="adm-tab active" role="tab" aria-selected="true" data-top-tab="loans">전세자금대출</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="income-standard">기준소득관리</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="housing-policies">주거지원정책</button>
+        <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="ads">광고 현황</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="app-settings">기타 설정</button>
       </div>
 
@@ -232,6 +242,33 @@
         <p id="hp-empty" class="hidden text-sm text-slate-400 mt-3">이 지역에는 아직 정책이 없어요. [+ 정책 추가]로 등록해 보세요.</p>
       </section>
 
+      <section id="tab-ads" class="hidden">
+        <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+          <h2 class="text-lg font-extrabold">광고 현황</h2>
+          <span class="text-xs text-slate-400" id="ad-total"></span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">
+          "광고하기" 결제 주문이에요 (최신순). 가격·노출 기간은 <b>기타 설정</b>에서 바꿔요. <b>환불</b>하면 토스페이먼츠 결제가 전액 취소되고,
+          그 주문이 늘려 준 광고 기간만큼 광고가 줄어요(매물은 그대로 유지돼요). 결제 승인 뒤 처리에 실패한 주문은 자동으로 결제가 취소돼 "실패"로 남고,
+          자동 취소마저 실패했다면 사유에 "수동으로 취소"라고 표시되니 토스페이먼츠 상점관리자에서 직접 취소해 주세요.
+        </p>
+        <div class="flex items-center gap-3 flex-wrap mb-3">
+          <button type="button" id="ad-reload" class="adm-btn adm-save" style="padding:8px 16px">새로고침</button>
+          <span class="adm-msg" id="ad-msg" role="status"></span>
+        </div>
+        <div class="hp-wrap">
+          <table class="ad-table">
+            <thead>
+              <tr>
+                <th>주문일시</th><th>회원</th><th>매물번호</th><th>금액</th><th>기간</th><th>상태</th><th>광고 만료일</th><th>비고</th><th>환불</th>
+              </tr>
+            </thead>
+            <tbody id="ad-body"></tbody>
+          </table>
+        </div>
+        <p id="ad-empty" class="hidden text-sm text-slate-400 mt-3">아직 광고 주문이 없어요.</p>
+      </section>
+
       <section id="tab-app-settings" class="hidden">
         <form id="app-settings-form" class="card p-6 space-y-6" novalidate>
           <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -254,6 +291,26 @@
             </div>
           </div>
 
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-700 mb-1">광고하기</h3>
+            <p class="text-xs text-slate-400 mb-3">
+              매물 광고(단건결제) 가격과 노출 기간이에요. 결제 금액은 서버가 이 값으로 정하고, 이미 만들어진 주문은 주문 당시 값이 유지돼요.
+              광고 중인 매물을 다시 결제하면 남은 기간에 이어서 연장돼요. 가격 100 ~ 1,000,000원, 기간 1 ~ 365일 (기본 1,990원 / 30일).
+            </p>
+            <div class="flex gap-4 flex-wrap">
+              <div class="adm-field max-w-xs">
+                <span class="lbl">광고 1회 가격</span>
+                <input type="number" min="100" max="1000000" step="10" data-as-field="adPriceWon" placeholder="예: 1990" />
+                <div class="adm-unit">원</div>
+              </div>
+              <div class="adm-field max-w-xs">
+                <span class="lbl">1회 노출 기간</span>
+                <input type="number" min="1" max="365" step="1" data-as-field="adPeriodDays" placeholder="예: 30" />
+                <div class="adm-unit">일</div>
+              </div>
+            </div>
+          </div>
+
           <div class="flex items-center gap-3 flex-wrap">
             <button type="submit" class="adm-btn adm-save" data-as-save>수정완료</button>
             <span class="adm-msg" data-as-msg role="status"></span>
@@ -270,7 +327,8 @@
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/admin-loans.js?v=20260928a"></script>
   <script src="../../js/api/admin-income-standard.js?v=20260930a"></script>
-  <script src="../../js/api/admin-app-settings.js?v=20261005a"></script>
+  <script src="../../js/api/admin-app-settings.js?v=20261008a"></script>
+  <script src="../../js/api/admin-ads.js?v=20261008a"></script>
   <script src="../../js/api/admin-housing-policies.js?v=20261008a"></script>
   <script>
     renderHeader("admin");
@@ -771,6 +829,8 @@
       document.getElementById("adm-main").classList.toggle("max-w-4xl", tab !== "housing-policies");
       document.getElementById("adm-main").classList.toggle("max-w-[1620px]", tab === "housing-policies");
       if (tab === "housing-policies") loadHousingPolicies();
+      document.getElementById("tab-ads").classList.toggle("hidden", tab !== "ads");
+      if (tab === "ads") loadAdOrders();
       document.getElementById("tab-app-settings").classList.toggle("hidden", tab !== "app-settings");
     }
 
@@ -855,6 +915,8 @@
     // ---------- 기타 설정 (추천 개수 상한) ----------
     function renderAppSettings(data) {
       appSettingsFormEl.querySelector('[data-as-field="recommendationLimit"]').value = data.recommendationLimit ?? "";
+      appSettingsFormEl.querySelector('[data-as-field="adPriceWon"]').value = data.adPriceWon ?? "";
+      appSettingsFormEl.querySelector('[data-as-field="adPeriodDays"]').value = data.adPeriodDays ?? "";
       const updatedEl = appSettingsFormEl.querySelector("[data-as-updated]");
       updatedEl.textContent = data.updatedAt ? `마지막 수정: ${new Date(data.updatedAt).toLocaleString("ko-KR")}` : "";
     }
@@ -873,11 +935,20 @@
         return setAsMsg("추천 개수 상한은 10 ~ 1000 사이의 정수로 입력해주세요.", "err");
       }
 
+      const adPrice = Number(appSettingsFormEl.querySelector('[data-as-field="adPriceWon"]').value.trim());
+      const adDays = Number(appSettingsFormEl.querySelector('[data-as-field="adPeriodDays"]').value.trim());
+      if (!Number.isInteger(adPrice) || adPrice < 100 || adPrice > 1000000) {
+        return setAsMsg("광고 가격은 100 ~ 1,000,000원 사이의 정수로 입력해주세요.", "err");
+      }
+      if (!Number.isInteger(adDays) || adDays < 1 || adDays > 365) {
+        return setAsMsg("광고 노출 기간은 1 ~ 365일 사이의 정수로 입력해주세요.", "err");
+      }
+
       const btn = appSettingsFormEl.querySelector("[data-as-save]");
       btn.disabled = true;
       setAsMsg("저장 중...", "");
       try {
-        renderAppSettings(await CustomHouseAdminAppSettingsApi.saveAppSettings({ recommendationLimit: limit }));
+        renderAppSettings(await CustomHouseAdminAppSettingsApi.saveAppSettings({ recommendationLimit: limit, adPriceWon: adPrice, adPeriodDays: adDays }));
         setAsMsg("저장했어요. 다음 진단부터 반영돼요.", "ok");
       } catch (err) {
         setAsMsg(err.message || "저장하지 못했어요.", "err");
@@ -1194,6 +1265,63 @@
         tr.classList.add("hp-error");
         saveBtn.disabled = false;
         setHpMsg(err.message || "저장하지 못했어요.", "err");
+      }
+    });
+
+    // ---------- 광고 현황 (광고 주문 목록 + 환불, 2026-10-08) ----------
+    const AD_STATUS_LABELS = { PENDING: "결제 대기", PROCESSING: "처리 중", DONE: "완료", FAILED: "실패", CANCELED: "환불됨" };
+
+    function setAdMsg(text, kind) {
+      const el = document.getElementById("ad-msg");
+      el.textContent = text || "";
+      el.className = "adm-msg" + (kind ? " " + kind : "");
+    }
+
+    function adRowHtml(o) {
+      const created = o.createdAt ? new Date(o.createdAt).toLocaleString("ko-KR") : "";
+      const expires = o.adExpiresAt ? String(o.adExpiresAt).slice(0, 10) : "-";
+      const live = o.adActive ? ' <span class="ad-live">광고중</span>' : "";
+      const refundable = o.status === "DONE";
+      return `<tr data-order="${esc(o.orderId)}">
+        <td>${esc(created)}</td>
+        <td>${esc(o.userEmail || "회원 " + o.userId)}</td>
+        <td>${esc(o.listingId || "-")}</td>
+        <td>${Number(o.amount).toLocaleString()}원</td>
+        <td>${esc(o.periodDays)}일</td>
+        <td><span class="ad-status ${esc(o.status)}">${esc(AD_STATUS_LABELS[o.status] || o.status)}</span></td>
+        <td>${esc(expires)}${live}</td>
+        <td style="text-align:left;max-width:260px;word-break:break-all">${esc(o.failReason || "")}</td>
+        <td>${refundable ? `<button type="button" class="adm-btn adm-del" style="padding:5px 12px;font-size:12px" data-refund="${esc(o.orderId)}">환불</button>` : ""}</td>
+      </tr>`;
+    }
+
+    async function loadAdOrders() {
+      setAdMsg("불러오는 중...", "");
+      try {
+        const orders = await CustomHouseAdminAdsApi.listAdOrders();
+        document.getElementById("ad-body").innerHTML = orders.map(adRowHtml).join("");
+        document.getElementById("ad-empty").classList.toggle("hidden", orders.length > 0);
+        document.getElementById("ad-total").textContent = orders.length ? `주문 ${orders.length}건 · 광고중 ${orders.filter((o) => o.adActive).length}건` : "";
+        setAdMsg("", "");
+      } catch (err) {
+        setAdMsg(err.message || "광고 현황을 불러오지 못했어요.", "err");
+      }
+    }
+
+    document.getElementById("ad-reload").addEventListener("click", loadAdOrders);
+    document.getElementById("ad-body").addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-refund]");
+      if (!btn) return;
+      if (!confirm("이 주문을 환불할까요? 토스페이먼츠 결제가 전액 취소되고 광고 기간이 줄어요. 되돌릴 수 없어요.")) return;
+      btn.disabled = true;
+      setAdMsg("환불 처리 중...", "");
+      try {
+        await CustomHouseAdminAdsApi.refundAdOrder(btn.dataset.refund);
+        await loadAdOrders();
+        setAdMsg("환불했어요.", "ok");
+      } catch (err) {
+        setAdMsg(err.message || "환불하지 못했어요.", "err");
+        btn.disabled = false;
       }
     });
 

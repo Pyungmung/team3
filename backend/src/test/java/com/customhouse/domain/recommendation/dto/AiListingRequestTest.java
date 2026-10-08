@@ -35,7 +35,7 @@ class AiListingRequestTest {
         HousingPolicyForEngine policy = new HousingPolicyForEngine(7L, "강남구", "서울시", "청년월세지원", "월 20만원", 19, 39, 5000, 34500, 150,
                 false, true, false, true, false, "https://www.seoul.go.kr/a");
         IncomeStandardResponse incomeStandard = new IncomeStandardResponse(15.8, 18.4, 18.3, 16.2, 19.4, 2024, "국토교통부,「주거실태조사」", 2_564_238L, null);
-        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(recommend(), List.of(loan), incomeStandard, new com.customhouse.domain.appsetting.dto.AppSettingResponse(500, null), List.of(policy))));
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(recommend(), List.of(loan), incomeStandard, new com.customhouse.domain.appsetting.dto.AppSettingResponse(500, null), List.of(policy), List.of("SEOCHO-202610-0001"))));
 
         assertThat(json.get("appSettings").get("recommendationLimit").asInt()).isEqualTo(500);
         assertThat(json.get("showAllDeposits").asBoolean()).isTrue();      // 리포트 체크박스 값이 AI 엔진 요청에 그대로 실린다
@@ -76,16 +76,19 @@ class AiListingRequestTest {
         assertThat(p.get("loan").asBoolean()).isFalse();
         assertThat(p.get("link").asText()).isEqualTo("https://www.seoul.go.kr/a");
         assertThat(p.has("note")).isFalse();   // 관리자용 메모는 AI 엔진에 보내지 않는다
+        // 광고하기: 지금 광고 중인 매물번호가 실린다
+        assertThat(json.get("adListingIds").get(0).asText()).isEqualTo("SEOCHO-202610-0001");
     }
 
     @Test
     void 브라우저가_loanProducts를_보내도_RecommendRequest는_받지_않는다() throws Exception {
-        String body = "{\"annualIncome\":3400,\"deposit\":800,\"workLocation\":\"강남구\",\"loanProducts\":[{\"type\":\"HACK\"}],\"housingPolicies\":[{\"id\":1}]}";
+        String body = "{\"annualIncome\":3400,\"deposit\":800,\"workLocation\":\"강남구\",\"loanProducts\":[{\"type\":\"HACK\"}],\"housingPolicies\":[{\"id\":1}],\"adListingIds\":[\"HACK-1\"]}";
         RecommendRequest parsed = mapper.readValue(body, RecommendRequest.class);
 
-        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(parsed, List.of(), null, null, List.of())));
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(new AiListingRequest(parsed, List.of(), null, null, List.of(), List.of())));
 
         assertThat(json.get("loanProducts")).isEmpty();   // 서버가 붙인 값만 나간다
         assertThat(json.get("housingPolicies")).isEmpty();
+        assertThat(json.get("adListingIds")).isEmpty();
     }
 }

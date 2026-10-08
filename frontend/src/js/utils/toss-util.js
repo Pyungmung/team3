@@ -10,11 +10,13 @@
 const TOSS_CLIENT_KEY = "test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq";
 const TOSS_CUSTOMER_KEY_STORAGE = "customhouse:tossCustomerKey";
 
-function getTossPayments() {
+// 2026-10-08: 광고하기 결제는 서버(/api/ads/config, 주문 응답)가 내려준 클라이언트 키를 넘겨 쓴다 (키를 코드에 박지 않고 .env/Render 환경변수로만 관리).
+// 키를 안 넘기면(기존 결제 페이지) 위 샘플 테스트 키를 쓴다.
+function getTossPayments(clientKey) {
   if (typeof TossPayments === "undefined") {
     throw new Error("토스페이먼츠 SDK가 로드되지 않았습니다.");
   }
-  return TossPayments(TOSS_CLIENT_KEY);
+  return TossPayments(clientKey || TOSS_CLIENT_KEY);
 }
 
 /** 브라우저(사용자)당 하나의 customerKey를 유지한다 (빌링키 발급/청구 시 동일 값이 필요). */
