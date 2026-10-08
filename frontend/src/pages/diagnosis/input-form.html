@@ -1423,6 +1423,9 @@
       "비용이 낮은 순서로 추천을 정리하는 중이에요",
     ];
     let stepTimer = null;
+    // 분석이 아무리 빨리 끝나도 분석 화면은 최소 이 시간만큼 보여준다 (2026-10-08). 분석 요청은 화면이 뜨자마자 시작하고 이 시간과 동시에 진행되므로,
+    // 더 오래 걸리면 분석이 끝나는 즉시 넘어가고(대기 시간이 더해지지 않는다), 오류가 나면 기다리지 않고 바로 안내한다.
+    const MIN_ANALYZING_MS = 3000;
 
     // 광고 배너 목록은 미리 받아 둔다 (분석 화면이 뜨는 순간 바로 광고가 나오게). 못 받아도 분석 화면은 그대로 나온다.
     if (window.CustomHouseAdSlot) CustomHouseAdSlot.fetchBanners();
@@ -1532,6 +1535,7 @@
       // 진단 중에는 두 단계의 버튼 모두 잠그고, 누른 버튼에 진행 문구를 보여준다
       [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = true));
       (wasQuick ? quickBtn : submitBtn).textContent = wasQuick ? "3초 진단 중..." : "분석 중...";
+      const analyzingStartedAt = Date.now();
       showAnalyzing(condition);
 
       try {
@@ -1542,6 +1546,9 @@
         localStorage.setItem("customhouse:lastListingDiagnosisCondition", JSON.stringify(condition));
         // 리포트 화면에서 주택 유형만 바꿔 "다시 조회"할 때 나머지 조건을 그대로 재사용하기 위해 저장.
         localStorage.setItem("customhouse:lastDiagnosisCondition", JSON.stringify(condition));
+        // 분석이 최소 표시 시간보다 빨리 끝났으면 남은 시간만큼 분석 화면을 더 보여준 뒤 넘어간다
+        const remaining = MIN_ANALYZING_MS - (Date.now() - analyzingStartedAt);
+        if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
         window.location.href = "report-listings.html";
       } catch (err) {
         hideAnalyzing();
