@@ -1428,7 +1428,19 @@
     const MIN_ANALYZING_MS = 3000;
 
     // 광고 배너 목록은 미리 받아 둔다 (분석 화면이 뜨는 순간 바로 광고가 나오게). 못 받아도 분석 화면은 그대로 나온다.
-    if (window.CustomHouseAdSlot) CustomHouseAdSlot.fetchBanners();
+    // 보여 줄 배너도 입력 화면이 열릴 때 미리 골라 이미지를 받아 둔다 - 배너 이미지는 서버가 DB에서 읽어 처음 받을 때 몇 초 걸려서,
+    // 분석 화면이 뜰 때 처음 받으면 광고가 늦게 보인다. 제출할 때 그 배너가 방문자 조건에 아직 맞으면 그대로 쓰고, 안 맞으면 새로 고른다.
+    const ANALYZING_AD_SLOT = "diagnosis-loading";
+    let preparedBanner = null;
+    if (window.CustomHouseAdSlot && window.CustomHouseAdTargeting) {
+      CustomHouseAdSlot.fetchBanners().then((banners) => {
+        let lastCondition = null;
+        try { lastCondition = JSON.parse(localStorage.getItem("customhouse:lastDiagnosisCondition") || "null"); } catch (err) { lastCondition = null; }
+        const profile = lastCondition ? analyzingAdProfile(lastCondition) : CustomHouseAdTargeting.buildProfile({ loggedIn: true });
+        preparedBanner = CustomHouseAdTargeting.pickBanner(banners, profile, ANALYZING_AD_SLOT);
+        CustomHouseAdSlot.preloadBanner(preparedBanner);
+      }).catch(() => {});
+    }
 
     // 방문자 조건 = 방금 입력한 진단 조건. 적정 월세 상한은 이번 진단이 끝나야 알 수 있어서 지난 진단/홈 미리보기 값을 쓰고, 없으면 성향 구분 없이 랜덤이다.
     function analyzingAdProfile(condition) {
@@ -1463,10 +1475,13 @@
       if (window.CustomHouseAdSlot && window.CustomHouseAdTargeting) {
         const box = document.getElementById("an-ad-box");
         const slotEl = document.createElement("div");
-        slotEl.dataset.adSlot = "diagnosis-loading";
+        slotEl.dataset.adSlot = ANALYZING_AD_SLOT;
         slotEl.dataset.adSize = "banner";
         box.replaceChildren(slotEl);
-        CustomHouseAdSlot.mount(slotEl, { profile: analyzingAdProfile(condition) }).catch(() => {});
+        const profile = analyzingAdProfile(condition);
+        // 미리 받아 둔 배너가 이번 조건에도 맞으면 그것을 보여준다(이미지가 이미 캐시에 있다). 아니면 조건에 맞는 배너를 새로 고른다.
+        const reuse = preparedBanner && CustomHouseAdTargeting.matchBanner(preparedBanner, profile, ANALYZING_AD_SLOT);
+        CustomHouseAdSlot.mount(slotEl, reuse ? { profile, banners: [preparedBanner] } : { profile }).catch(() => {});
       }
     }
 
