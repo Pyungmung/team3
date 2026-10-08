@@ -44,7 +44,9 @@ async function getMyCondition() {
   if (!res.ok || body.success === false) {
     throw new Error(body.message || "마이페이지 조회에 실패했습니다.");
   }
-  return body.data;
+  // 옛날에 "가장 가까운 구청" 기준으로 저장된 직장 구를 주소의 구로 바로잡는다 (address-match-util.js를 불러온 페이지에서만)
+  const util = window.CustomHouseAddressMatchUtil;
+  return util && util.normalizeWorkLocation ? util.normalizeWorkLocation(body.data) : body.data;
 }
 
 async function updateMyCondition(condition) {

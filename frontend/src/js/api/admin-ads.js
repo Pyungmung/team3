@@ -49,10 +49,16 @@ async function listAdOrders() {
   return (await adminAdsUnwrap(res, "광고 현황을 불러오지 못했어요.")) || [];
 }
 
+/** 지금 등록된 광고 매물 전부(주문 없이 접수된 광고 포함): [{listingId, userId, userEmail, startedAt, expiresAt, active, lastOrderId}] */
+async function listAdListings() {
+  const res = await adminAdsFetch(`${ADMIN_ADS_API_BASE}/listings`);
+  return (await adminAdsUnwrap(res, "광고 매물을 불러오지 못했어요.")) || [];
+}
+
 /** 환불: 토스 결제 전액 취소 + 그 주문이 늘려 준 광고 기간 차감. 갱신된 주문 한 줄을 돌려준다. */
 async function refundAdOrder(orderId) {
   const res = await adminAdsFetch(`${ADMIN_ADS_API_BASE}/${encodeURIComponent(orderId)}/cancel`, { method: "POST" });
   return adminAdsUnwrap(res, "환불하지 못했어요. 잠시 후 다시 시도해주세요.");
 }
 
-window.CustomHouseAdminAdsApi = { listAdOrders, refundAdOrder };
+window.CustomHouseAdminAdsApi = { listAdOrders, listAdListings, refundAdOrder };

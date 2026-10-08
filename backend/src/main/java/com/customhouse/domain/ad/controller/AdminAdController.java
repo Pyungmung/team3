@@ -1,6 +1,7 @@
 package com.customhouse.domain.ad.controller;
 
 import com.customhouse.domain.ad.dto.AdminAdOrderResponse;
+import com.customhouse.domain.ad.dto.AdminListingAdResponse;
 import com.customhouse.domain.ad.service.AdService;
 import com.customhouse.domain.user.service.AdminGuard;
 import com.customhouse.global.common.ApiResponse;
@@ -32,6 +33,13 @@ public class AdminAdController {
     public ResponseEntity<ApiResponse<List<AdminAdOrderResponse>>> list(@AuthenticationPrincipal AuthenticatedUser principal) {
         adminGuard.requireAdmin(principal.id());
         return ResponseEntity.ok(ApiResponse.ok(adService.listOrders()));
+    }
+
+    /** 지금 등록된 광고 매물 전부 (주문 없이 접수된 예시 광고 포함) */
+    @GetMapping("/listings")
+    public ResponseEntity<ApiResponse<List<AdminListingAdResponse>>> listings(@AuthenticationPrincipal AuthenticatedUser principal) {
+        adminGuard.requireAdmin(principal.id());
+        return ResponseEntity.ok(ApiResponse.ok(adService.listAds()));
     }
 
     /** 환불: 토스 결제 전액 취소 + 그 주문이 늘려 준 광고 기간 차감 (매물은 유지) */

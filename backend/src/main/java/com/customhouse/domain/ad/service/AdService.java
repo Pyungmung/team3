@@ -6,6 +6,7 @@ import com.customhouse.domain.ad.dto.AdConfirmResponse;
 import com.customhouse.domain.ad.dto.AdOrderRequest;
 import com.customhouse.domain.ad.dto.AdOrderResponse;
 import com.customhouse.domain.ad.dto.AdminAdOrderResponse;
+import com.customhouse.domain.ad.dto.AdminListingAdResponse;
 import com.customhouse.domain.ad.dto.MyAdResponse;
 import com.customhouse.domain.ad.entity.AdOrder;
 import com.customhouse.domain.ad.entity.ListingAd;
@@ -33,6 +34,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -246,6 +248,17 @@ public class AdService {
         Map<String, ListingAd> ads = listingIds.isEmpty() ? Map.of()
                 : adRepository.findByListingIdIn(listingIds).stream().collect(Collectors.toMap(ListingAd::getListingId, Function.identity()));
         return orders.stream().map(o -> AdAdminOrderMapper.toResponse(o, emails.get(o.getUserId()), ads.get(o.getListingId()), now)).toList();
+    }
+
+    /** 관리자: 지금 등록된 광고 매물 전부 (주문 없이 접수된 광고 포함, 만료일 늦은 순) */
+    public List<AdminListingAdResponse> listAds() {
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<ListingAd> ads = adRepository.findAll().stream()
+                .sorted(Comparator.comparing(ListingAd::getExpiresAt).reversed()).toList();
+        Map<Long, String> emails = userRepository.findAllById(ads.stream().map(ListingAd::getUserId).distinct().toList()).stream()
+                .collect(Collectors.toMap(User::getId, User::getEmail, (a, b) -> a));
+        return ads.stream().map(a -> new AdminListingAdResponse(a.getListingId(), a.getUserId(), emails.get(a.getUserId()),
+                a.getStartedAt(), a.getExpiresAt(), a.isActive(now), a.getLastOrderId())).toList();
     }
 
     /** 관리자 환불: 토스 결제를 전액 취소하고, 그 주문이 늘려 준 노출 기간만큼 광고를 줄인다. 매물 자체는 그대로 유지된다. */

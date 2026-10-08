@@ -454,6 +454,7 @@
   <script src="../../js/utils/ad-interleave.js?v=20261008a"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/watchlist.js?v=20261008b"></script>
+  <script src="../../js/utils/address-match-util.js?v=20261008a"></script>
   <script src="../../js/api/recommendation.js?v=20260930a"></script>
   <script src="../../js/utils/map-util.js?v=20260928a"></script>
   <script src="../../js/utils/map-cluster-util.js?v=20261008e"></script>
@@ -564,12 +565,24 @@
 
     // 이 결과를 받을 때 쓴 조건. 주택 유형 필터를 바꿔 다시 조회하면 공용 조건(lastDiagnosisCondition)만
     // 바뀌고 이 결과는 옛 조건 그대로라, 둘이 다르면 현재 조건으로 다시 받아온다 (체크박스와 목록이 어긋나 보이지 않게).
+    // 옛날 방식(가장 가까운 구청)으로 저장된 직장 구는 주소의 구로 바로잡아 다시 저장한다 - 조건이 바뀌므로 아래 isStale이 새 조건으로 다시 조회한다 (2026-10-08)
+    try {
+      const rawCondition = localStorage.getItem("customhouse:lastDiagnosisCondition");
+      if (rawCondition && window.CustomHouseAddressMatchUtil) {
+        const parsedCondition = JSON.parse(rawCondition);
+        const fixedCondition = CustomHouseAddressMatchUtil.normalizeWorkLocation(parsedCondition);
+        if (fixedCondition !== parsedCondition) localStorage.setItem("customhouse:lastDiagnosisCondition", JSON.stringify(fixedCondition));
+      }
+    } catch (e) { /* 저장 조건이 깨졌어도 아래 기본 흐름이 처리한다 */ }
     const currentConditionText = localStorage.getItem("customhouse:lastDiagnosisCondition");
     const listingConditionText = localStorage.getItem("customhouse:lastListingDiagnosisCondition");
     // listing-register.html에서 매물 등록을 마치고 돌아올 때 ?justRegistered=1을 붙인다 - 조건은
     // 안 바뀌었어도 방금 등록한 매물이 결과에 반영되게 강제로 한 번 더 조회한다.
     const justRegistered = new URLSearchParams(location.search).get("justRegistered") === "1";
-    const isStale = !!raw && !!currentConditionText && (currentConditionText !== listingConditionText || justRegistered);
+    // 광고하기 기능이 생기기 전에 저장된 결과는 광고 항목(ad_wolse_recommendations)이 아예 없다 - 그대로 보여주면 광고가 영영 안 보이므로 한 번 다시 조회한다 (2026-10-08)
+    let cachedLacksAds = false;
+    try { cachedLacksAds = !!raw && !("ad_wolse_recommendations" in JSON.parse(raw)); } catch (e) { cachedLacksAds = false; }
+    const isStale = !!raw && !!currentConditionText && (currentConditionText !== listingConditionText || justRegistered || cachedLacksAds);
 
     if (!raw) {
       document.getElementById("empty-state").classList.remove("hidden");
