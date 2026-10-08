@@ -1493,7 +1493,7 @@
         `<span class="bn-pill">${b.slots.length ? "자리: " + esc(b.slots.join(", ")) : "모든 자리"}</span>`,
       ].join("");
       return `<tr data-id="${esc(b.id)}">
-        <td><img class="bn-thumb" src="${esc(bnImgSrc(b.imageUrl))}" alt="" /></td>
+        <td><img class="bn-thumb" src="${esc(bnImgSrc(b.imageUrl))}" alt="" loading="lazy" decoding="async" /></td>
         <td style="text-align:left"><b>${esc(b.title)}</b><br /><span class="bn-pill">${esc(BN_CATEGORY[b.category] || b.category)}</span>
           <a href="${esc(b.linkUrl)}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 underline" style="word-break:break-all">링크 확인</a></td>
         <td style="text-align:left">${conditions}</td>
