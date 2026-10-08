@@ -1,5 +1,6 @@
 package com.customhouse.domain.recommendation.service;
 
+import com.customhouse.domain.ad.service.ActiveAdService;
 import com.customhouse.domain.appsetting.dto.AppSettingResponse;
 import com.customhouse.domain.appsetting.service.AppSettingService;
 import com.customhouse.domain.housingpolicy.dto.HousingPolicyForEngine;
@@ -40,6 +41,7 @@ public class AiEngineClient {
     private final IncomeStandardService incomeStandardService;
     private final AppSettingService appSettingService;
     private final HousingPolicyService housingPolicyService;
+    private final ActiveAdService activeAdService;
 
     /**
      * 더미 매물(docs/samples/dummyhouses CSV) 기반 추천. 같은 요청 본문을 customhouse-ai의
@@ -52,7 +54,7 @@ public class AiEngineClient {
         return aiEngineRestClient.post()
                 .uri("/api/v1/diagnosis/listings")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings(), housingPolicies()))
+                .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings(), housingPolicies(), activeAdListingIds()))
                 .retrieve()
                 .body(Map.class);
     }
@@ -66,7 +68,7 @@ public class AiEngineClient {
         return aiEngineRestClient.post()
                 .uri("/api/v1/diagnosis/home-preview")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AiListingRequest(request, List.of(), incomeStandard(), null, List.of()))
+                .body(new AiListingRequest(request, List.of(), incomeStandard(), null, List.of(), List.of()))
                 .retrieve()
                 .body(Map.class);
     }
@@ -82,7 +84,7 @@ public class AiEngineClient {
             return aiEngineRestClient.post()
                     .uri("/api/v1/diagnosis/listings/{listingId}", listingId)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings(), housingPolicies()))
+                    .body(new AiListingRequest(request, savedLoans(), incomeStandard(), appSettings(), housingPolicies(), activeAdListingIds()))
                     .retrieve()
                     .body(Map.class);
         } catch (HttpClientErrorException.NotFound e) {
@@ -190,6 +192,16 @@ public class AiEngineClient {
             return housingPolicyService.getForEngine();
         } catch (RuntimeException e) {
             log.warn("주거지원정책을 읽지 못해 정책 추천 없이 진단을 진행합니다: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** 광고 중인 매물번호를 읽지 못해도 진단 자체는 계속한다 (광고가 안 끼워질 뿐). */
+    private List<String> activeAdListingIds() {
+        try {
+            return activeAdService.activeListingIds();
+        } catch (RuntimeException e) {
+            log.warn("광고 중인 매물을 읽지 못해 광고 없이 진단을 진행합니다: {}", e.getMessage());
             return List.of();
         }
     }

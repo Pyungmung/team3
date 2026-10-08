@@ -148,6 +148,8 @@
     .pol-fav:hover { color: #e11d48; border-color: #fda4af; }
     .pol-fav.on { color: #e11d48; border-color: #fda4af; background: #fff1f2; }
     /* 선택한 매물 카드 (클릭하면 그 매물 자치구의 정책이 왼쪽에 표시된다) */
+    /* 광고하기 매물 카드 (2026-10-08): 일반 카드와 한눈에 구분되게 주황 점선 테두리 */
+    .report-list-box > ul > li.ad-card { border: 1.5px dashed #fdba74; background: #fffdf9; }
     .report-list-box > ul > li.selected { background: #eff6ff; box-shadow: inset 3px 0 0 #3b82f6; }
     /* 정책정보 정정신고 버튼 + 팝업 */
     .pol-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
@@ -448,7 +450,8 @@
   <div class="rl-toast hidden" id="rl-toast" role="status" aria-live="polite"></div>
 
   <script src="../../js/components/header.js?v=20260915b"></script>
-  <script src="../../js/components/listing-card.js?v=20261006m"></script>
+  <script src="../../js/components/listing-card.js?v=20261008a"></script>
+  <script src="../../js/utils/ad-interleave.js?v=20261008a"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/watchlist.js?v=20261008b"></script>
   <script src="../../js/api/recommendation.js?v=20260930a"></script>
@@ -610,6 +613,9 @@
 
       const wolseList = data.wolse_recommendations || [];
       const jeonseList = data.jeonse_recommendations || [];
+      // 광고하기 매물 (2026-10-08): 일반 추천과 별개 목록 - 일반 카드 5개마다 다음 칸에 끼워 보여준다(순번 #은 일반 카드만 센다). 지도에는 올리지 않는다.
+      const adWolseList = data.ad_wolse_recommendations || [];
+      const adJeonseList = data.ad_jeonse_recommendations || [];
       const allResults = [...wolseList, ...jeonseList];
 
       // ---------- 관심매물 / 허위매물 신고 상태 ----------
@@ -898,13 +904,14 @@
 
       // 매물 카드 1개: 본문(사진~실거래 참고)은 공용 렌더러가 그리고, 관심(하트)/신고 버튼과 "허위매물 주의" 표시만 이 페이지에서 붙인다.
       // 관심 매물로 담을 때는 이 카드의 매물 정보를 통째로 저장해 마이페이지에서 같은 카드로 다시 그린다 (toggleFavorite 참고).
-      function renderListingCard(r, idx) {
+      // 광고 카드(isAd)는 순번 대신 "광고하기 매물" 배지를 달고, li의 data-idx는 "ad0"처럼 광고 목록 안의 위치를 담는다(지도 핀 번호와 겹치지 않게).
+      function renderListingCard(r, idx, isAd) {
         return `
-        <li class="card p-5" data-idx="${idx}" data-listing-id="${esc(r.listing_id)}">
+        <li class="card p-5${isAd ? " ad-card" : ""}" data-idx="${isAd ? "ad" + idx : idx}" ${isAd ? `data-ad="1" data-ad-idx="${idx}"` : ""} data-listing-id="${esc(r.listing_id)}">
           <button type="button" class="fav-btn card-action ${favoriteIds.has(r.listing_id) ? "on" : ""}" data-listing-id="${esc(r.listing_id)}"
             aria-pressed="${favoriteIds.has(r.listing_id)}" title="관심 매물 (마이페이지 관심 매물과 연동)">${favoriteIds.has(r.listing_id) ? "♥" : "♡"}</button>
           <div class="fake-warn hidden" data-warn role="alert"></div>
-          ${CustomHouseListingCard.renderBody(r, { idx, conversionRate: data.deposit_conversion_rate, transportLabel })}
+          ${CustomHouseListingCard.renderBody(r, isAd ? { isAd: true, conversionRate: data.deposit_conversion_rate, transportLabel } : { idx, conversionRate: data.deposit_conversion_rate, transportLabel })}
           <div class="listing-foot">
             <div class="listing-no">매물번호 ${esc(r.listing_id)}</div>
             <div style="display:flex;gap:4px;align-items:center">
@@ -1016,14 +1023,16 @@
       // 목록은 스크롤로 10건씩 이어서 그린다 (한 번에 다 그리면 페이지가 너무 길어진다).
       const LIST_PAGE_SIZE = 10;
 
-      function renderInfiniteList(boxEl, listEl, items) {
+      // items는 일반 추천 목록, ads는 광고 목록 - 표시 순서(일반 5개마다 광고 1개)로 합친 entries를 10개씩 이어서 그린다.
+      function renderInfiniteList(boxEl, listEl, normals, ads) {
+        const items = CustomHouseAdInterleave.interleaveAds(normals, ads);
         let rendered = 0;
         function loadMore() {
           if (rendered >= items.length) return;
           const batch = items.slice(rendered, rendered + LIST_PAGE_SIZE);
-          listEl.insertAdjacentHTML("beforeend", batch.map((r, i) => renderListingCard(r, rendered + i)).join(""));
+          listEl.insertAdjacentHTML("beforeend", batch.map((e) => renderListingCard(e.listing, e.isAd ? e.adIdx : e.normalIdx, e.isAd)).join(""));
           rendered += batch.length;
-          hydrateReportStatuses(batch);
+          hydrateReportStatuses(batch.map((e) => e.listing));
           CustomHouseListingCard.wireReferenceAutoLoad(listEl);
           CustomHouseListingCard.wireCommuteAutoLoad(listEl, condition?.workLat, condition?.workLon, condition?.transportType);
         }
@@ -1037,8 +1046,8 @@
         return { loadAll };
       }
 
-      const wolseListController = renderInfiniteList(wolseBoxEl, wolseListEl, wolseList);
-      const jeonseListController = renderInfiniteList(jeonseBoxEl, jeonseListEl, jeonseList);
+      const wolseListController = renderInfiniteList(wolseBoxEl, wolseListEl, wolseList, adWolseList);
+      const jeonseListController = renderInfiniteList(jeonseBoxEl, jeonseListEl, jeonseList, adJeonseList);
       renderPolicies(workRegion, null); // 처음 기본값: 직장 위치 자치구
 
       document.getElementById("wolse-empty").classList.toggle("hidden", wolseList.length > 0);
@@ -1337,6 +1346,15 @@
       function handleCardClick(e) {
         const li = e.target.closest("li[data-idx]");
         if (!li || e.target.closest("details, a, .card-action")) return;
+        if (li.dataset.ad === "1") {
+          // 광고 카드: 지도 핀 번호는 없지만 선택하면 그 매물 자치구 기준으로 정책이 바뀌는 건 똑같다
+          const r = listingOfCard(li);
+          if (!r) return;
+          clearSelectionUI();
+          li.classList.add("selected");
+          renderPolicies(r.region, r);
+          return;
+        }
         selectListing(Number(li.dataset.idx));
       }
       wolseListEl.addEventListener("click", handleCardClick);
@@ -1368,7 +1386,11 @@
 
       // ---------- 카드의 관심매물(하트) / 허위매물 신고 버튼 ----------
       // 카드가 스크롤로 10건씩 이어서 그려지므로 목록 요소에서 클릭을 받아 처리한다 (이벤트 위임).
-      const listingOfCard = (li) => (li.closest("#wolse-list") ? wolseList : jeonseList)[Number(li.dataset.idx)];
+      const listingOfCard = (li) => {
+        const isWolse = !!li.closest("#wolse-list");
+        if (li.dataset.ad === "1") return (isWolse ? adWolseList : adJeonseList)[Number(li.dataset.adIdx)];
+        return (isWolse ? wolseList : jeonseList)[Number(li.dataset.idx)];
+      };
 
       async function toggleFavorite(btn) {
         const li = btn.closest("li[data-idx]");

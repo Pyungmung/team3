@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!-- [담당: 송귀성] 광고하기 결제 성공 콜백 페이지 (연동 대상 백엔드: domain/ad, POST /api/ads/confirm)
+     토스 결제창이 결제 성공 시 이 페이지로 돌아오며 paymentKey/orderId/amount를 쿼리로 실어 보낸다.
+     여기서 백엔드로 그 값을 넘겨 결제 승인 + (새 매물이면) 매물 등록 + 광고 접수를 한꺼번에 받는다. 새로고침해도 같은 결과를 돌려준다(멱등). -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맞집 | 광고하기 결제 완료</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../../css/main.css?v=20260915b" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="max-w-sm mx-auto px-4 py-24 text-center">
+    <div id="loading-view">
+      <div class="text-5xl mb-4">⏳</div>
+      <p class="text-sm text-gray-500">결제를 승인하고 광고를 접수하는 중입니다...</p>
+      <p class="text-xs text-gray-400 mt-2">서버가 깨어나는 중이면 조금 걸릴 수 있어요. 창을 닫지 말고 기다려주세요.</p>
+    </div>
+
+    <div id="success-view" class="hidden">
+      <div class="text-5xl mb-4">📢</div>
+      <h1 class="text-2xl font-extrabold mb-2">광고가 접수되었어요</h1>
+      <p id="success-sub" class="text-sm text-gray-500"></p>
+      <dl class="card p-4 mt-6 text-sm text-left space-y-1">
+        <div class="flex justify-between"><dt class="text-gray-400">매물번호</dt><dd id="r-listing"></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-400">결제금액</dt><dd id="r-amount"></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-400">광고 기간</dt><dd id="r-period"></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-400">광고 만료일</dt><dd id="r-expires"></dd></div>
+        <div class="flex justify-between"><dt class="text-gray-400">주문번호</dt><dd id="r-order" class="truncate max-w-[160px]"></dd></div>
+      </dl>
+      <div class="mt-6 flex gap-2 justify-center">
+        <a href="../mypage/edit-condition.html#my-listings" class="px-5 py-2 rounded-full text-white brand-gradient inline-block text-sm">등록한 매물 관리</a>
+        <a href="../diagnosis/report-listings.html?justRegistered=1" class="px-5 py-2 rounded-full border border-gray-200 inline-block text-sm">추천 리포트</a>
+      </div>
+    </div>
+
+    <div id="error-view" class="hidden">
+      <div class="text-5xl mb-4">😢</div>
+      <h1 class="text-xl font-bold mb-2">광고 접수에 실패했습니다</h1>
+      <p id="error-msg" class="text-sm text-red-500 mb-2"></p>
+      <p class="text-xs text-gray-400 mb-6">결제가 됐는데 접수되지 못한 경우에는 자동으로 결제가 취소됩니다. 카드 승인 취소가 반영되기까지 영업일 기준 며칠 걸릴 수 있어요.</p>
+      <a href="../mypage/edit-condition.html#my-listings" class="px-6 py-2 rounded-full text-white brand-gradient inline-block">등록한 매물 관리로</a>
+    </div>
+
+    <div id="guest-view" class="hidden">
+      <p class="text-sm text-gray-500 mb-4">로그인이 풀렸어요. 다시 로그인하면 결제를 이어서 확인할 수 있어요.</p>
+      <a href="../auth/login.html" class="px-6 py-2 rounded-full text-white brand-gradient inline-block">로그인하기</a>
+    </div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <script src="../../js/components/header.js?v=20261008a"></script>
+  <script src="../../js/components/footer.js?v=20260928c"></script>
+  <script src="../../js/api/auth.js?v=20260915b"></script>
+  <script src="../../js/api/ads.js?v=20261008a"></script>
+  <script>
+    renderHeader("");
+    renderFooter();
+
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const paymentKey = params.get("paymentKey");
+      const orderId = params.get("orderId");
+      const amount = params.get("amount");
+
+      const show = (id) => {
+        ["loading-view", "success-view", "error-view", "guest-view"].forEach((v) =>
+          document.getElementById(v).classList.toggle("hidden", v !== id));
+      };
+
+      if (!paymentKey || !orderId || !amount) {
+        show("error-view");
+        document.getElementById("error-msg").textContent = "결제 정보가 올바르지 않습니다.";
+        return;
+      }
+      if (!CustomHouseAuthApi.isLoggedIn()) {
+        show("guest-view");
+        return;
+      }
+
+      try {
+        const r = await CustomHouseAdsApi.confirmOrder({ paymentKey, orderId, amount: Number(amount) });
+        show("success-view");
+        document.getElementById("success-sub").textContent = r.registered
+          ? "매물이 등록되고 광고가 시작됐어요. 조건에 맞는 분들의 추천 목록 중간에 노출됩니다."
+          : "광고가 시작됐어요. 조건에 맞는 분들의 추천 목록 중간에 노출됩니다.";
+        document.getElementById("r-listing").textContent = r.listingId;
+        document.getElementById("r-amount").textContent = `${Number(r.amount).toLocaleString()}원`;
+        document.getElementById("r-period").textContent = `${r.periodDays}일`;
+        document.getElementById("r-expires").textContent = String(r.expiresAt || "").slice(0, 10);
+        document.getElementById("r-order").textContent = r.orderId;
+      } catch (err) {
+        show("error-view");
+        document.getElementById("error-msg").textContent = err.message;
+      }
+    })();
+  </script>
+</body>
+</html>

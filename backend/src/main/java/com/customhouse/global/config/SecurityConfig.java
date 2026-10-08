@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api/mypage/**").authenticated()
                         .requestMatchers("/api/payments/**").authenticated()
+                        .requestMatchers("/api/ads/**").authenticated()
                         .requestMatchers("/api/watchlist/**").authenticated()
                         // 추천 매물 허위매물 신고: 신고 수 조회(카드에 "허위매물 주의" 표시용)와 실거래 참고 조회는
                         // 공개, 신고는 로그인 필요

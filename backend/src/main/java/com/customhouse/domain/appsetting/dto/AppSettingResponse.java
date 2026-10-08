@@ -1,5 +1,7 @@
 package com.customhouse.domain.appsetting.dto;
 
+import com.customhouse.domain.appsetting.entity.AppSetting;
+
 import java.time.LocalDateTime;
 
 /**
@@ -8,6 +10,13 @@ import java.time.LocalDateTime;
  */
 public record AppSettingResponse(
         Integer recommendationLimit,
+        Integer adPriceWon,
+        Integer adPeriodDays,
         LocalDateTime updatedAt
 ) {
+
+    /** 광고 설정이 필요 없는 곳(테스트 등)용 - 광고 가격/기간은 기본값이다. */
+    public AppSettingResponse(Integer recommendationLimit, LocalDateTime updatedAt) {
+        this(recommendationLimit, AppSetting.DEFAULT_AD_PRICE_WON, AppSetting.DEFAULT_AD_PERIOD_DAYS, updatedAt);
+    }
 }
