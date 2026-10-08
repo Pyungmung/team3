@@ -221,6 +221,21 @@ curl http://localhost:8080/api/payments/subscriptions/me -H "Authorization: Bear
 curl -X DELETE http://localhost:8080/api/payments/subscriptions -H "Authorization: Bearer {accessToken}"
 ```
 
+### 배너 광고 (2026-10-08)
+
+생활형 상품(이사 / 인터넷 / 청소 / 생필품) **직접 배너 광고**를 페이지 어디든 붙일 수 있는 **광고 자리**입니다. 아직 어느 페이지에도 넣지 않았고(확인용 `pages/ads/test.html`만 있음), 자리만 정해지면 한 줄이면 됩니다. 구글 광고(AdSense 등)는 쓰지 않기로 했습니다.
+
+```html
+<div data-ad-slot="home-bottom" data-ad-size="banner"></div>
+<!-- 페이지 하단에 스크립트 (순서 중요): auth.js → address-match-util.js → mypage.js → ad-targeting.js → ad-slot.js -->
+```
+
+- `data-ad-slot`: 자리 이름(영문 소문자·숫자·-·_). 관리자가 배너마다 노출할 자리를 이 이름으로 제한할 수 있습니다(비우면 모든 자리). `data-ad-size`: `banner`(가로로 넓게, 기본) / `card`(작은 카드형).
+- 보여 줄 배너가 없으면 자리가 접혀 빈 공간이 생기지 않습니다. 모든 배너에는 "광고" 표시가 붙고 링크는 새 탭(`rel="sponsored noopener nofollow"`)으로 열립니다. 노출·클릭은 집계하지 않습니다.
+- 관리자 수정 > **배너 광고** 탭에서 배너를 등록합니다(사진 업로드, 링크, 카테고리, 노출 조건, 기간, 자리 이름). 방문자 조건에 맞는 배너 중 무작위 1개를 보여 줍니다.
+  - **월세 성향**: 방문자가 입력한 최대 매물 월세 ≤ 적정 월세 상한(소득 × 수도권 RIR)이면 **절약형**(최저가가 강점인 서비스), 초과면 **프리미엄형**(프리미엄 서비스). **최대 월세를 비웠거나 로그인하지 않았으면 성향 구분 없이 랜덤**(모든 배너가 후보).
+  - 직장 자치구, 이사 일정(1개월 이내 / 3개월 이내까지), 광고 자리 이름은 선택 조건이며 비우면 제한 없음입니다. 관리자 탭의 "방문자 조건별 미리보기"로 조건마다 어떤 배너가 나오는지 확인할 수 있습니다.
+
 ## 8. 관심 매물(WatchList) / 알림 (curl, JWT 인증 필요)
 
 실제 매물 크롤링/외부 API 연동 전이라, 사용자가 직접 매물 정보를 입력해 등록하고
