@@ -6,15 +6,16 @@ from pydantic import BaseModel, Field
 
 
 class MatchedPolicy(BaseModel):
-    """docs/housing_policy_list.csv 기반 실제 정책 매칭 결과. "주거정책 추천" 표에
+    """주거지원정책(관리자 수정 > 주거지원정책, DB) 기반 실제 정책 매칭 결과. "주거정책 추천" 표에
     보여주는 정보성 데이터이며, 지원혜택이 자유 텍스트라 real_housing_cost 계산에는
     반영하지 않는다 (calculator.py/policy_matcher.py 참고)."""
 
-    id: str
+    id: int | str  # 정책 DB id (관심정책 하트가 이 값으로 정책을 가리킨다)
     name: str
     region: str = ""  # "서울"이면 서울 전역(25개 자치구 모두) 공통 정책, 자치구 이름(예: 강남구)이면 그 자치구 정책
     agency: str  # 소관 기관명 (예: 국토교통부, 서울특별시, 주택도시기금)
     description: str  # 지원혜택 내용 (자유 텍스트)
+    link: str = ""  # 정책 안내/신청 홈페이지 주소. 비어 있으면 화면의 [이동] 버튼이 비활성이다
 
 
 class BuildingRecommendation(BaseModel):

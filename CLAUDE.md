@@ -6,7 +6,7 @@
 
 **아키텍처**: 응답은 `ApiResponse<T>`+`CustomException`. JWT는 로그인 시 발급→localStorage→Authorization 헤더. 도메인 간 참조는 FK 없이 `Long id`(board/mypage 하위 테이블만 예외, cascade 사용).
 
-**상세 문서**: DB는 `docs/DATABASE.md`+`docs/DB구조도.html`, 정책 데이터는 `customhouse-ai/app/data/policies.json` 참고.
+**상세 문서**: DB는 `docs/DATABASE.md`+`docs/DB구조도.html`, 정책 데이터는 DB `housing_policies`(관리자수정>주거지원정책 탭에서 수정, CSV/policies.json 연동 끊김) 참고.
 
 **전세자금대출 매칭/이자 로직**: 관리자수정>전세자금대출 탭의 소득/보증금/우대사항 조건을 loan_matcher.match_eligible_loans가 매물별로 판별. 금리는 대출별 저장된 금리표(소득x보증금 구간)가 있으면 그 값, 없으면 기준금리API(한국부동산원 전환율)+우대금리 차감(is_temporary_rate로 구분 표시). 대출원금=매물보증금-보유보증금(부족분, 전세만, 월세는 0). 한도는 비율한도/절대상한 중 낮은 값, 우대사항 재반영값 있으면 공통한도 대체. 이자=부족분x금리/12, 실질주거비=월세+관리비+이자.
 

@@ -1,6 +1,7 @@
 package com.customhouse.domain.recommendation.dto;
 
 import com.customhouse.domain.appsetting.dto.AppSettingResponse;
+import com.customhouse.domain.housingpolicy.dto.HousingPolicyForEngine;
 import com.customhouse.domain.incomestandard.dto.IncomeStandardResponse;
 import com.customhouse.domain.loan.dto.LoanProductResponse;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
@@ -13,12 +14,14 @@ import java.util.List;
  * 대출 조건(loanProducts)과 기준소득 통계(incomeStandard, RIR·기준중위소득)를 서버가 DB에서 읽어 덧붙인다.
  * 둘 다 클라이언트 입력이 아니라서(RecommendRequest에 필드가 없다) 브라우저가 조작할 수 없다.
  * 관리자 화면(기타 설정)에서 저장한 appSettings(추천 개수 상한)도 같은 방식으로 덧붙는다.
+ * 관리자 화면(주거지원정책)에서 저장한 housingPolicies(리포트 "주거정책 추천"에 쓰는 정책 목록, 2026-10-08부터 CSV/policies.json 대신 DB)도 같다.
  * 대출 매칭이 없는 /api/v1/diagnosis 호출은 loanProducts를 빈 목록으로 보낸다(AiEngineClient 참고).
  */
 public record AiListingRequest(
         @JsonUnwrapped RecommendRequest request,
         List<LoanProductResponse> loanProducts,
         IncomeStandardResponse incomeStandard,
-        AppSettingResponse appSettings
+        AppSettingResponse appSettings,
+        List<HousingPolicyForEngine> housingPolicies
 ) {
 }

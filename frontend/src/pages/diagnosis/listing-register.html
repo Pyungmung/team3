@@ -272,6 +272,7 @@
   <script src="../../js/components/footer.js?v=20260928c"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
   <script src="../../js/api/watchlist.js?v=20261001b"></script>
+  <script src="../../js/utils/map-cluster-util.js?v=20261008e"></script>
 
   <script>
     renderHeader("diagnosis");
@@ -363,6 +364,8 @@
       const center = new kakao.maps.LatLng(lat, lon);
       if (!map) {
         map = new kakao.maps.Map(mapEl, { center, level: 3 });
+        // 터치 이동/확대·축소와 +/- 버튼 (Windows 터치스크린 노트북에서는 카카오맵이 터치를 못 받아서 직접 구현한 것을 쓴다 - map-cluster-util.js)
+        if (window.CustomHouseClusterMapUtil) CustomHouseClusterMapUtil.enhanceMap(map, mapEl);
         marker = new kakao.maps.Marker({ position: center, map });
       } else {
         map.setCenter(center);

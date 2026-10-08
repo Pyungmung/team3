@@ -120,7 +120,7 @@ curl -X POST http://localhost:8080/api/recommendation/diagnosis \
 | 매물 추천·지도 카드 | 저장소에 포함된 CSV(`docs/samples/dummyhouses`) | 카카오 REST 키가 없으면 통근시간을 직선거리 추정으로 계산 ("직선거리 추정" 배지), 카카오맵 JS 키(`frontend/src/js/config.js`)가 없으면 지도만 비어 있고 목록은 정상 |
 | 소득 대비 주거비 비율(RIR)·적정 월세 | `docs/RIR.csv` (포함됨) | 파일을 못 읽으면 기본 20% |
 | 보증금전환 실질거주비 | `REB_API_KEY` (한국부동산원) | 키가 없으면 저장값/기본 6.35% 사용 |
-| 주거정책 추천(자치구별) | `customhouse-ai/app/data/policies.json` (포함됨) | - |
+| 주거정책 추천(자치구별) | DB `housing_policies` (서버 최초 기동 때 `backend/src/main/resources/seed/housing_policies.json`으로 시드, 이후 **관리자 수정 > 주거지원정책**에서 관리) | 정책을 못 읽으면 추천 표가 비어 보임 |
 | 정책정보 정정신고 / 허위매물 신고 메일 | `backend/.env`의 `MAIL_USERNAME`, `MAIL_APP_PASSWORD` | 정정신고는 발송 실패 안내, 허위매물 신고는 **신고 저장은 되고** 메일만 서버 로그에 실패로 남음 |
 | 허위매물 신고 / 관심매물(하트) | 로그인(회원가입은 이메일 인증 메일이 필요) | 비로그인이면 로그인 안내 팝업 |
 
@@ -130,8 +130,12 @@ curl -X POST http://localhost:8080/api/recommendation/diagnosis \
 우대사항의 우대금리만 뺀 참고용 값입니다(우대금리 차감은 그 우대사항이 "필수"가 아니어도 해당하면 적용되고, 자격 판별과는 별개입니다).
 표 이미지를 보고 실제 금리표를 반영하면 이 값이 대체됩니다. 관리자 화면을 쓰려면 `backend/.env`의 `ADMIN_PASSWORD`가 필요합니다.
 AI 엔진 테스트: `cd customhouse-ai && python tests/test_loan_matcher.py`, `python tests/test_kakao_quota_guard.py`.
-- 정책 목록(`docs/housing_policy_list.csv`)을 고친 뒤에는 `cd customhouse-ai && python scripts/convert_policies.py`로 `policies.json`을 다시 만들어야 화면에 반영됩니다.
-- 새 테이블 `listing_reports`, `listing_favorites`는 dev(H2)/local-mysql에서는 서버를 켜면 자동 생성됩니다. 운영(`ddl-auto: validate`)은 수동 DDL이 필요합니다 (`docs/DATABASE.md` 참고).
+- **주거정책(리포트 "주거정책 추천")은 DB로 관리합니다 (2026-10-08).** 예전처럼 CSV를 고치고 변환 스크립트를 돌릴 필요가 없습니다.
+  관리자 계정 > **관리자 수정 > 주거지원정책** 탭에서 서울공통 + 25개 자치구별로 정책을 한 줄씩 수정/추가/삭제하면 다음 진단부터 바로 반영됩니다
+  (나이·연소득·총자산·기준중위소득%는 비우면 "제한 없음", 기초수급/중소기업/신혼부부/무주택/대출은 체크 칸, 링크는 `http://`·`https://`로 시작하는 안내 페이지 주소 - 비우면 [이동] 버튼이 회색 비활성).
+  정책을 수정/삭제하면 그 정책을 **관심정책으로 담은 회원의 알림함**에 알림이 가고, 삭제된 정책은 관심정책에서도 빠집니다.
+  예전 `docs/housing_policy_list.csv`와 변환 스크립트는 삭제했습니다 (최초 시드 파일은 `backend/src/main/resources/seed/housing_policies.json`, CSV 원본은 git 기록에 남아 있습니다).
+- 새 테이블 `listing_reports`, `listing_favorites`, `housing_policies`, `favorite_policies`는 dev(H2)/local-mysql에서는 서버를 켜면 자동 생성됩니다. 운영(`ddl-auto: validate`)은 수동 DDL이 필요합니다 (`docs/DATABASE.md` 참고).
 - 로컬에서 메일 없이 기능을 확인하려면 받은 메일을 파일에 저장만 하는 가짜 SMTP 서버(로컬 25xx 포트)를 두고 `SPRING_MAIL_HOST/PORT`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false` 환경변수로 백엔드를 띄우면 실제 메일이 나가지 않습니다.
 
 ## 5. 회원가입 / 로그인 (curl)
@@ -264,7 +268,7 @@ curl -X POST http://localhost:8000/api/v1/diagnosis -H "Content-Type: applicatio
 
 ## 10. 알아두어야 할 것 (샘플 데이터 안내)
 
-- `customhouse-ai/app/data/regions.json`, `policies.json`은 **예시(샘플) 데이터**입니다.
+- `customhouse-ai/app/data/regions.json`은 **예시(샘플) 데이터**입니다.
   위 9번 항목처럼 실거래가 API로 순차 교체 중입니다.
 - 현재 직장 위치(통근 기준점)는 서울 25개 자치구 전체 + 분당구를 지원하며, 카카오 주소검색으로
   입력하면 구 단위 대표좌표 대신 실제 주소 좌표로 통근시간을 계산합니다(`work_locations.json`).

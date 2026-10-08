@@ -7,6 +7,7 @@
  *    우측 목록의 첫 매물로 이동한다.
  *  - 1건짜리 원 클릭: 우측 목록의 해당 카드로 이동(onSelect) + 정보창. 마우스를 올리면 정보창이 뜬다.
  * 기존 실거래가 리포트가 쓰는 map-util.js(핀 방식)는 그대로 두고, 이 파일은 새 리포트만 쓴다.
+ * (2026-10-08: 터치 이동/확대·축소와 +/- 버튼은 enhanceMap으로 매물 등록 화면의 지도도 같이 쓴다)
  */
 (function () {
   const CELL_PX = 72; // 화면에서 이 픽셀 격자 안의 매물은 하나로 묶는다
@@ -160,8 +161,112 @@
     });
   }
 
+  // ---------- 터치 이동/확대·축소 + 확대·축소(+/-) 버튼 ----------
+  // 카카오맵 SDK는 터치를 쓸지 여부를 `"ontouchstart" in document.documentElement && (UA에 "Chrome"이 없거나 Android)`로 정한다.
+  // 그래서 Windows 터치스크린 노트북의 Chrome/Edge에서는 마우스 이벤트만 듣고(터치 드래그는 마우스 이벤트가 아니다), 두 손가락 확대·축소는 iOS 전용
+  // gesturechange 이벤트에 의존해서 둘 다 동작하지 않는다 (2026-10-08 확인). 그런 환경에서만 포인터 이벤트로 직접 구현한다:
+  //   한 손가락(또는 두 손가락 중심) 드래그 = 이동, 두 손가락 벌리기/모으기 = 확대/축소 (거리가 2배가 될 때마다 한 단계).
+  // 카카오가 이미 터치를 처리하는 환경(Android/iOS)에서는 같은 동작이 두 번 일어나지 않도록 켜지 않는다. 마우스/휠은 카카오 기본 기능을 그대로 쓴다.
+  const KAKAO_HANDLES_TOUCH =
+    "ontouchstart" in document.documentElement && (navigator.userAgent.indexOf("Chrome") < 0 || navigator.userAgent.indexOf("Android") >= 0);
+  const MIN_LEVEL = 1;
+  const MAX_LEVEL = 14;
+  const clampLevel = (level) => Math.max(MIN_LEVEL, Math.min(MAX_LEVEL, level));
+
+  function enableTouchGestures(map, mapEl) {
+    if (KAKAO_HANDLES_TOUCH || !(navigator.maxTouchPoints > 0) || !window.PointerEvent) return;
+    mapEl.style.touchAction = "none"; // 브라우저가 터치를 페이지 스크롤/확대로 가로채지 않고 포인터 이벤트로 넘겨준다
+    const pointers = new Map(); // pointerId -> {x, y}
+    let last = null; // 직전 중심점 {x, y}
+    let pinch = null; // {dist, level, anchor}
+
+    const centroid = () => {
+      const pts = [...pointers.values()];
+      return { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length };
+    };
+    const distance = () => {
+      const [a, b] = [...pointers.values()];
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
+    const toContainerPoint = (clientX, clientY) => {
+      const rect = mapEl.getBoundingClientRect();
+      return new window.kakao.maps.Point(clientX - rect.left, clientY - rect.top);
+    };
+    const resetBaseline = () => {
+      last = pointers.size ? centroid() : null;
+      pinch = null;
+      if (pointers.size === 2) {
+        const c = centroid();
+        pinch = {
+          dist: Math.max(distance(), 1),
+          level: map.getLevel(),
+          anchor: map.getProjection().coordsFromContainerPoint(toContainerPoint(c.x, c.y)),
+        };
+      }
+    };
+
+    mapEl.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch" || e.target.closest(".cl-zoom-ctl")) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      resetBaseline();
+    });
+    mapEl.addEventListener("pointermove", (e) => {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const c = centroid();
+      if (last && (c.x !== last.x || c.y !== last.y)) {
+        const w = mapEl.clientWidth;
+        const h = mapEl.clientHeight;
+        const proj = map.getProjection();
+        map.setCenter(proj.coordsFromContainerPoint(new window.kakao.maps.Point(w / 2 - (c.x - last.x), h / 2 - (c.y - last.y))));
+      }
+      last = c;
+      if (pinch && pointers.size === 2) {
+        const target = clampLevel(pinch.level - Math.round(Math.log2(distance() / pinch.dist)));
+        if (target !== map.getLevel()) map.setLevel(target, { anchor: pinch.anchor });
+      }
+    });
+    const end = (e) => {
+      if (!pointers.delete(e.pointerId)) return;
+      resetBaseline(); // 손가락 수가 바뀌면 기준을 다시 잡아서 지도가 튀지 않게 한다
+    };
+    mapEl.addEventListener("pointerup", end);
+    mapEl.addEventListener("pointercancel", end);
+  }
+
+  /**
+   * 카카오 기본 확대/축소 바(세로로 긴 +/- 와 확대 단계 표시)를 지도 오른쪽 "세로 가운데"로 옮긴다 - 카카오 기본 위치(오른쪽 위)는
+   * 오른쪽 위의 주택 유형 상자와 겹친다. 좁은 화면(폰)에서는 주택 유형 상자가 세로로 길어지므로 왼쪽 위쪽(패널 접기 버튼 아래)에 둔다.
+   * 카카오가 지도 크기가 바뀔 때 위치를 다시 잡기 때문에, 크기 변화 뒤에 다시 옮긴다.
+   */
+  function addZoomButtons(map, mapEl) {
+    map.addControl(new window.kakao.maps.ZoomControl(), window.kakao.maps.ControlPosition.RIGHT);
+    const bar = (mapEl.querySelector('button[title="확대"]') || {}).parentElement;
+    if (!bar) return;
+    bar.classList.add("cl-zoom-ctl");
+    // 카카오는 지도가 그려지거나 크기가 바뀔 때 바 위치를 자기 기본값(오른쪽 위)으로 되돌린다 - 원하는 위치와 다르면 다시 옮긴다 (같으면 건드리지 않아 무한 반복이 없다)
+    const place = () => {
+      const narrow = mapEl.clientWidth <= 480;
+      // 폰: 왼쪽 위 "패널 접기" 버튼 바로 아래(왼쪽 아래 안내 상자 위)에 둔다. 그 외: 오른쪽 세로 가운데
+      const top = (narrow ? 62 : Math.max(8, Math.round((mapEl.clientHeight - bar.offsetHeight) / 2))) + "px";
+      const left = (narrow ? 12 : Math.max(0, mapEl.clientWidth - bar.offsetWidth - 12)) + "px";
+      if (bar.style.top !== top) bar.style.top = top;
+      if (bar.style.left !== left) bar.style.left = left;
+    };
+    place();
+    if (window.MutationObserver) new MutationObserver(place).observe(bar, { attributes: true, attributeFilter: ["style"] });
+    if (window.ResizeObserver) new ResizeObserver(() => setTimeout(place, 60)).observe(mapEl);
+    window.addEventListener("resize", () => setTimeout(place, 60));
+    // 바 위에서 시작한 터치가 지도 이동으로 번지지 않게 한다
+    bar.addEventListener("pointerdown", (e) => e.stopPropagation());
+  }
+
   function renderKakao(mapEl, listings, onSelect, workLocation) {
     const map = new window.kakao.maps.Map(mapEl, { center: new window.kakao.maps.LatLng(37.5665, 126.978), level: 8 });
+    map.setDraggable(true);
+    map.setZoomable(true);
+    addZoomButtons(map, mapEl);
+    enableTouchGestures(map, mapEl);
     const items = [];
     const byIdx = new Map();
     listings.forEach((r, idx) => {
@@ -259,5 +364,39 @@
     redraw();
   }
 
-  window.CustomHouseClusterMapUtil = { renderListingsMap, focusListing, relayout };
+  /**
+   * 지도 폭이 바뀐 직후 호출한다 (왼쪽 패널을 접고 펼칠 때). 지도 안의 내용은 화면에서 제자리에 두고,
+   * 넓어진 만큼은 왼쪽으로만 새로 드러나게(줄어들 땐 왼쪽부터 가려지게) 중심을 보정한다 (2026-10-07).
+   * 카카오 지도는 relayout()만 하면 중심을 가운데에 맞춰서 내용이 폭 변화량의 절반만큼 밀리기 때문이다.
+   * @param {number} oldWidth 크기가 바뀌기 전 지도 요소의 폭(px)
+   */
+  function relayoutKeepView(oldWidth) {
+    if (!state) return;
+    const map = state.map;
+    const projection = map.getProjection();
+    // 카카오 relayout()은 지도 "왼쪽 위 모서리"를 고정해서, 지도 요소가 왼쪽으로 넓어지면 내용이 화면에서 같이 밀려난다 (panBy는 이 환경에서 듣지 않았다).
+    // 그래서 바뀌기 전 중심(p0)에서 폭 변화량(delta)의 절반만큼 옮긴 지점을 새 중심으로 직접 정한다:
+    // 요소가 왼쪽으로 delta만큼 넓어지면 새 중심은 화면에서 옛 중심보다 delta/2 왼쪽에 있으므로, 지도 좌표(오른쪽이 +, 단위=화면 픽셀)로는 p0.x - delta/2다.
+    const p0 = projection.pointFromCoords(map.getCenter());
+    map.relayout();
+    const delta = state.mapEl.clientWidth - oldWidth;
+    const target = projection.coordsFromPoint(new window.kakao.maps.Point(p0.x - delta / 2, p0.y));
+    map.setCenter(target);
+    redraw();
+    // 카카오가 크기 변경을 늦게 반영해도 같은 중심으로 다시 맞춘다 (새로 드러난 자리의 타일도 이때 채워진다)
+    setTimeout(() => {
+      if (!state || state.map !== map) return;
+      map.relayout();
+      map.setCenter(target);
+      redraw();
+    }, 200);
+  }
+
+  /** 다른 화면의 카카오 지도(예: 매물 등록의 주소 확인 지도)에도 같은 터치 이동/확대·축소와 +/- 버튼을 붙인다. */
+  function enhanceMap(map, mapEl) {
+    addZoomButtons(map, mapEl);
+    enableTouchGestures(map, mapEl);
+  }
+
+  window.CustomHouseClusterMapUtil = { renderListingsMap, focusListing, relayout, relayoutKeepView, enhanceMap };
 })();

@@ -36,3 +36,6 @@ customhouse-ai/scripts/_work/
 
 # --- 한국부동산원 전환율 조회 캐시 (customhouse-ai/app/services/reb_conversion_rate.py가 만드는 파일) ---
 customhouse-ai/app/data/cache/
+
+# --- 로컬 서버 실행 스크립트(scripts/local-servers.ps1)가 만드는 로그/PID 폴더 ---
+logs/

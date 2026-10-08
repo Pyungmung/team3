@@ -1,63 +1,40 @@
 """
 [담당: 송귀성] 청년 주거지원 정책 자동 매칭
-docs/housing_policy_list.csv에서 변환한 실제 서울시/자치구 청년 주거지원 정책
-(policies.json)과 사용자 조건·매물 지역을 비교해서 적용 가능한 정책을 찾아준다.
+관리자 수정 > 주거지원정책에서 관리하는 서울시/자치구 청년 주거지원 정책(DB)과 사용자 조건·매물 지역을 비교해서
+적용 가능한 정책을 찾아준다. 정책 목록은 백엔드가 DB에서 읽어 진단 요청(request.housing_policies)에 실어 보낸다.
+
+2026-10-08: 예전에는 docs/housing_policy_list.csv를 scripts/convert_policies.py로 policies.json으로 바꿔 읽었다.
+정책이 매달 바뀌고 관심정책 사용자에게 변경/삭제 알림을 보내야 해서 DB로 옮겼고, 이 파일에서는 그 JSON/CSV를 더 읽지 않는다.
+조건 판별 규칙(나이/소득/자산/중위소득%/기초수급/중소기업/신혼부부/무주택, 미입력 시 관대 처리)은 옮기기 전과 똑같다.
 
 2026-09-17: 기존에는 정책이 "월 20만원 지원" 같은 정형 수치(monthly_benefit,
 loan_rate_annual_percent)를 가지고 있어서 real_housing_cost 계산에도 반영됐지만,
-CSV 실데이터는 지원혜택이 자유 텍스트(대출 조건/현물 지원/서비스 등 제각각)라 정형화된
-수치를 뽑아낼 수 없다. 그래서 이제 정책 매칭은 "주거정책 추천" 표에 보여주기 위한
+정책 지원혜택이 자유 텍스트(대출 조건/현물 지원/서비스 등 제각각)라 정형화된
+수치를 뽑아낼 수 없다. 그래서 정책 매칭은 "주거정책 추천" 표에 보여주기 위한
 정보성 매칭으로만 쓰이고(agency/name/description), 실질 주거비(real_housing_cost)
-계산에는 더 이상 반영하지 않는다 (government_support는 항상 0 - calculator.py 참고).
+계산에는 반영하지 않는다 (government_support는 항상 0 - calculator.py 참고).
 
-2026-09-30: 기준중위소득 100%(1인가구, 월) 값은 이제 관리자 수정 > 기준소득관리에서 저장한 값
-(request.income_standard.median_income_100_percent_monthly_won, 원 단위)을 우선 쓴다. 이 값이
-없으면(조회 실패 등) 예전처럼 policies.json의 median_income_100_percent_monthly_manwon(만원 단위,
-docs/housing_policy_list.csv 15열을 convert_policies.py가 변환해둔 값)으로 폴백한다 - _median_income_100_percent_monthly_manwon 참고.
+2026-09-30: 기준중위소득 100%(1인가구, 월) 값은 관리자 수정 > 기준소득관리에서 저장한 값
+(request.income_standard.median_income_100_percent_monthly_won, 원 단위)을 쓴다. 이 값이
+없으면(조회 실패 등) DEFAULT_MEDIAN_INCOME_100_MONTHLY_MANWON으로 폴백한다 - _median_income_100_percent_monthly_manwon 참고.
 """
-import json
-import threading
-from pathlib import Path
 
-from app.core.config import settings
-
-_lock = threading.Lock()
-_cache: tuple[tuple[float, int], dict] | None = None  # ((mtime, size), 정책 데이터)
-
-
-def _load_policy_data() -> dict:
-    """정책 JSON을 매번 디스크에서 다시 읽지 않도록 캐싱하되, 파일이 바뀌면(mtime/크기) 자동으로 다시 읽는다.
-    (2026-09-28: 예전엔 lru_cache라 CSV를 다시 변환해도 서버를 재시작해야 반영됐다 - scripts/convert_policies.py 참고)"""
-    global _cache
-    path = Path(settings.policies_file)
-    stat = path.stat()
-    signature = (stat.st_mtime, stat.st_size)
-    with _lock:
-        if _cache and _cache[0] == signature:
-            return _cache[1]
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    with _lock:
-        _cache = (signature, data)
-    return data
-
-
-def load_policies() -> list[dict]:
-    return _load_policy_data()["policies"]
+# 기준소득관리 값을 못 읽었을 때만 쓰는 안전장치(만원 단위). 예전 policies.json(CSV 15열)에 들어 있던 값 그대로다.
+DEFAULT_MEDIAN_INCOME_100_MONTHLY_MANWON = 256.4238
 
 
 def _median_income_100_percent_monthly_manwon(request) -> float:
     """기준중위소득 100%(1인가구, 월, 만원). 관리자 수정 > 기준소득관리에 저장된 값(원 단위)이 있으면 ÷10000해서
-    쓰고, 없으면 policies.json의 값(이미 만원 단위, docs/housing_policy_list.csv를 변환한 레거시 값)으로 폴백한다."""
+    쓰고, 없으면 DEFAULT_MEDIAN_INCOME_100_MONTHLY_MANWON(예전 CSV/JSON에 있던 값)으로 폴백한다."""
     income_standard = getattr(request, "income_standard", None)
     won = income_standard.median_income_100_percent_monthly_won if income_standard else None
     if won is not None:
         return won / 10000
-    return _load_policy_data()["median_income_100_percent_monthly_manwon"]
+    return DEFAULT_MEDIAN_INCOME_100_MONTHLY_MANWON
 
 
 def _region_ok(policy: dict, building_region: str) -> bool:
-    """CSV의 지역이 "서울"이면 서울 전역(모든 매물 지역)에 적용되는 정책이라 통과.
+    """정책 지역이 "서울"이면 서울 전역(모든 매물 지역)에 적용되는 정책이라 통과.
     "중랑구"처럼 특정 자치구면 그 매물의 지역(region)과 정확히 일치해야 통과."""
     policy_region = policy.get("region")
     if not policy_region or policy_region == "서울":
@@ -88,7 +65,7 @@ def _annual_income_ok(policy: dict, request) -> bool:
 
 
 def _median_income_ok(policy: dict, request) -> bool:
-    """기준중위소득(%) 조건 - CSV의 "중위소득값"(1인가구 기준중위소득 100%, 월/만원)에
+    """기준중위소득(%) 조건 - 1인가구 기준중위소득 100%(월/만원)에
     정책별 퍼센트를 곱해 실제 월 소득 상한(만원)을 구하고, 실효 월소득과 비교한다."""
     percent = policy.get("median_income_percent")
     if percent is None:
@@ -127,9 +104,11 @@ def _preferential_flags_ok(policy: dict, preferential_statuses: list[str], job_t
 
 def match_display_policies(request, building_region: str) -> list[dict]:
     """매물 지역과 사용자 조건에 맞는 정책을 찾아 "주거정책 추천" 표에 보여줄 형태로 반환한다.
+    정책 목록은 request.housing_policies(백엔드가 DB에서 읽어 실어 보낸 것)이고, 그 순서(= 관리자 화면 입력 순서)대로 돌려준다.
     (실질 주거비 계산에는 반영하지 않는 정보성 매칭 - 모듈 docstring 참고)"""
     matched = []
-    for policy in load_policies():
+    for item in request.housing_policies:
+        policy = item.model_dump()
         # "정책 대출 활용"을 해제한 사용자에게는 대출 상품을 추천하지 않는다.
         if policy.get("is_loan") and not request.use_loan_policy:
             continue
@@ -150,11 +129,12 @@ def match_display_policies(request, building_region: str) -> list[dict]:
 
         matched.append(
             {
-                "id": policy["id"],
+                "id": policy["id"],  # 정책 DB id - 리포트의 관심정책 하트가 이 값으로 정책을 가리킨다
                 "region": policy.get("region") or "서울",  # "서울"이면 서울 전역 공통 정책, 자치구 이름이면 그 자치구 정책
                 "agency": policy["agency"],
                 "name": policy["name"],
                 "description": policy["description"],
+                "link": policy.get("link") or "",  # 정책 안내/신청 홈페이지 (없으면 "" - 화면의 [이동] 버튼이 비활성)
             }
         )
 

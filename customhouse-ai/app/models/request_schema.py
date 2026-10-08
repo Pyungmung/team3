@@ -41,7 +41,7 @@ class LoanPreferenceSetting(BaseModel):
 class IncomeStandardCondition(BaseModel):
     """관리자 화면(관리자 수정 > 기준소득관리)에서 저장한 기준소득 통계. 백엔드가 DB에서 읽어 요청에 실어 보낸다
     (브라우저가 보낸 값이 아니다). 값이 없는 필드는 None - 그 경우 호출하는 쪽(rir_stats/policy_matcher)이
-    기존 CSV/JSON 폴백으로 대신한다 (2026-09-30: docs/RIR.csv + docs/housing_policy_list.csv 15열을 대체).
+    기본값 폴백으로 대신한다 (2026-09-30: docs/RIR.csv + 정책 CSV 15열을 대체).
     RIR은 % 단위, 기준중위소득은 원 단위(1원까지 정확한 정수, 보건복지부 고시 원문 그대로)."""
 
     rir_overall_percent: float | None = Field(None, alias="rirOverallPercent")   # 전국(전체) - 리포트 참고용
@@ -105,6 +105,32 @@ class LoanProductCondition(BaseModel):
     @classmethod
     def _default_preferences(cls, v):
         return {} if v is None else v
+
+
+class HousingPolicyCondition(BaseModel):
+    """관리자 화면(관리자 수정 > 주거지원정책)에서 저장한 주거지원정책 1건. 백엔드가 DB에서 읽어 요청에 실어 보낸다
+    (브라우저가 보낸 값이 아니다). 2026-10-08부터 docs/housing_policy_list.csv -> policies.json 대신 이 목록을 쓴다.
+    조건 값이 None/False면 "제한 없음"이다. 금액은 만원, 나이는 만 나이. region이 "서울"이면 25개 자치구 공통 정책이다."""
+
+    id: int
+    region: str = "서울"
+    agency: str = ""
+    name: str
+    description: str = ""
+    min_age: int | None = Field(None, alias="minAge")
+    max_age: int | None = Field(None, alias="maxAge")
+    max_annual_income: int | None = Field(None, alias="maxAnnualIncome")
+    max_asset: int | None = Field(None, alias="maxAsset")
+    median_income_percent: int | None = Field(None, alias="medianIncomePercent")
+    require_basic_livelihood: bool = Field(False, alias="requireBasicLivelihood")
+    require_sme: bool = Field(False, alias="requireSme")
+    require_newlywed: bool = Field(False, alias="requireNewlywed")
+    require_no_household: bool = Field(False, alias="requireNoHousehold")
+    is_loan: bool = Field(False, alias="loan")  # 대출 상품 - "정책 대출 활용"을 끈 사용자에게는 추천하지 않는다
+    link: str | None = None  # 정책 안내/신청 홈페이지 (http/https), 없으면 None
+
+    class Config:
+        populate_by_name = True
 
 
 class DiagnosisRequest(BaseModel):
@@ -181,7 +207,7 @@ class DiagnosisRequest(BaseModel):
     )
     use_loan_policy: bool = Field(
         True,
-        description="정책 대출 활용 의향. false면 정부지원정책 목록에서 대출 상품(policies.json의 is_loan)을 추천하지 않는다.",
+        description="정책 대출 활용 의향. false면 정부지원정책 목록에서 대출 상품(관리자 주거지원정책의 「대출」 표시)을 추천하지 않는다.",
         alias="useLoanPolicy",
     )
     preferred_building_types: list[str] = Field(
@@ -209,6 +235,10 @@ class DiagnosisRequest(BaseModel):
     # 관리자 화면(관리자 수정 > 기타 설정)에서 저장한 설정(추천 개수 상한 등). 백엔드가 실어 보내며 브라우저 입력이 아니다.
     app_settings: AppSettingCondition | None = Field(None, alias="appSettings")
 
+    # 관리자 화면(관리자 수정 > 주거지원정책)에서 저장한 주거지원정책 목록 (리포트 "주거정책 추천"에 쓴다). 백엔드가 DB에서 읽어 실어
+    # 보내며 브라우저 입력이 아니다. 비어 있으면(저장된 정책 없음/조회 실패) 추천 표가 비어 보인다.
+    housing_policies: list[HousingPolicyCondition] = Field(default_factory=list, alias="housingPolicies")
+
     class Config:
         populate_by_name = True
 
@@ -217,7 +247,7 @@ class DiagnosisRequest(BaseModel):
     def _default_max_commute(cls, v):
         return 30 if v is None else v
 
-    @field_validator("preferential_statuses", "preferred_building_types", "loan_products", mode="before")
+    @field_validator("preferential_statuses", "preferred_building_types", "loan_products", "housing_policies", mode="before")
     @classmethod
     def _default_empty_list(cls, v):
         return [] if v is None else v

@@ -35,6 +35,25 @@
     .report-titlebox h1 { font-size: 19px; font-weight: 800; line-height: 1.3; }
     .report-titlebox p { font-size: 12.5px; line-height: 1.45; }
     .topbar-right { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+    /* 오른쪽 매물 탭 맨 위: 직장/학교 위치 + 매물 등록 버튼, 아래에 추천 요약 문구(세 줄) */
+    /* 직장 위치/요약 안내와 매물 등록 버튼은 오른쪽 탭 맨 위가 아니라 지도 위에 띄운다 (2026-10-08): 안내 상자는 지도 왼쪽 아래,
+       매물 등록은 오른쪽 아래. 아래쪽 여백은 카카오 로고/저작권 표시를 가리지 않으려는 것이다. */
+    .map-info {
+      position: absolute; left: 12px; bottom: 26px; z-index: 50; width: max-content; max-width: min(420px, calc(100% - 24px));
+      padding: 9px 13px; border-radius: 14px; border: 1px solid #cbd5e1; background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+    }
+    .map-info #work-address-line { font-size: 16.5px; font-weight: 800; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .map-info #summary-line { margin-top: 6px; font-size: 10.5px; line-height: 1.6; white-space: pre-line; word-break: keep-all; }
+    .map-info #work-address-line.hidden + #summary-line { margin-top: 0; }
+    .map-info #summary-line b { font-weight: 800; color: #1e293b; }
+    /* 테두리/그림자는 주택 유형 상자(.map-type-filter)·안내 상자(.map-info)와 같게 맞춘다. 글자는 브랜드 네이비 */
+    .register-listing-btn.map-register { position: absolute; right: 12px; bottom: 34px; z-index: 50; border: 1px solid #cbd5e1; background: rgba(255, 255, 255, 0.96); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18); }
+    .register-listing-btn.map-register:hover { border-color: #1B2A4A; background: #1B2A4A; }
+    /* 좁은 화면(폰): 오른쪽 아래 매물 등록 버튼과 겹치지 않게 안내 상자 폭을 줄인다 (확대/축소 바는 지도 JS가 폭에 따라 왼쪽/오른쪽 가운데에 둔다) */
+    @media (max-width: 700px) {
+      .map-info { max-width: calc(100% - 140px); }
+    }
     .report-layout .card { border-radius: 0; box-shadow: none; }
     .report-layout .report-col + .report-col > .card { border-left: 1px solid #e2e8f0; }
     .report-layout .report-col:first-child > .card + .card { border-top: 1px solid #e2e8f0; }
@@ -46,6 +65,16 @@
       gap: 0;
       height: 760px; /* 실제 높이는 fitLayout()이 화면 높이에 맞춰 정한다 */
     }
+    /* 왼쪽 패널(주거진단 리포트 + 주거정책 추천)을 접으면 지도가 그 폭만큼 넓어진다 (접기 버튼은 지도 왼쪽 위) */
+    .report-layout.left-collapsed { grid-template-columns: 0 1fr 460px; }
+    .report-layout.left-collapsed > .report-col:first-child { overflow: hidden; visibility: hidden; }
+    .left-toggle {
+      position: absolute; top: 12px; left: 12px; z-index: 50; display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 15px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.55); background: var(--brand-600, #1B2A4A);
+      color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 3px 10px rgba(15, 23, 42, 0.35);
+    }
+    .left-toggle:hover { background: #26395f; }
+    .left-toggle .lt-ico { font-size: 12px; color: #fff; }
     .report-col { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 0; }
     .report-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
     .report-map-card { height: 100%; overflow: hidden; position: relative; }
@@ -53,10 +82,11 @@
 
     .report-tabs { display: flex; flex: none; border-bottom: 1px solid #edf1f5; }
     .report-tab {
-      flex: 1; padding: 14px 0; text-align: center; font-size: 14px; font-weight: 800; color: #94a3b8;
+      flex: 1; padding: 14px 0 14px 0.5em; text-align: center; letter-spacing: 0.5em; /* 월 세 / 전 세처럼 글자 사이를 띄운다(마지막 글자 뒤 간격만큼 왼쪽 여백을 줘서 가운데 정렬 유지) */ font-size: 18px; line-height: 21px; font-weight: 800; color: #94a3b8; /* 글자만 키우고 탭 높이(14+21+14)는 그대로 */
       border-bottom: 2px solid transparent;
     }
-    .report-tab.active { color: var(--brand-600, #1B2A4A); border-bottom-color: var(--brand-600, #1B2A4A); }
+    /* 선택된 탭은 브랜드 네이비 배경 + 흰 글자로 확실히 구분한다 */
+    .report-tab.active { background: #1B2A4A; color: #fff; border-bottom-color: #1B2A4A; }
     .report-tab-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .report-list-box { flex: 1; min-height: 0; overflow-y: auto; }
     /* 카드끼리 실선으로 구분한다 (사진이 없는 매물도 경계가 분명하게). 목록 박스 안쪽 여백 없이 양 끝까지 선을 긋는다 */
@@ -87,6 +117,21 @@
     .cond-chips.left { align-items: flex-start; margin-bottom: 4px; }
     .cond-chip { font-size: 11px; font-weight: 700; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 1px 8px; }
     .rir-foot { margin-top: 8px; font-size: 11px; line-height: 1.55; color: #94a3b8; }
+    /* 주거진단 리포트 카드(#diag-card)만 글자를 키운다 - 주거정책 추천 카드는 그대로 (2026-10-07) */
+    #diag-card h2 { font-size: 21px; margin-bottom: 14px; }
+    #diag-card .text-xs { font-size: 14px; line-height: 1.4; }
+    #diag-card .text-lg { font-size: 25px; line-height: 1.25; }
+    #diag-card .rir-title { font-size: 15.5px; margin-bottom: 8px; }
+    #diag-card .rir-table { font-size: 16px; }
+    #diag-card .rir-table th { font-size: 13.5px; }
+    #diag-card .rir-table td .grp { font-size: 13px; }
+    #diag-card .cond-head h3 { font-size: 17px; }
+    #diag-card .cond-edit { font-size: 14px; }
+    #diag-card .cond-group-title { font-size: 13.5px; }
+    #diag-card .cond-row { font-size: 15px; line-height: 1.6; }
+    #diag-card .cond-chip { font-size: 13.5px; padding: 2px 10px; }
+    #diag-card .rir-foot { font-size: 13px; }
+    #diag-card #rate-note { font-size: 13.5px; line-height: 1.55; }
     /* 주거정책 추천: 기준 자치구 안내 + 서울 공통/자치구 태그 */
     .pol-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; font-size: 12px; color: #334155; }
     .pol-reset { font-size: 11px; font-weight: 700; color: #1d4ed8; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
@@ -94,6 +139,14 @@
     .pol-tag { display: inline-block; margin-top: 3px; font-size: 10px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
     .pol-tag.seoul { background: #f1f5f9; color: #64748b; }
     .pol-tag.gu { background: #dbeafe; color: #1d4ed8; }
+    /* 정책 표의 [이동] 버튼: 링크가 있으면 브랜드 색, 없으면 회색(누를 수 없음) */
+    .pol-go { display: inline-block; font-size: 11px; font-weight: 700; line-height: 1; white-space: nowrap; border-radius: 999px; padding: 4px 3px; text-decoration: none; background: #fff; color: #6b7280; border: 1px solid #d1d5db; }
+    a.pol-go:hover { background: #f3f4f6; }
+    .pol-go.off { background: #fff; color: #b8bec8; border-color: #e5e7eb; cursor: default; }
+    /* 관심정책 담기(하트) 버튼 - 주거정책 추천 표의 맨 오른쪽 "담기" 열 */
+    .pol-fav { width: 24px; height: 24px; border-radius: 999px; border: 1px solid #d1d5db; background: #fff; color: #9ca3af; font-size: 14px; line-height: 1; cursor: pointer; padding: 0; }
+    .pol-fav:hover { color: #e11d48; border-color: #fda4af; }
+    .pol-fav.on { color: #e11d48; border-color: #fda4af; background: #fff1f2; }
     /* 선택한 매물 카드 (클릭하면 그 매물 자치구의 정책이 왼쪽에 표시된다) */
     .report-list-box > ul > li.selected { background: #eff6ff; box-shadow: inset 3px 0 0 #3b82f6; }
     /* 정책정보 정정신고 버튼 + 팝업 */
@@ -147,6 +200,8 @@
 
     @media (max-width: 1100px) {
       .report-layout { grid-template-columns: 1fr; height: auto !important; }
+      .report-layout.left-collapsed { grid-template-columns: 1fr; }
+      .report-layout.left-collapsed > .report-col:first-child { display: none; }
       .report-layout .report-col + .report-col > .card { border-left: 0; border-top: 1px solid #e2e8f0; }
       .report-col { height: auto; }
       .report-map-card { height: 420px; }
@@ -154,6 +209,17 @@
       .report-list-box { max-height: 640px; }
     }
 
+    /* 주택 유형 필터를 지도 위 오른쪽에 띄운다 (왼쪽 위의 패널 접기 버튼과 같은 높이). 지도가 좁으면 줄바꿈해서 접기 버튼과 겹치지 않게 한다 */
+    .map-type-filter {
+      position: absolute; top: 12px; right: 12px; z-index: 50; max-width: calc(100% - 220px);
+      padding: 7px 11px; border-radius: 16px; border: 1px solid #cbd5e1; background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+    }
+    .map-type-filter .building-type-filter { gap: 6px 8px; justify-content: flex-end; }
+    .map-type-filter .building-type-filter-label { font-size: 13px; }
+    .map-type-filter .type-chip span { padding: 5px 12px; font-size: 13.5px; }
+    .map-type-filter .requery-msg { font-size: 12px; flex-basis: 100%; text-align: right; }
+    .map-type-filter .requery-msg:empty { display: none; }
     /* 주택 유형 필터 - 필(pill) 토글 칩 */
     .building-type-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .building-type-filter-label { font-size: 14px; font-weight: 800; color: #334155; flex: none; }
@@ -178,10 +244,10 @@
     /* 매물 등록 버튼 - 왼쪽 주택 유형 필터 칩과 크기를 맞춘다 */
     .register-listing-btn {
       display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 999px;
-      border: 1.5px solid var(--brand-600, #1B2A4A); background: #fff; color: var(--brand-600, #1B2A4A);
-      font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s;
+      border: 2px solid #1B2A4A; background: #fff; color: #1B2A4A;
+      font-size: 14px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s;
     }
-    .register-listing-btn:hover { background: var(--brand-600, #1B2A4A); color: #fff; }
+    .register-listing-btn:hover { background: #1B2A4A; color: #fff; }
 
     .building-name-link {
       background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
@@ -207,33 +273,15 @@
     </div>
 
     <div id="result-content" class="hidden">
-      <div class="report-topbar">
-        <div class="report-titlebox">
-          <h1>추천 매물 리포트</h1>
-          <p class="font-semibold hidden" id="work-address-line" style="color:var(--brand-600)"></p>
-          <p class="text-gray-500" id="summary-line"></p>
-        </div>
-        <div class="topbar-right">
-      <div class="building-type-filter">
-        <span class="building-type-filter-label">주택 유형</span>
-        <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="아파트" /><span>아파트</span></label>
-        <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="오피스텔" /><span>오피스텔</span></label>
-        <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="연립다세대" /><span>연립·다세대</span></label>
-        <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="단독다가구" /><span>단독·다가구</span></label>
-        <span id="requery-msg" class="requery-msg"></span>
-      </div>
-          <button type="button" id="register-listing-btn" class="register-listing-btn">＋ 매물 등록</button>
-        </div>
-      </div>
-
+      <!-- 예전 상단 바(제목/위치/요약 + 매물 등록)는 2026-10-07에 오른쪽 매물 탭 맨 위로, 2026-10-08에 다시 지도 위(왼쪽 아래 안내 상자 / 오른쪽 아래 매물 등록 버튼)로 옮겼다 -->
       <div class="report-layout">
         <!-- 좌: 주거진단 리포트 + 주거정책 추천 -->
-        <div class="report-col">
-          <div class="card p-5 report-panel">
+        <div class="report-col" id="left-col">
+          <div class="card p-5 report-panel" id="diag-card">
             <h2 class="font-bold mb-3">주거진단 리포트</h2>
             <div class="grid grid-cols-2 gap-3 mb-4">
               <div>
-                <div class="text-xs text-gray-400 mb-1" id="afford-label" title="RIR 통계를 불러오지 못해 소득의 20%를 기본값으로 썼어요">적정 월세 상한 <span class="text-gray-300">(기본값: 소득의 20%)</span></div>
+                <div class="text-xs text-gray-400 mb-1" id="afford-label" title="RIR 통계를 불러오지 못해 소득의 20%를 기본값으로 썼어요">적정 월세 상한<br /><span class="text-gray-300">(기본값: 소득의 20%)</span></div>
                 <div class="text-lg font-bold" id="affordable-rent">-</div>
               </div>
               <div>
@@ -260,7 +308,7 @@
             <p class="text-xs mt-2" id="rate-note" style="color:#64748b"></p>
           </div>
 
-          <div class="card p-4 report-panel">
+          <div class="card py-4 px-3 report-panel">
             <div class="pol-head">
               <h2 class="font-bold">주거정책 추천</h2>
               <button type="button" class="pol-correction-btn" id="policy-correction-btn" title="정책 정보가 틀렸거나 종료·누락된 정책을 관리자에게 이메일로 알려주세요">✉ 정책정보 정정신고</button>
@@ -273,9 +321,11 @@
               <table class="w-full text-[13px] leading-snug" style="table-layout: fixed">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="text-left align-middle px-2 py-2 text-xs font-semibold text-gray-500" style="width: 20%">기관명</th>
-                    <th class="text-left align-middle px-2 py-2 text-xs font-semibold text-gray-500" style="width: 25%">지원정책명</th>
-                    <th class="text-left align-middle px-2 py-2 text-xs font-semibold text-gray-500">지원혜택</th>
+                    <th class="text-left align-middle px-1 py-1.5 text-xs font-semibold text-gray-500" style="width: 20%">기관명</th>
+                    <th class="text-left align-middle px-1 py-1.5 text-xs font-semibold text-gray-500" style="width: 25%">지원정책명</th>
+                    <th class="text-left align-middle pl-1 pr-0.5 py-1.5 text-xs font-semibold text-gray-500">지원혜택</th>
+                    <th class="text-center align-middle px-0 py-1.5 text-xs font-semibold text-gray-500" style="width: 34px">링크</th>
+                    <th class="text-center align-middle px-0 py-1.5 text-xs font-semibold text-gray-500" style="width: 34px">담기</th>
                   </tr>
                 </thead>
                 <tbody id="policy-table-body"></tbody>
@@ -289,6 +339,28 @@
         <div class="report-col">
           <div class="card p-0 report-map-card">
             <div id="map-container"></div>
+            <!-- 주택 유형 선택: 지도 위 오른쪽에 띄운다 (예전에는 상단 바에 있었다) -->
+            <div class="map-type-filter">
+              <div class="building-type-filter">
+                <span class="building-type-filter-label">주택 유형</span>
+                <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="아파트" /><span>아파트</span></label>
+                <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="오피스텔" /><span>오피스텔</span></label>
+                <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="연립다세대" /><span>연립·다세대</span></label>
+                <label class="type-chip"><input type="checkbox" class="building-type-checkbox" value="단독다가구" /><span>단독·다가구</span></label>
+                <span id="requery-msg" class="requery-msg"></span>
+              </div>
+            </div>
+            <!-- 직장/학교 위치 + 추천 요약: 지도 왼쪽 아래에 띄운다 (예전에는 오른쪽 매물 탭 맨 위) -->
+            <div class="map-info">
+              <p class="font-semibold hidden" id="work-address-line" style="color:var(--brand-600)"></p>
+              <p class="text-gray-500" id="summary-line"></p>
+            </div>
+            <!-- 매물 등록: 지도 오른쪽 아래에 별도 버튼으로 띄운다 -->
+            <button type="button" id="register-listing-btn" class="register-listing-btn map-register">＋ 매물 등록</button>
+            <!-- 왼쪽 패널(주거진단 리포트 · 주거정책 추천) 접기/펼치기: 접으면 지도가 그 자리까지 넓어진다 -->
+            <button type="button" id="left-toggle" class="left-toggle" aria-expanded="true" aria-controls="left-col" title="왼쪽 주거진단 리포트 · 주거정책 추천 패널을 접거나 펼쳐요">
+              <span class="lt-ico">◀</span><span class="lt-txt">패널 접기</span>
+            </button>
           </div>
         </div>
 
@@ -296,8 +368,8 @@
         <div class="report-col">
           <div class="card p-0 report-panel" style="overflow: hidden">
             <div class="report-tabs">
-              <button type="button" class="report-tab active" data-tab="wolse">월세 매물</button>
-              <button type="button" class="report-tab" data-tab="jeonse">전세 매물</button>
+              <button type="button" class="report-tab active" data-tab="wolse">월세</button>
+              <button type="button" class="report-tab" data-tab="jeonse">전세</button>
             </div>
 
             <div class="list-options" id="list-options">
@@ -310,7 +382,6 @@
             </div>
 
             <div id="wolse-panel" class="report-tab-panel">
-              <p class="text-gray-400 px-4 pt-3" style="font-size:11px;line-height:1.5;white-space:pre-line" id="wolse-note"></p>
               <div id="wolse-box" class="report-list-box">
                 <ul id="wolse-list"></ul>
                 <p id="wolse-empty" class="text-sm text-gray-400 hidden p-4">조건에 맞는 월세 매물을 찾지 못했어요.</p>
@@ -318,7 +389,6 @@
             </div>
 
             <div id="jeonse-panel" class="report-tab-panel hidden">
-              <p class="text-gray-400 px-4 pt-3" style="font-size:11px;line-height:1.5;white-space:pre-line" id="jeonse-note"></p>
               <div id="jeonse-box" class="report-list-box">
                 <ul id="jeonse-list"></ul>
                 <p id="jeonse-empty" class="text-sm text-gray-400 hidden p-4">조건에 맞는 전세 매물을 찾지 못했어요.</p>
@@ -380,10 +450,37 @@
   <script src="../../js/components/header.js?v=20260915b"></script>
   <script src="../../js/components/listing-card.js?v=20261006m"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/watchlist.js?v=20261005a"></script>
+  <script src="../../js/api/watchlist.js?v=20261008b"></script>
   <script src="../../js/api/recommendation.js?v=20260930a"></script>
   <script src="../../js/utils/map-util.js?v=20260928a"></script>
-  <script src="../../js/utils/map-cluster-util.js?v=20260928a"></script>
+  <script src="../../js/utils/map-cluster-util.js?v=20261008e"></script>
+  <script>
+    // 왼쪽 패널 접기/펼치기 (2026-10-07). 상태는 이 브라우저에만 기억한다 (저장이 막혀 있어도 동작은 한다).
+    (function () {
+      const layout = document.querySelector(".report-layout");
+      const btn = document.getElementById("left-toggle");
+      if (!layout || !btn) return;
+      const KEY = "customhouse:reportLeftCollapsed";
+      const relayoutMap = () => { if (window.CustomHouseClusterMapUtil) CustomHouseClusterMapUtil.relayout(); };
+      const mapBox = document.getElementById("map-container");
+      function apply(collapsed) {
+        const oldWidth = mapBox ? mapBox.clientWidth : 0; // 폭이 바뀌기 전 지도 폭 - 지도 내용을 제자리에 두는 보정에 쓴다
+        layout.classList.toggle("left-collapsed", collapsed);
+        btn.setAttribute("aria-expanded", String(!collapsed));
+        btn.querySelector(".lt-ico").textContent = collapsed ? "▶" : "◀";
+        btn.querySelector(".lt-txt").textContent = collapsed ? "리포트 · 정책 펼치기" : "패널 접기";
+        if (window.CustomHouseClusterMapUtil) CustomHouseClusterMapUtil.relayoutKeepView(oldWidth);
+      }
+      let collapsed = false;
+      try { collapsed = localStorage.getItem(KEY) === "1"; } catch (e) { collapsed = false; }
+      apply(collapsed);
+      btn.addEventListener("click", () => {
+        collapsed = !collapsed;
+        try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch (e) { /* 저장 불가여도 접기/펼치기는 된다 */ }
+        apply(collapsed);
+      });
+    })();
+  </script>
   <script>
     renderHeader("diagnosis"); // 지도 화면이라 푸터는 두지 않는다 (직방 지도 화면과 같이 화면을 꽉 채운다)
 
@@ -506,10 +603,9 @@
       window.addEventListener("resize", fitLayout);
       window.addEventListener("load", fitLayout);
       if (window.ResizeObserver) {
-        // 헤더(Tailwind CDN 로드 후)와 상단 바 높이가 나중에 바뀌어도 다시 맞춘다
+        // 헤더 높이(Tailwind CDN 로드 후)가 나중에 바뀌어도 다시 맞춘다
         const ro = new ResizeObserver(fitLayout);
         ro.observe(document.getElementById("app-header"));
-        ro.observe(document.querySelector(".report-topbar"));
       }
 
       const wolseList = data.wolse_recommendations || [];
@@ -519,6 +615,7 @@
       // ---------- 관심매물 / 허위매물 신고 상태 ----------
       // 신고 현황은 서버가 매물번호별로 세어 둔 값이다 (서버 기준 2건 이상이면 flagged -> "허위매물 주의").
       const favoriteIds = new Set(); // 내가 관심매물로 담은 매물번호 (로그인했을 때만 채워진다)
+      const favoritePolicyIds = new Set(); // 내가 관심정책으로 담은 정책 id (로그인했을 때만 채워진다)
       const reportStatuses = {}; // listingId -> {count, flagged}
       const myReported = new Set(); // 이 화면에서 내가 방금 신고한 매물번호 (버튼을 "신고 완료"로 바꾼다)
       const isLoggedIn = () => !!(window.CustomHouseAuthApi && CustomHouseAuthApi.isLoggedIn());
@@ -591,6 +688,14 @@
           .catch(() => {});
       }
       if (isLoggedIn()) {
+        CustomHouseWatchlistApi.getFavoritePolicyIds()
+          .then((ids) => {
+            ids.forEach((id) => favoritePolicyIds.add(id));
+            paintPolicyFavorites();
+          })
+          .catch(() => {});
+      }
+      if (isLoggedIn()) {
         CustomHouseWatchlistApi.getMyListings()
           .then((listings) => {
             listings.forEach((r) => myListingIds.add(r.listing_id));
@@ -612,14 +717,22 @@
       // 옛 저장본(own_deposit 없음)은 예전 문구 그대로 보여준다.
       const ownDepositText = data.own_deposit != null ? fmtMoney(data.own_deposit) : "";
       const showAllDeposits = !!data.show_all_deposits;
+      // 금액/건수/개수만 굵게 보여주려고 HTML로 조립한다 (값은 모두 esc로 이스케이프). b()가 굵은 글씨 조각을 만든다.
+      const b = (v) => `<b>${esc(String(v))}</b>`;
       let scopeText = depositLimitText ? `보증금 ${depositLimitText} 이하 ` : "";
+      let scopeHtml = depositLimitText ? `보증금 ${b(depositLimitText)} ${b("이하")} ` : "";
       if (data.own_deposit != null && "show_all_deposits" in data && !showAllDeposits) {
         scopeText = `보유 보증금 ${ownDepositText} 이하이거나, 초과해도 대출이 가능한 `;
+        scopeHtml = `보유 보증금 ${b(ownDepositText)} ${b("이하")}이거나, 초과해도 대출이 가능한 `;
       }
       const excludedNote = !showAllDeposits && data.excluded_no_loan > 0
-        ? ` (보유 보증금을 넘고 대출도 안 되는 ${data.excluded_no_loan.toLocaleString()}건은 제외했어요)` : "";
-      document.getElementById("summary-line").textContent =
-        `${scopeText}${scopeText.includes("대출이 가능한") ? "" : "조건에 맞는 "}매물 ${(data.total_candidates ?? 0).toLocaleString()}건 중 월세 ${wolseList.length}개, 전세 ${jeonseList.length}개를 추천해요${excludedNote}.`;
+        ? `(보유 보증금을 넘고 대출도 안 되는 ${b(data.excluded_no_loan.toLocaleString() + "건은 제외")}했어요)` : "";
+      // 세 줄로 나눠서 보여준다 (#summary-line이 white-space: pre-line): 대상 조건 / 건수와 추천 개수 / 제외 안내
+      document.getElementById("summary-line").innerHTML = [
+        `${scopeHtml}${scopeText.includes("대출이 가능한") ? "" : "조건에 맞는 "}매물`,
+        `${b((data.total_candidates ?? 0).toLocaleString() + "건")} 중 ${b("월세")} ${b(wolseList.length + "개")}, ${b("전세")} ${b(jeonseList.length + "개")}를 추천해요`,
+        excludedNote,
+      ].filter(Boolean).join("\n");
       if (depositLimitText) {
         const hint = showAllDeposits || !("show_all_deposits" in data)
           ? "최대 매물 보증금을 올려보세요."
@@ -636,7 +749,7 @@
         document.getElementById("rir-label").textContent = `수도권 주거비 비율(RIR, ${data.rir_year})`;
         // 적정 월세 상한은 수도권 RIR을 내 월소득에 적용한 값이다 (통계 파일이 없을 때만 소득의 20% 기본값 - 위 HTML 기본 문구)
         const affordLabel = document.getElementById("afford-label");
-        affordLabel.innerHTML = `적정 월세 상한 <span class="text-gray-300">(수도권 RIR ${fmtRate(data.rent_to_income_ratio)}% 기준)</span>`;
+        affordLabel.innerHTML = `적정 월세 상한<br /><span class="text-gray-300">(수도권 RIR ${fmtRate(data.rent_to_income_ratio)}% 기준)</span>`;
         affordLabel.title = `내 월소득 x 수도권 RIR(${fmtRate(data.rent_to_income_ratio)}%, ${data.rir_year}년 ${esc(data.rir_source || "")})`;
         const rows = [
           ...(data.rir_overall_percent != null
@@ -671,18 +784,27 @@
           : "") +
         `💡 <b>전세</b> 매물의 보증금 이자는 <b>${esc(data.deposit_conversion_rate_label || "수도권 전월세 전환율")}</b> <b>${depositRateText}</b>로 환산했어요.` +
         (data.deposit_conversion_rate_is_fallback ? ` <span style="color:#b45309">(최신 값을 불러오지 못해 대체값을 썼어요)</span>` : "");
-      // 정렬 기준 설명은 위 요약 문장이 아니라 각 탭 목록 위에 보여준다 (전세 탭과 같은 방식, 2026-10-06)
-      const monthlyRateInNote = data.monthly_deposit_rate ? `(보증금을 연 ${fmtRate(data.monthly_deposit_rate)}%로 환산)` : "";
-      document.getElementById("wolse-note").textContent =
-        `월세는 월세와 관리비, 보증금 이자${monthlyRateInNote}를 더한\n"보증금 예금전환 이자기회비용"이 낮은 순이에요.`;
-      document.getElementById("jeonse-note").textContent =
-        `전세는 관리비와 보증금 이자(보증금을 연 ${depositRateText}로 환산)를 더한\n"총보증금 전환 이자기회비용"이 낮은 순이에요.`;
+      // 월세/전세 탭 목록 위의 정렬 기준 설명 문구는 매물 카드가 보이는 범위를 넓히려고 뺐다 (2026-10-07).
+      // 각 카드 안에 비용 구성(월세 + 관리비 + 예금 이자 등)이 이미 표시된다.
 
       const workAddressEl = document.getElementById("work-address-line");
       if (condition?.workLocation) {
         const addressText = condition.workAddress || `${condition.workLocation} 권역`;
-        workAddressEl.textContent = `📍 직장/학교 위치: ${addressText}`;
+        workAddressEl.textContent = `📍 ${addressText}`;
+        workAddressEl.title = addressText; // 너무 길어 끝이 "…"로 줄어들면 마우스를 올려서 전체 주소를 볼 수 있다
         workAddressEl.classList.remove("hidden");
+        // 주소는 항상 한 줄: 한 줄을 넘으면 글자를 조금씩 줄여서 맞춘다 (창 크기가 바뀌면 다시 맞춘다)
+        const fitAddressLine = () => {
+          let size = 16.5;
+          workAddressEl.style.fontSize = size + "px";
+          while (workAddressEl.scrollWidth > workAddressEl.clientWidth && size > 9) {
+            size -= 0.5;
+            workAddressEl.style.fontSize = size + "px";
+          }
+        };
+        fitAddressLine();
+        window.addEventListener("resize", fitAddressLine);
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAddressLine);
       }
 
       const workLocationForMap = condition?.workLocation
@@ -804,6 +926,62 @@
       let shownPolicies = []; // 지금 표에 보이는 정책 (정정신고 팝업의 "정정할 정책" 목록으로 쓴다)
       const workRegion = data.work_region || condition?.workLocation || "";
 
+      // 정책 안내 홈페이지로 가는 [이동] 버튼 (CSV의 링크 열 -> p.link). http(s) 주소만 열고, 비어 있거나 다른 형태면 회색 비활성 버튼을 보여준다.
+      // 새 탭으로 열고(noopener) 이 리포트 화면은 그대로 둔다.
+      function policyGoButton(p) {
+        const url = typeof p.link === "string" ? p.link.trim() : "";
+        if (/^https?:\/\/\S+$/i.test(url)) {
+          return `<a class="pol-go" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(p.name)} 안내 페이지로 이동">이동</a>`;
+        }
+        return `<span class="pol-go off" title="아직 등록된 링크가 없어요" aria-disabled="true">이동</span>`;
+      }
+
+      // 관심정책 담기(하트) 버튼 (관심매물 카드의 하트와 같은 방식). 표가 다시 그려져도 동작하도록 표 본문에서 클릭을 받는다.
+      function policyFavButton(p, i) {
+        const on = favoritePolicyIds.has(p.id);
+        return `<button type="button" class="pol-fav ${on ? "on" : ""}" data-idx="${i}" aria-pressed="${on}" title="${on ? "관심 정책에서 빼기" : "관심 정책으로 담기"} (관심매물 페이지의 관심정책 조회와 연동)">${on ? "♥" : "♡"}</button>`;
+      }
+
+      function paintPolicyFavorites() {
+        document.querySelectorAll("#policy-table-body .pol-fav").forEach((btn) => {
+          const p = shownPolicies[Number(btn.dataset.idx)];
+          if (!p) return;
+          const on = favoritePolicyIds.has(p.id);
+          btn.classList.toggle("on", on);
+          btn.setAttribute("aria-pressed", String(on));
+          btn.textContent = on ? "♥" : "♡";
+          btn.title = `${on ? "관심 정책에서 빼기" : "관심 정책으로 담기"} (관심매물 페이지의 관심정책 조회와 연동)`;
+        });
+      }
+
+      async function togglePolicyFavorite(btn) {
+        const p = shownPolicies[Number(btn.dataset.idx)];
+        if (!p) return;
+        if (!isLoggedIn()) return openLoginNotice("관심 정책 담기", btn);
+
+        const id = p.id;
+        const wasOn = favoritePolicyIds.has(id);
+        // 눌렀을 때 바로 바뀌어 보이게 하고, 서버 저장이 실패하면 되돌린다
+        wasOn ? favoritePolicyIds.delete(id) : favoritePolicyIds.add(id);
+        paintPolicyFavorites();
+        btn.disabled = true;
+        try {
+          if (wasOn) {
+            await CustomHouseWatchlistApi.removePolicyFavorite(id);
+            showToast("관심 정책에서 뺐어요.");
+          } else {
+            await CustomHouseWatchlistApi.addPolicyFavorite(id);
+            showToast("관심 정책에 담았어요. 관심매물 페이지의 '관심정책 조회'에서 볼 수 있어요.");
+          }
+        } catch (err) {
+          wasOn ? favoritePolicyIds.add(id) : favoritePolicyIds.delete(id);
+          paintPolicyFavorites();
+          showToast(err.message || "처리하지 못했어요. 잠시 후 다시 시도해주세요.");
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
       function renderPolicies(region, listing) {
         const all = policiesByRegion[region] || [];
         const pols = [...all.filter((p) => p.region !== "서울"), ...all.filter((p) => p.region === "서울")];
@@ -816,11 +994,13 @@
         document.getElementById("policy-reset").classList.toggle("hidden", !listing);
         document.getElementById("policy-table-body").innerHTML = pols
           .map(
-            (p) => `
+            (p, i) => `
               <tr class="border-t border-gray-100">
-                <td class="px-2 py-2 text-gray-500 align-middle">${esc(p.agency)}<br /><span class="pol-tag ${p.region === "서울" ? "seoul" : "gu"}">${p.region === "서울" ? "서울 공통" : esc(p.region)}</span></td>
-                <td class="px-2 py-2 font-semibold align-middle">${esc(p.name)}</td>
-                <td class="px-2 py-2 text-gray-600 align-middle">${esc(p.description)}</td>
+                <td class="px-1 py-1.5 text-gray-500 align-middle">${esc(p.agency)}<br /><span class="pol-tag ${p.region === "서울" ? "seoul" : "gu"}">${p.region === "서울" ? "서울 공통" : esc(p.region)}</span></td>
+                <td class="px-1 py-1.5 font-semibold align-middle">${esc(p.name)}</td>
+                <td class="pl-1 pr-0.5 py-1.5 text-gray-600 align-middle">${esc(p.description)}</td>
+                <td class="px-0 py-1.5 text-center align-middle">${policyGoButton(p)}</td>
+                <td class="px-0 py-1.5 text-center align-middle">${policyFavButton(p, i)}</td>
               </tr>`
           )
           .join("");
@@ -1259,6 +1439,10 @@
       }
       wolseListEl.addEventListener("click", handleCardActionClick);
       jeonseListEl.addEventListener("click", handleCardActionClick);
+      document.getElementById("policy-table-body").addEventListener("click", (e) => {
+        const fav = e.target.closest(".pol-fav");
+        if (fav) togglePolicyFavorite(fav);
+      });
     }
   </script>
 </body>

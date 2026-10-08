@@ -330,6 +330,25 @@
       margin-left: auto;
     }
 
+    /* 관심정책 조회 표 (주거진단 리포트의 "주거정책 추천" 표와 같은 한 줄 형식) */
+    .pol-table { width: 100%; table-layout: fixed; font-size: 13px; line-height: 1.45; border-collapse: collapse; }
+    .pol-table thead { background: #f9fafb; }
+    .pol-table th { padding: 8px 6px; font-size: 12px; font-weight: 600; color: #6b7280; text-align: left; }
+    .pol-table td { padding: 10px 6px; vertical-align: middle; border-top: 1px solid #f1f3f6; }
+    .pol-table .c { text-align: center; }
+    .pol-table .agency { color: #6b7280; }
+    .pol-table .name { font-weight: 700; }
+    .pol-table .desc { color: #4b5563; }
+    .pol-tag { display: inline-block; margin-top: 3px; font-size: 10px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
+    .pol-tag.seoul { background: #f1f5f9; color: #64748b; }
+    .pol-tag.gu { background: #dbeafe; color: #1d4ed8; }
+    .pol-go { display: inline-block; font-size: 11px; font-weight: 700; line-height: 1; white-space: nowrap; border-radius: 999px; padding: 4px 6px; text-decoration: none; background: #fff; color: #6b7280; border: 1px solid #d1d5db; }
+    a.pol-go:hover { background: #f3f4f6; }
+    .pol-go.off { background: #fff; color: #b8bec8; border-color: #e5e7eb; cursor: default; }
+    .pol-fav { width: 26px; height: 26px; border-radius: 999px; border: 1px solid #fda4af; background: #fff1f2; color: #e11d48; font-size: 15px; line-height: 1; cursor: pointer; padding: 0; }
+    .pol-fav:hover { background: #ffe4e6; }
+    .pol-fav:disabled { opacity: .5; cursor: default; }
+
     /* EMPTY */
     .empty-box {
       border: 1px dashed #dce2ea;
@@ -634,12 +653,16 @@
         </div>
 
         <nav class="side-nav">
-          <button type="button" class="side-btn active" onclick="scrollToArea('list-area', this)">
+          <button type="button" class="side-btn active" onclick="scrollToArea('notification-area', this)">
+            알림함
+          </button>
+
+          <button type="button" class="side-btn" onclick="scrollToArea('list-area', this)">
             관심매물 조회
           </button>
 
-          <button type="button" class="side-btn" onclick="scrollToArea('notification-area', this)">
-            알림함
+          <button type="button" class="side-btn" onclick="scrollToArea('policy-area', this)">
+            관심정책 조회
           </button>
         </nav>
       </aside>
@@ -649,8 +672,9 @@
 
         <!-- 모바일 메뉴 -->
         <div class="mobile-tabs">
-          <button type="button" class="mobile-tab" onclick="scrollToArea('list-area')">관심매물</button>
           <button type="button" class="mobile-tab" onclick="scrollToArea('notification-area')">알림함</button>
+          <button type="button" class="mobile-tab" onclick="scrollToArea('list-area')">관심매물</button>
+          <button type="button" class="mobile-tab" onclick="scrollToArea('policy-area')">관심정책</button>
         </div>
 
         <!-- 제목 -->
@@ -661,26 +685,7 @@
           </div>
         </div>
 
-        <!-- 1. 관심매물 조회 -->
-        <section id="list-area" class="panel">
-          <div class="panel-head">
-            <div>
-              <div class="panel-title">관심매물 조회</div>
-              <div class="panel-description">관심 매물의 현재 상태와 가격 변화를 확인하세요.</div>
-            </div>
-          </div>
-
-          <div id="watchlist-empty" class="hidden empty-box">
-            <div class="empty-icon">⌂</div>
-            아직 등록한 관심 매물이 없어요.<br />
-            아래에서 관심 있는 매물을 등록해보세요.
-          </div>
-
-          <p id="watchlist-error" class="hidden text-sm text-red-500"></p>
-          <ul id="watchlist-items"></ul>
-        </section>
-
-        <!-- 2. 알림함 -->
+        <!-- 1. 알림함 -->
         <section id="notification-area" class="panel">
           <div class="panel-head">
             <div>
@@ -702,6 +707,57 @@
           <ul id="notification-items"></ul>
         </section>
 
+        <!-- 2. 관심매물 조회 -->
+        <section id="list-area" class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">관심매물 조회</div>
+              <div class="panel-description">관심 매물의 현재 상태와 가격 변화를 확인하세요.</div>
+            </div>
+          </div>
+
+          <div id="watchlist-empty" class="hidden empty-box">
+            <div class="empty-icon">⌂</div>
+            아직 등록한 관심 매물이 없어요.<br />
+            아래에서 관심 있는 매물을 등록해보세요.
+          </div>
+
+          <p id="watchlist-error" class="hidden text-sm text-red-500"></p>
+          <ul id="watchlist-items"></ul>
+        </section>
+
+        <!-- 3. 관심정책 조회 -->
+        <section id="policy-area" class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">관심정책 조회</div>
+              <div class="panel-description">주거진단 리포트의 주거정책 추천에서 하트(♡)로 담아둔 정책이에요. 하트를 다시 누르면 빠져요.</div>
+            </div>
+          </div>
+
+          <div id="policies-empty" class="hidden empty-box">
+            <div class="empty-icon">♡</div>
+            아직 담은 관심 정책이 없어요.<br />
+            주거진단 리포트의 주거정책 추천 표에서 하트로 담아보세요.
+          </div>
+
+          <p id="policies-error" class="hidden text-sm text-red-500"></p>
+          <div id="policies-table-wrap" class="hidden overflow-x-auto">
+            <table class="pol-table">
+              <thead>
+                <tr>
+                  <th style="width: 19%">기관명</th>
+                  <th style="width: 25%">지원정책명</th>
+                  <th>지원혜택</th>
+                  <th class="c" style="width: 46px">링크</th>
+                  <th class="c" style="width: 46px">담기</th>
+                </tr>
+              </thead>
+              <tbody id="policy-items"></tbody>
+            </table>
+          </div>
+        </section>
+
       </div>
     </main>
   </div>
@@ -712,7 +768,7 @@
   <script src="../../js/components/footer.js?v=20260928c"></script>
   <script src="../../js/components/listing-card.js?v=20261006m"></script>
   <script src="../../js/api/auth.js?v=20260915b"></script>
-  <script src="../../js/api/watchlist.js?v=20261005b"></script>
+  <script src="../../js/api/watchlist.js?v=20261008b"></script>
 
   <script>
     renderHeader("watchlist");
@@ -753,7 +809,9 @@
     }
 
     async function init() {
-      await Promise.all([loadWatchlist(), loadNotifications()]);
+      await Promise.all([loadWatchlist(), loadNotifications(), loadPolicies()]);
+      // 헤더 알림 벨에서 "알림함"으로 들어온 경우 알림함 칸으로 이동
+      if (location.hash === "#notification-area") scrollToArea("notification-area");
     }
 
     async function loadWatchlist() {
@@ -914,6 +972,67 @@
       });
     }
 
+    /** 정책 안내 홈페이지로 가는 [이동] 버튼 - http(s) 주소만 열고, 비어 있거나 다른 형태면 회색 비활성 버튼 (리포트와 동일). */
+    function policyGoButton(p) {
+      const url = typeof p.link === "string" ? p.link.trim() : "";
+      if (/^https?:\/\/\S+$/i.test(url)) {
+        return `<a class="pol-go" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(p.name)} 안내 페이지로 이동">이동</a>`;
+      }
+      return `<span class="pol-go off" title="아직 등록된 링크가 없어요" aria-disabled="true">이동</span>`;
+    }
+
+    /** 관심정책 조회: 리포트 "주거정책 추천" 표처럼 한 줄씩 보여준다. 하트(♥)를 누르면 관심정책에서 빠진다. */
+    async function loadPolicies() {
+      const wrapEl = document.getElementById("policies-table-wrap");
+      const listEl = document.getElementById("policy-items");
+      const emptyEl = document.getElementById("policies-empty");
+      const errorEl = document.getElementById("policies-error");
+
+      let policies;
+      try {
+        policies = await CustomHouseWatchlistApi.getFavoritePolicies();
+        errorEl.classList.add("hidden");
+      } catch (err) {
+        listEl.innerHTML = "";
+        wrapEl.classList.add("hidden");
+        emptyEl.classList.add("hidden");
+        errorEl.textContent = err.code === "UNAUTHORIZED" ? "로그인이 만료되었어요. 다시 로그인해주세요." : "관심 정책을 불러오지 못했어요. 잠시 후 다시 시도해주세요.";
+        errorEl.classList.remove("hidden");
+        return;
+      }
+
+      if (policies.length === 0) {
+        listEl.innerHTML = "";
+        wrapEl.classList.add("hidden");
+        emptyEl.classList.remove("hidden");
+        return;
+      }
+
+      emptyEl.classList.add("hidden");
+      wrapEl.classList.remove("hidden");
+      listEl.innerHTML = policies
+        .map(
+          (p) => `
+            <tr data-policy-id="${escapeHtml(String(p.policyId))}">
+              <td class="agency">${escapeHtml(p.agency || "")}${p.region ? `<br /><span class="pol-tag ${p.region === "서울" ? "seoul" : "gu"}">${p.region === "서울" ? "서울 공통" : escapeHtml(p.region)}</span>` : ""}</td>
+              <td class="name">${escapeHtml(p.name)}</td>
+              <td class="desc">${escapeHtml(p.description || "")}</td>
+              <td class="c">${policyGoButton(p)}</td>
+              <td class="c"><button type="button" class="pol-fav" aria-pressed="true" title="관심 정책에서 빼기">♥</button></td>
+            </tr>`
+        )
+        .join("");
+
+      listEl.querySelectorAll(".pol-fav").forEach((btn) => {
+        btn.addEventListener("click", () =>
+          runAction(btn, async () => {
+            await CustomHouseWatchlistApi.removePolicyFavorite(btn.closest("tr").dataset.policyId);
+            await loadPolicies();
+          })
+        );
+      });
+    }
+
     async function loadNotifications() {
       const listEl = document.getElementById("notification-items");
       const emptyEl = document.getElementById("notifications-empty");
@@ -935,6 +1054,7 @@
       } else {
         badge.className = "hidden";
       }
+      refreshHeaderNotifications(); // 헤더 알림 벨의 안읽은 수도 읽음/삭제 결과에 맞춰 갱신
 
       if (notifications.length === 0) {
         emptyEl.classList.remove("hidden");

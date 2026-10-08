@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>맞집 추천 데이터 흐름 21:9</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { width: 3360px; height: 1440px; background: #f8fafc; font-family: "Malgun Gothic", "Noto Sans KR", sans-serif; color: #0f172a; position: relative; overflow: hidden; }
+  .title { position: absolute; left: 40px; top: 20px; font-size: 66px; font-weight: 800; letter-spacing: -1px; }
+  .title small { font-size: 33px; font-weight: 500; color: #475569; margin-left: 18px; letter-spacing: 0; }
+  .band { position: absolute; border-radius: 22px; border: 2.5px solid; z-index: 0; }
+  .band .bl { position: absolute; left: 22px; top: 10px; font-size: 36px; font-weight: 800; }
+  .band .bl span { font-size: 24px; font-weight: 600; margin-left: 12px; color: #475569; }
+  .cap { position: absolute; z-index: 2; font-size: 23px; font-weight: 700; color: #334155; }
+  .tbl { position: absolute; z-index: 2; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 6px rgba(15,23,42,.10); }
+  .tbl.ghost { border: 2.5px dashed #22a6c4; box-shadow: none; }
+  .tbl .head { height: 54px; background: #0f172a; color: #f8fafc; display: flex; align-items: center; padding: 0 14px; font-family: Consolas, "Courier New", monospace; font-weight: 700; }
+  .tbl.ghost .head { background: #0e7490; font-family: "Malgun Gothic", sans-serif; }
+  .tbl .row { height: 46px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-top: 1px solid #e2e8f0; white-space: nowrap; }
+  .tbl .row .mark { width: 18px; text-align: center; flex: none; color: #94a3b8; font-size: 11px; }
+  .tbl .row .mark.pk { color: #b45309; font-size: 18px; }
+  .tbl .row .nm { font-family: Consolas, "Courier New", monospace; font-weight: 700; }
+  .tbl.ghost .row .nm { font-family: "Malgun Gothic", sans-serif; font-weight: 600; }
+  .tbl .row.more { height: 36px; color: #475569; font-style: italic; background: #f8fafc; font-size: 20px; }
+  .step { position: absolute; z-index: 2; background: #fff; border: 2.5px solid #6366f1; border-radius: 14px; padding: 10px 18px 6px 92px; box-shadow: 0 2px 6px rgba(15,23,42,.10); }
+  .step .no { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 62px; height: 62px; border-radius: 50%; background: #4f46e5; color: #fff; font-size: 34px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .step .t { font-size: 34px; font-weight: 800; color: #3730a3; }
+  .step .d { font-size: 25px; color: #334155; line-height: 1.3; margin-top: 3px; }
+  .out { position: absolute; z-index: 2; background: #fff; border: 2.5px solid #10b981; border-radius: 14px; padding: 14px 22px; }
+  .out .t { font-size: 35px; font-weight: 800; color: #047857; margin-bottom: 8px; }
+  .out .li { font-size: 28px; line-height: 1.62; color: #1e293b; }
+  .chip { position: absolute; z-index: 4; transform: translate(-50%, -50%); background: #fff; border: 2px solid #94a3b8; border-radius: 10px; padding: 2px 14px; font-size: 25px; font-weight: 800; white-space: nowrap; box-shadow: 0 1px 3px rgba(15,23,42,.1); }
+  .note { position: absolute; z-index: 2; font-size: 24px; line-height: 1.5; color: #1e3a8a; font-weight: 600; }
+  svg { position: absolute; left: 0; top: 0; z-index: 1; }
+</style>
+</head>
+<body>
+<div class="title">맞집 추천 데이터 흐름<small>DB · 파일 · 외부 API가 AI 엔진에서 합쳐져 추천이 되는 과정</small></div>
+<svg width="3360" height="1440" viewBox="0 0 3360 1440">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+  <g id="lines"></g>
+</svg>
+<div id="stage"></div>
+<script>
+const stage = document.getElementById("stage"), L = document.getElementById("lines");
+function el(cls, css, html) { const d = document.createElement("div"); d.className = cls; d.style.cssText = css; d.innerHTML = html || ""; stage.appendChild(d); return d; }
+function arrow(d, dashed, w) {
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", d); p.setAttribute("fill", "none"); p.setAttribute("stroke", "#334155"); p.setAttribute("stroke-width", w || 6);
+  p.setAttribute("marker-end", "url(#arr)"); if (dashed) p.setAttribute("stroke-dasharray", "10 8"); L.appendChild(p);
+}
+function chip(x, y, html) { el("chip", `left:${x}px;top:${y}px`, html); }
+
+// 표 그리기: rows = [이름, 플래그(pk)], more = 생략 안내 문구
+const isKo = s => /[ㄱ-힣]/.test(s);
+function table(x, y, w, name, rows, more, ghost, color) {
+  const hs = Math.min(30, Math.floor((w - 28) / (name.length * (isKo(name) ? 0.95 : 0.56))));
+  let h = `<div class="head" style="font-size:${hs}px;border-bottom:5px solid ${color}">${name}</div>`;
+  for (const [n, fl] of rows) {
+    const pk = fl === "pk";
+    const fs = Math.min(25, Math.floor((w - 24 - 26 - 10) / (n.length * (isKo(n) ? 0.98 : 0.56))));
+    h += `<div class="row"><span class="mark ${pk ? "pk" : ""}">${pk ? "🔑" : "●"}</span><span class="nm" style="font-size:${fs}px">${n}</span></div>`;
+  }
+  if (more) h += `<div class="row more"><span class="mark"></span>${more}</div>`;
+  const hh = 54 + rows.length * 46 + (more ? 36 : 0);
+  el("tbl" + (ghost ? " ghost" : ""), `left:${x}px;top:${y}px;width:${w}px;height:${hh}px`, h);
+  return { x, y, w, h: hh, r: x + w, b: y + hh, cx: x + w / 2, cy: y + hh / 2 };
+}
+
+// ---- 왼쪽 위: DB (MySQL) ----
+el("band", "left:40px;top:122px;width:1480px;height:650px;border-color:#2563eb;background:#eff6ff", `<div class="bl" style="color:#2563eb">DB (MySQL)<span>진단할 때 읽는 값</span></div>`);
+const Y1 = 218, C = "#2563eb";
+el("cap", `left:56px;top:${Y1 - 32}px`, "회원 등록 매물");
+el("cap", `left:346px;top:${Y1 - 32}px`, "마이페이지 조건");
+el("cap", `left:656px;top:${Y1 - 32}px`, "관리자 · 대출 조건");
+el("cap", `left:966px;top:${Y1 - 32}px`, "관리자 · 기준소득");
+el("cap", `left:1256px;top:${Y1 - 32}px`, "관리자 · 설정");
+const reg = table(56, Y1, 270, "registered_listings", [["id","pk"],["listing_id",""],["user_id",""],["region",""],["row_json",""]], "+2개 더", false, C);
+const hc = table(346, Y1, 290, "housing_conditions", [["user_id",""],["age",""],["annual_income",""],["couple_annual_income",""],["deposit",""],["desired_deposit",""],["desired_rent",""],["work_location",""],["job_type",""]], "+13개 더", false, C);
+const loan = table(656, Y1, 290, "loan_products", [["loan_type",""],["min_age",""],["max_age",""],["max_income_single",""],["max_income_couple",""],["max_asset",""],["max_listing_deposit",""],["rate_table",""]], "+10개 더", false, C);
+const inc = table(966, Y1, 270, "income_standards", [["rir_overall_percent",""],["rir_metro_percent",""],["rir_low_percent",""],["rir_mid_percent",""],["rir_high_percent",""],["rir_year",""]], "+3개 더", false, C);
+const app = table(1256, Y1, 240, "app_settings", [["id","pk"],["recommendation_limit",""]], "+2개 더", false, C);
+el("note", `left:1256px;top:${Y1 + 54 + 2 * 46 + 36 + 22}px;width:240px`, "추천 개수 상한 등<br>관리자 화면에서 저장");
+
+// ---- 왼쪽 아래: DB 밖 ----
+el("band", "left:40px;top:800px;width:1480px;height:580px;border-color:#0891b2;background:#ecfeff", `<div class="bl" style="color:#0891b2;left:460px">DB 밖<span>파일과 외부 API (AI 엔진이 읽음)</span></div>`);
+const Y2 = 898, G = "#0891b2";
+el("cap", `left:56px;top:${Y2 - 34}px`, "매물 원본");
+el("cap", `left:466px;top:${Y2 - 34}px`, "주거정책");
+el("cap", `left:806px;top:${Y2 - 34}px`, "지역 · 금리");
+el("cap", `left:1146px;top:${Y2 - 34}px`, "실시간 조회");
+const csv = table(56, Y2, 390, "dummyhouse_(자치구).csv", [["매물등록번호","pk"],["매물상태 · 거래유형",""],["자치구 · 법정동",""],["보증금 · 월세 · 관리비",""],["전용면적 · 방수 · 층",""],["전세대출가능여부",""],["위도 · 경도",""],["공인중개사_* 6컬럼",""]], "25개 파일 · 55컬럼 · 72,596건", true, G);
+const pol = table(466, Y2, 320, "policies.json", [["id · name · agency","pk"],["region",""],["min_age · max_age",""],["max_annual_income",""],["max_asset",""],["require_* 자격 조건",""],["is_loan",""]], "정책 439건", true, G);
+const reg2 = table(806, Y2, 320, "지역 · 금리 파일", [["법정동코드 · 좌표 JSON",""],["직장 위치 JSON",""],["전환율 캐시 JSON",""],["예금금리 캐시 JSON",""]], "금리 캐시 12시간", true, G);
+const api = table(1146, Y2, 350, "외부 API", [["국토부 실거래가",""],["행안부 도로명주소",""],["카카오 주소 · 경로",""],["한국부동산원 전환율",""],["한국은행 예금금리",""]], "화면 카드는 직선거리 추정", true, G);
+
+// ---- 가운데: AI 엔진 ----
+el("band", "left:1660px;top:122px;width:840px;height:1258px;border-color:#6366f1;background:#eef2ff", `<div class="bl" style="color:#4f46e5">AI 엔진<span>customhouse-ai · FastAPI</span></div>`);
+const steps = [
+  ["매물 후보 불러오기", "CSV 25개 + 서버가 켜질 때 복원한 등록 매물<br>→ 계약가능 68,983건"],
+  ["조건 필터", "보증금 한도 · 통근시간 · 주택 유형<br>이사 일정 · 반전세 포함 여부"],
+  ["통근시간", "직선거리 추정 (화면에 보이는 카드만<br>카카오 정확값으로 보정)"],
+  ["대출 매칭", "관리자 대출 조건 × 소득 · 자산 · 나이 · 우대사항<br>→ 금리 · 한도"],
+  ["실질 주거비", "월세 + 관리비 + 대출이자<br>(보증금 예금전환 비용과 비교)"],
+  ["주거정책 추천", "정책 439건 × 나이 · 소득 · 자산<br>신혼 · 무주택 · 직업 조건"],
+  ["정렬 · 개수 제한", "월세 · 전세 각각 상위 N건<br>(N은 app_settings 값)"],
+];
+const SX = 1690, SW = 780, SH = 146, SG = 24, SY0 = 190;
+steps.forEach(([t, dsc], i) => {
+  const y = SY0 + i * (SH + SG);
+  el("step", `left:${SX}px;top:${y}px;width:${SW}px;height:${SH}px`, `<div class="no">${i + 1}</div><div class="t">${t}</div><div class="d">${dsc}</div>`);
+  if (i < steps.length - 1) arrow(`M${SX + SW / 2},${y + SH} V${y + SH + SG}`, false, 5);
+});
+
+// ---- 오른쪽: 화면 ----
+el("band", "left:2600px;top:122px;width:720px;height:650px;border-color:#10b981;background:#ecfdf5", `<div class="bl" style="color:#059669">화면<span>추천 리포트</span></div>`);
+el("out", "left:2625px;top:196px;width:670px;height:550px", `<div class="t">월세 · 전세 추천 리포트</div>
+<div class="li">· 추천 매물 카드<br>&nbsp;&nbsp;(실질 주거비 · 통근시간)</div>
+<div class="li">· 신청 가능한 대출 · 금리 · 한도</div>
+<div class="li">· 실거래 참고 · 허위매물 경고</div>
+<div class="li">· 적정 월세 · 주거비 비율(RIR) 진단</div>
+<div class="li">· 맞춤 주거정책 추천</div>
+<div class="li">· 지도 보기 · 관심매물 담기 · 신고</div>
+<div class="li">· 관심매물 새로고침 · 가격 변동 알림</div>`);
+// ---- 오른쪽 아래: 사용자 행동이 저장되는 DB ----
+el("band", "left:2600px;top:800px;width:720px;height:580px;border-color:#2563eb;background:#eff6ff", `<div class="bl" style="color:#2563eb">DB (MySQL)<span>사용자 행동이 저장됨</span></div>`);
+el("cap", "left:2625px;top:864px", "관심매물 · 가격 변동 추적");
+const fav = table(2625, 898, 330, "listing_favorites", [["user_id",""],["listing_id",""],["address",""],["deposit",""],["snapshot",""],["previous_deposit",""]], "+10개 더", false, C);
+el("cap", "left:2990px;top:864px", "허위매물 신고");
+const rep = table(2990, 898, 305, "listing_reports", [["listing_id",""],["user_id",""],["report_type",""],["message",""]], "", false, C);
+el("cap", "left:2990px;top:1146px", "알림 (가격 변동 · 경고)");
+const noti = table(2990, 1180, 305, "notifications", [["user_id",""],["title",""],["is_read",""]], "", false, C);
+el("note", "left:2625px;top:1290px;width:340px", "등록 · 수정 · 삭제한 매물은<br><span style='color:#1d4ed8'>registered_listings</span> 에 저장");
+
+// ---- 화살표 ----
+arrow(`M300,${reg.b} V${csv.y}`, true, 5); chip(300, 786, `서버가 켜질 때 CSV로 복원`);
+arrow(`M1520,440 H1660`, false, 8); chip(1590, 388, `DB 값`);
+arrow(`M1520,1090 H1660`, false, 8); chip(1590, 1038, `파일 · API`);
+arrow(`M2500,440 H2600`, false, 8); chip(2550, 388, `결과`);
+arrow(`M2960,772 V800`, false, 6); chip(2960, 786, `관심 · 신고 · 알림`);
+</script>
+</body>
+</html>
