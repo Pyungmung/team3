@@ -33,7 +33,7 @@
         <label class="block"><span class="block text-xs font-bold mb-1">이사 일정</span>
           <select id="t-move" class="select w-full"><option value="">모름</option><option value="IMMEDIATE">1개월 이내</option><option value="WITHIN_3M">3개월 이내</option><option value="EXPLORING">미정</option></select></label>
         <label class="block"><span class="block text-xs font-bold mb-1">배너 출처</span>
-          <select id="t-source" class="select w-full"><option value="server">관리자가 등록한 배너</option><option value="sample">내장 샘플 배너</option></select></label>
+          <select id="t-source" class="select w-full"><option value="server">관리자가 등록한 배너 (없으면 샘플)</option><option value="sample">내장 샘플 배너</option></select></label>
         <button type="button" id="t-redraw" class="px-4 py-2 rounded-full text-white brand-gradient text-sm font-semibold">다시 뽑기</button>
       </div>
       <p id="t-info" class="text-xs text-gray-500"></p>
@@ -44,7 +44,7 @@
     <section class="card p-5 space-y-3">
       <div>
         <h2 class="text-lg font-extrabold">2. 구글 광고 (공식 샘플, 데모) <span class="text-xs font-normal text-gray-400">data-ad-kind="gpt-demo"</span></h2>
-        <p class="text-xs text-gray-500 mt-1">구글이 개발자 문서에 공개한 샘플 광고 단위예요. 계정·승인 없이 뜨지만 수익이 없는 데모용이고, 어떤 광고가 나올지는 구글이 정해요. 정식 운영에서는 AdSense 승인 후 <code>google</code>/<code>both</code>로 바꿔요.</p>
+        <p class="text-xs text-gray-500 mt-1">광고 차단 프로그램(애드블록 등)이 켜져 있으면 안 보일 수 있어요. 구글이 개발자 문서에 공개한 샘플 광고 단위예요. 계정·승인 없이 뜨지만 수익이 없는 데모용이고, 어떤 광고가 나올지는 구글이 정해요. 정식 운영에서는 AdSense 승인 후 <code>google</code>/<code>both</code>로 바꿔요.</p>
       </div>
       <div id="t-gpt-box"><div id="t-gpt" data-ad-slot="test-gpt" data-ad-kind="gpt-demo"></div></div>
     </section>
@@ -110,8 +110,13 @@
       });
     }
 
+    let usedSampleBecauseEmpty = false;
     async function pool() {
-      return $("t-source").value === "sample" ? SAMPLE_BANNERS : await CustomHouseAdSlot.fetchBanners();
+      if ($("t-source").value === "sample") return SAMPLE_BANNERS;
+      const server = await CustomHouseAdSlot.fetchBanners();
+      // 서버에 등록된 배너가 아직 없으면 빈 화면이 되지 않게 내장 샘플로 보여준다 (관리자가 배너를 등록하면 자동으로 그 배너를 쓴다)
+      usedSampleBecauseEmpty = server.length === 0;
+      return usedSampleBecauseEmpty ? SAMPLE_BANNERS : server;
     }
 
     function freshSlot(box, attrs) {
@@ -127,9 +132,10 @@
       const candidates = banners.filter((b) => T.matchBanner(b, profile, "test-direct"));
       const shown = await CustomHouseAdSlot.mount(
         freshSlot($("t-direct-box"), { "data-ad-slot": "test-direct", "data-ad-kind": "direct", "data-ad-size": "banner" }), { profile, banners });
-      $("t-info").textContent = shown
+      const emptyNote = usedSampleBecauseEmpty ? " 지금 서버에 등록된 배너가 없어서 내장 샘플 배너로 보여주는 중이에요(관리자 수정 > 배너 광고에서 등록하면 그 배너가 나와요)." : "";
+      $("t-info").textContent = (shown
         ? `이 조건에 맞는 배너 ${candidates.length}개 중 무작위 1개를 보여줘요 (전체 ${banners.length}개). "다시 뽑기"를 누르면 다른 배너가 나올 수 있어요.`
-        : `이 조건에 맞는 배너가 없어서 광고 자리가 접혀 있어요 (전체 ${banners.length}개 중 0개).` + ($("t-source").value === "server" && banners.length === 0 ? " 관리자 수정 > 배너 광고에서 배너를 등록하거나, 배너 출처를 \"내장 샘플 배너\"로 바꿔 보세요." : "");
+        : `이 조건에 맞는 배너가 없어서 광고 자리가 접혀 있어요 (전체 ${banners.length}개 중 0개). 조건을 바꿔 보세요.`) + emptyNote;
       await CustomHouseAdSlot.mount(
         freshSlot($("t-both-box"), { "data-ad-slot": "test-both", "data-ad-kind": "both", "data-ad-demo": "true", "data-ad-size": "card" }), { profile, banners });
     }
