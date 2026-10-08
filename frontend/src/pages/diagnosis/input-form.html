@@ -616,6 +616,31 @@
       background: var(--brand-100);
     }
 
+    /* 진단 분석 중 전체 화면 (2026-10-08): 진단 요청이 끝날 때까지(최대 1분쯤) 보여주고, 아래에 직접 배너 광고 자리를 둔다 */
+    body.an-lock { overflow: hidden; }
+    .an-overlay {
+      position: fixed; inset: 0; z-index: 9999; display: flex; align-items: flex-start; justify-content: center;
+      overflow-y: auto; padding: 56px 20px 40px; background: #f6f8fb;
+    }
+    .an-overlay.hidden { display: none; }
+    .an-card { width: 100%; max-width: 760px; text-align: center; margin: auto 0; }
+    .an-anim { position: relative; width: 132px; height: 132px; margin: 0 auto 22px; }
+    .an-ring { position: absolute; inset: 0; border-radius: 50%; border: 4px solid #dbe6f5; border-top-color: var(--brand-600, #1B2A4A); animation: an-spin 1.1s linear infinite; }
+    .an-pulse { position: absolute; inset: 14px; border-radius: 50%; background: #e8f0fb; animation: an-pulse 1.8s ease-in-out infinite; }
+    .an-house { position: absolute; inset: 0; margin: auto; width: 56px; height: 56px; color: var(--brand-600, #1B2A4A); }
+    .an-title { font-size: 22px; font-weight: 800; color: #1e293b; margin: 0 0 8px; }
+    .an-dots span { display: inline-block; animation: an-dot 1.2s ease-in-out infinite; }
+    .an-dots span:nth-child(2) { animation-delay: .2s; }
+    .an-dots span:nth-child(3) { animation-delay: .4s; }
+    .an-step { min-height: 22px; font-size: 14px; color: #475569; margin: 0 0 4px; }
+    .an-sub { font-size: 12px; color: #94a3b8; margin: 0 0 24px; }
+    .an-ad-wrap:empty { display: none; }
+    /* 분석 화면의 광고는 본문보다 작게 (광고 자리 기본 최대 폭 970px보다 우선하도록 선택자를 구체적으로 쓴다) */
+    .an-overlay .an-ad-wrap .ch-ad-slot[data-ad-size="banner"] { max-width: 540px; margin-top: 8px; }
+    @keyframes an-spin { to { transform: rotate(360deg); } }
+    @keyframes an-pulse { 0%, 100% { transform: scale(.92); opacity: .7; } 50% { transform: scale(1.04); opacity: 1; } }
+    @keyframes an-dot { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .an-ring, .an-pulse, .an-dots span { animation: none; } }
     .submit-btn:disabled,
     .back-btn:disabled,
     .next-btn:disabled {
@@ -1099,6 +1124,21 @@
     </form>
   </main>
 
+  <!-- 진단 분석 중 화면 (제출하면 진단 요청이 끝날 때까지 전체 화면으로 보여준다. 아래 광고 자리는 맞는 배너가 있을 때만 나온다) -->
+  <div id="analyzing-overlay" class="an-overlay hidden" role="status" aria-live="polite" aria-label="주거지 분석 중">
+    <div class="an-card">
+      <div class="an-anim" aria-hidden="true">
+        <div class="an-pulse"></div>
+        <div class="an-ring"></div>
+        <svg class="an-house" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>
+      </div>
+      <h2 class="an-title">맞춤형 집 주거지를 분석중입니다<span class="an-dots"><span>.</span><span>.</span><span>.</span></span></h2>
+      <p class="an-step" id="an-step">소득에 맞는 적정 월세를 계산하는 중이에요</p>
+      <p class="an-sub">조건에 따라 최대 1분쯤 걸릴 수 있어요. 창을 닫지 말고 기다려주세요.</p>
+      <div class="an-ad-wrap" id="an-ad-box"></div>
+    </div>
+  </div>
+
   <!-- 공통 푸터 -->
   <div id="app-footer"></div>
 
@@ -1108,6 +1148,8 @@
   <script src="../../js/api/mypage.js?v=20261008a"></script>
   <script src="../../js/api/recommendation.js?v=20260930a"></script>
   <script src="../../js/utils/address-match-util.js?v=20261008a"></script>
+  <script src="../../js/utils/ad-targeting.js?v=20261008a"></script>
+  <script src="../../js/components/ad-slot.js?v=20261008c"></script>
   <script>
     renderHeader("diagnosis");
     renderFooter();
@@ -1372,6 +1414,78 @@
       if (hubMatchEl) hubMatchEl.classList.add("hidden");
     });
 
+    // ---------- 분석 중 화면 + 광고 (2026-10-08) ----------
+    const overlayEl = document.getElementById("analyzing-overlay");
+    const analyzingSteps = [
+      "소득에 맞는 적정 월세를 계산하는 중이에요",
+      "통근 가능한 매물을 찾는 중이에요",
+      "받을 수 있는 대출·주거 정책을 확인하는 중이에요",
+      "비용이 낮은 순서로 추천을 정리하는 중이에요",
+    ];
+    let stepTimer = null;
+    // 분석이 아무리 빨리 끝나도 분석 화면은 최소 이 시간만큼 보여준다 (2026-10-08). 분석 요청은 화면이 뜨자마자 시작하고 이 시간과 동시에 진행되므로,
+    // 더 오래 걸리면 분석이 끝나는 즉시 넘어가고(대기 시간이 더해지지 않는다), 오류가 나면 기다리지 않고 바로 안내한다.
+    const MIN_ANALYZING_MS = 3000;
+
+    // 광고 배너 목록은 미리 받아 둔다 (분석 화면이 뜨는 순간 바로 광고가 나오게). 못 받아도 분석 화면은 그대로 나온다.
+    if (window.CustomHouseAdSlot) CustomHouseAdSlot.fetchBanners();
+
+    // 방문자 조건 = 방금 입력한 진단 조건. 적정 월세 상한은 이번 진단이 끝나야 알 수 있어서 지난 진단/홈 미리보기 값을 쓰고, 없으면 성향 구분 없이 랜덤이다.
+    function analyzingAdProfile(condition) {
+      let affordableRent = null;
+      try {
+        const last = JSON.parse(localStorage.getItem("customhouse:lastListingDiagnosis") || "null");
+        const preview = JSON.parse(localStorage.getItem("customhouse:homePreview:v2") || "null");
+        affordableRent = (last && last.affordable_rent) || (preview && preview.summary && preview.summary.affordable_rent) || null;
+      } catch (err) {
+        affordableRent = null;
+      }
+      return CustomHouseAdTargeting.buildProfile({
+        loggedIn: true,
+        workRegion: condition.workLocation,
+        moveSchedule: condition.moveSchedule,
+        desiredRent: condition.desiredRent,
+        affordableRent,
+      });
+    }
+
+    function showAnalyzing(condition) {
+      overlayEl.classList.remove("hidden");
+      document.body.classList.add("an-lock");
+      let i = 0;
+      const stepEl = document.getElementById("an-step");
+      stepEl.textContent = analyzingSteps[0];
+      clearInterval(stepTimer);
+      stepTimer = setInterval(() => {
+        i = (i + 1) % analyzingSteps.length;
+        stepEl.textContent = analyzingSteps[i];
+      }, 2800);
+      if (window.CustomHouseAdSlot && window.CustomHouseAdTargeting) {
+        const box = document.getElementById("an-ad-box");
+        const slotEl = document.createElement("div");
+        slotEl.dataset.adSlot = "diagnosis-loading";
+        slotEl.dataset.adSize = "banner";
+        box.replaceChildren(slotEl);
+        CustomHouseAdSlot.mount(slotEl, { profile: analyzingAdProfile(condition) }).catch(() => {});
+      }
+    }
+
+    function hideAnalyzing() {
+      clearInterval(stepTimer);
+      overlayEl.classList.add("hidden");
+      document.body.classList.remove("an-lock");
+      document.getElementById("an-ad-box").replaceChildren();
+    }
+
+    // 리포트에서 뒤로가기로 돌아오면 브라우저가 이 화면을 그대로(분석 중 상태로) 복원할 수 있다 - 분석 화면을 걷고 버튼을 되살린다
+    window.addEventListener("pageshow", (event) => {
+      if (!event.persisted) return;
+      hideAnalyzing();
+      [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = false));
+      submitBtn.innerHTML = SUBMIT_LABEL;
+      quickBtn.innerHTML = QUICK_LABEL;
+    });
+
     // ---------- 제출 ----------
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -1421,6 +1535,8 @@
       // 진단 중에는 두 단계의 버튼 모두 잠그고, 누른 버튼에 진행 문구를 보여준다
       [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = true));
       (wasQuick ? quickBtn : submitBtn).textContent = wasQuick ? "3초 진단 중..." : "분석 중...";
+      const analyzingStartedAt = Date.now();
+      showAnalyzing(condition);
 
       try {
         const result = await CustomHouseRecommendationApi.requestListingDiagnosis(condition);
@@ -1430,8 +1546,12 @@
         localStorage.setItem("customhouse:lastListingDiagnosisCondition", JSON.stringify(condition));
         // 리포트 화면에서 주택 유형만 바꿔 "다시 조회"할 때 나머지 조건을 그대로 재사용하기 위해 저장.
         localStorage.setItem("customhouse:lastDiagnosisCondition", JSON.stringify(condition));
+        // 분석이 최소 표시 시간보다 빨리 끝났으면 남은 시간만큼 분석 화면을 더 보여준 뒤 넘어간다
+        const remaining = MIN_ANALYZING_MS - (Date.now() - analyzingStartedAt);
+        if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
         window.location.href = "report-listings.html";
       } catch (err) {
+        hideAnalyzing();
         showError(err.message || "진단 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         [submitBtn, quickBtn, nextBtn, prevBtn].forEach((b) => (b.disabled = false));
         submitBtn.innerHTML = SUBMIT_LABEL;

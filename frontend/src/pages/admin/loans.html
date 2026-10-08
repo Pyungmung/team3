@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- [담당: 송귀성] 관리자 수정 > 전세자금대출 / 기준소득관리 / 주거지원정책 / 기타 설정 (관리자 계정 전용) -->
+<!-- [담당: 송귀성] 관리자 수정 > 전세자금대출 / 기준소득관리 / 주거지원정책 / 광고 현황 / 배너 광고 / 기타 설정 (관리자 계정 전용) -->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -79,6 +79,17 @@
     .adm-msg.err { color: #dc2626; }
     /* 주거지원정책 탭: 정책 1건 = 표의 한 줄 */
     .hp-wrap { overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 10px; }
+    /* 배너 광고 (2026-10-08) */
+    .bn-form label.bn-lbl { display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 5px; }
+    .bn-form input[type=text], .bn-form input[type=url], .bn-form input[type=date], .bn-form input[type=number], .bn-form select {
+      width: 100%; font-size: 14px; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 11px; background: #fff; }
+    .bn-regions { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; }
+    .bn-regions label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #334155; }
+    .bn-thumb { width: 96px; height: 48px; object-fit: cover; border-radius: 6px; background: #f1f5f9; }
+    .bn-img-preview { max-width: 320px; max-height: 160px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 8px; }
+    .bn-pill { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #e2e8f0; color: #334155; margin: 1px 2px; }
+    .bn-pill.on { background: #dcfce7; color: #166534; }
+    .bn-pill.off { background: #fee2e2; color: #991b1b; }
     /* 광고 현황 표 (2026-10-08) */
     .ad-table { border-collapse: collapse; font-size: 13px; min-width: 980px; width: 100%; }
     .ad-table th { background: #f8fafc; color: #0f172a; font-size: 12px; font-weight: 800; padding: 9px 8px; border-bottom: 1px solid #cbd5e1; text-align: center; white-space: nowrap; }
@@ -129,6 +140,7 @@
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="income-standard">기준소득관리</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="housing-policies">주거지원정책</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="ads">광고 현황</button>
+        <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="banners">배너 광고</button>
         <button type="button" class="adm-tab" role="tab" aria-selected="false" data-top-tab="app-settings">기타 설정</button>
       </div>
 
@@ -279,6 +291,85 @@
         <p id="ad-empty" class="hidden text-sm text-slate-400 mt-3">아직 광고 주문이 없어요.</p>
       </section>
 
+      <section id="tab-banners" class="hidden">
+        <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+          <h2 class="text-lg font-extrabold">배너 광고</h2>
+          <span class="text-xs text-slate-400" id="bn-total"></span>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">
+          이사·인터넷·청소·생필품 같은 생활형 상품 배너예요. 사진과 링크를 올리고 <b>누구에게 보일지</b> 조건을 정하면, 광고 자리가 방문자 조건에 맞는 배너 중 하나를 무작위로 보여줘요.
+          조건을 비워 두면 모든 방문자에게 보여요. 노출·클릭 횟수는 집계하지 않아요. 광고 자리는 페이지에 <code>&lt;div data-ad-slot="자리이름"&gt;&lt;/div&gt;</code> 한 줄을 넣으면 생겨요(아직 어느 페이지에도 넣지 않았어요).
+        </p>
+        <ul class="text-xs text-slate-500 mb-4 list-disc pl-5 space-y-1">
+          <li><b>월세 성향</b>: 방문자가 입력한 최대 매물 월세가 <b>적정 월세 상한 이하면 절약형</b>(최저가가 강점인 서비스), <b>초과면 프리미엄형</b>(프리미엄 서비스). 최대 월세를 비웠거나 로그인하지 않았으면 <b>성향 구분 없이 모든 배너가 후보</b>(랜덤).</li>
+          <li><b>직장 자치구 / 이사 일정</b>: 지정하면 해당 조건의 방문자에게만 보여요(방문자의 직장 구·이사 일정을 모르면 제외).</li>
+        </ul>
+        <div class="flex items-center gap-3 flex-wrap mb-3">
+          <button type="button" id="bn-add" class="adm-btn adm-save" style="padding:8px 16px">+ 배너 추가</button>
+          <button type="button" id="bn-reload" class="adm-btn" style="padding:8px 16px;border:1px solid #cbd5e1;background:#fff">새로고침</button>
+          <span class="adm-msg" id="bn-msg" role="status"></span>
+        </div>
+
+        <form id="bn-form" class="bn-form hidden card p-5 space-y-4 mb-5" novalidate>
+          <h3 class="text-sm font-extrabold text-slate-700" id="bn-form-title">배너 추가</h3>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div><label class="bn-lbl" for="bn-title">배너 제목 (관리용 · 이미지 설명으로도 쓰여요)</label><input type="text" id="bn-title" maxlength="200" placeholder="예: 포장이사 최대 30% 할인" /></div>
+            <div><label class="bn-lbl" for="bn-category">카테고리</label>
+              <select id="bn-category"><option value="MOVING">이사</option><option value="INTERNET">인터넷</option><option value="CLEANING">청소</option><option value="GROCERY">생필품</option><option value="ETC">기타</option></select></div>
+          </div>
+          <div><label class="bn-lbl" for="bn-link">클릭하면 이동할 링크 (http:// 또는 https://)</label><input type="url" id="bn-link" maxlength="1000" placeholder="https://example.com/event" /></div>
+          <div>
+            <label class="bn-lbl" for="bn-image-file">배너 이미지 (jpg/png/webp, 5MB 이하 · 가로로 긴 배너 권장 예: 970x250)</label>
+            <input type="file" id="bn-image-file" accept="image/jpeg,image/png,image/webp" />
+            <input type="hidden" id="bn-image" />
+            <img id="bn-image-preview" class="bn-img-preview hidden" alt="배너 이미지 미리보기" />
+            <div class="text-xs text-slate-400 mt-1" id="bn-image-msg"></div>
+          </div>
+          <div><label class="bn-lbl" for="bn-alt">이미지 설명 (선택)</label><input type="text" id="bn-alt" maxlength="200" placeholder="비우면 배너 제목을 써요" /></div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div><label class="bn-lbl" for="bn-segment">월세 성향</label>
+              <select id="bn-segment"><option value="ALL">전체 (누구에게나)</option><option value="SAVING">절약형 (최대 월세 ≤ 적정 월세 상한)</option><option value="PREMIUM">프리미엄형 (최대 월세 &gt; 적정 월세 상한)</option></select></div>
+            <div><label class="bn-lbl" for="bn-move">이사 일정</label>
+              <select id="bn-move"><option value="ANY">제한 없음</option><option value="IMMEDIATE">1개월 이내만</option><option value="WITHIN_3M">3개월 이내까지</option></select></div>
+          </div>
+          <div><label class="bn-lbl">직장 자치구 (선택 · 아무것도 안 고르면 모든 지역)</label><div class="bn-regions" id="bn-regions"></div></div>
+          <div class="grid gap-4 md:grid-cols-4">
+            <div><label class="bn-lbl" for="bn-starts">노출 시작일</label><input type="date" id="bn-starts" /></div>
+            <div><label class="bn-lbl" for="bn-ends">노출 종료일 (그날까지)</label><input type="date" id="bn-ends" /></div>
+            <div><label class="bn-lbl" for="bn-slots">노출할 자리 이름 (선택, 쉼표로 구분)</label><input type="text" id="bn-slots" maxlength="300" placeholder="비우면 모든 자리 · 예: home-bottom" /></div>
+            <div><label class="bn-lbl" for="bn-sort">정렬 순서</label><input type="number" id="bn-sort" min="0" max="9999" value="0" /></div>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" id="bn-active" checked /> 노출 켜기</label>
+          <div class="flex items-center gap-3 flex-wrap">
+            <button type="submit" class="adm-btn adm-save" id="bn-save">저장</button>
+            <button type="button" class="adm-btn" id="bn-cancel" style="border:1px solid #cbd5e1;background:#fff">취소</button>
+            <span class="adm-msg" id="bn-form-msg" role="status"></span>
+          </div>
+        </form>
+
+        <div class="hp-wrap mb-6">
+          <table class="ad-table">
+            <thead><tr><th>이미지</th><th>배너</th><th>노출 조건</th><th>기간</th><th>상태</th><th>관리</th></tr></thead>
+            <tbody id="bn-body"></tbody>
+          </table>
+        </div>
+        <p id="bn-empty" class="hidden text-sm text-slate-400 mb-6">아직 배너가 없어요. [+ 배너 추가]로 등록해 보세요.</p>
+
+        <h3 class="text-sm font-extrabold text-slate-700 mb-2">방문자 조건별 미리보기</h3>
+        <p class="text-xs text-slate-400 mb-3">방문자 조건을 골라 <b>미리보기</b>를 누르면, 지금 노출 가능한(켜짐 + 기간 안) 배너 중 그 조건에 맞는 것을 실제 광고 자리처럼 무작위로 하나 보여줘요.</p>
+        <div class="bn-form card p-4 mb-3 grid gap-3 md:grid-cols-5 items-end">
+          <div><label class="bn-lbl" for="bn-pv-segment">월세 성향</label>
+            <select id="bn-pv-segment"><option value="">구분 없음 (최대 월세 비움)</option><option value="SAVING">절약형</option><option value="PREMIUM">프리미엄형</option></select></div>
+          <div><label class="bn-lbl" for="bn-pv-region">직장 자치구</label><select id="bn-pv-region"><option value="">모름</option></select></div>
+          <div><label class="bn-lbl" for="bn-pv-move">이사 일정</label>
+            <select id="bn-pv-move"><option value="">모름</option><option value="IMMEDIATE">1개월 이내</option><option value="WITHIN_3M">3개월 이내</option><option value="WITHIN_6M">6개월 이내</option><option value="EXPLORING">미정</option></select></div>
+          <div><label class="bn-lbl" for="bn-pv-slot">자리 이름</label><input type="text" id="bn-pv-slot" maxlength="40" placeholder="예: home-bottom" /></div>
+          <div><button type="button" id="bn-preview" class="adm-btn adm-save" style="padding:9px 16px;width:100%">미리보기</button></div>
+        </div>
+        <p class="text-xs text-slate-500 mb-2" id="bn-pv-info"></p>
+        <div id="bn-pv-box" style="max-width:970px"></div>
+      </section>
+
       <section id="tab-app-settings" class="hidden">
         <form id="app-settings-form" class="card p-6 space-y-6" novalidate>
           <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -339,6 +430,10 @@
   <script src="../../js/api/admin-income-standard.js?v=20260930a"></script>
   <script src="../../js/api/admin-app-settings.js?v=20261008a"></script>
   <script src="../../js/api/admin-ads.js?v=20261008b"></script>
+  <script src="../../js/api/watchlist.js?v=20261008b"></script>
+  <script src="../../js/utils/ad-targeting.js?v=20261008a"></script>
+  <script src="../../js/components/ad-slot.js?v=20261008a"></script>
+  <script src="../../js/api/admin-banners.js?v=20261008a"></script>
   <script src="../../js/api/admin-housing-policies.js?v=20261008a"></script>
   <script>
     renderHeader("admin");
@@ -839,6 +934,8 @@
       document.getElementById("adm-main").classList.toggle("max-w-4xl", tab !== "housing-policies");
       document.getElementById("adm-main").classList.toggle("max-w-[1620px]", tab === "housing-policies");
       if (tab === "housing-policies") loadHousingPolicies();
+      document.getElementById("tab-banners").classList.toggle("hidden", tab !== "banners");
+      if (tab === "banners") loadBanners();
       document.getElementById("tab-ads").classList.toggle("hidden", tab !== "ads");
       if (tab === "ads") loadAdOrders();
       document.getElementById("tab-app-settings").classList.toggle("hidden", tab !== "app-settings");
@@ -1349,6 +1446,219 @@
         setAdMsg(err.message || "환불하지 못했어요.", "err");
         btn.disabled = false;
       }
+    });
+
+    // ---------- 배너 광고 (직접 광고 배너 관리, 2026-10-08) ----------
+    const BN_REGIONS = ["강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구",
+      "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구", "분당구"];
+    const BN_CATEGORY = { MOVING: "이사", INTERNET: "인터넷", CLEANING: "청소", GROCERY: "생필품", ETC: "기타" };
+    const BN_SEGMENT = { ALL: "전체", SAVING: "절약형", PREMIUM: "프리미엄형" };
+    const BN_MOVE = { ANY: "제한 없음", IMMEDIATE: "1개월 이내", WITHIN_3M: "3개월 이내까지" };
+    const BN_ORIGIN = ["localhost", "127.0.0.1"].includes(location.hostname) ? "http://localhost:8080" : "https://team3-q05z.onrender.com";
+    let bannerList = [];
+    let editingBannerId = null;
+
+    const bnEl = (id) => document.getElementById(id);
+    const bnImgSrc = (url) => (typeof url === "string" && url.startsWith("/uploads/") ? BN_ORIGIN + url : url);
+
+    function setBnMsg(text, kind) {
+      const el = bnEl("bn-msg");
+      el.textContent = text || "";
+      el.className = "adm-msg" + (kind ? " " + kind : "");
+    }
+
+    function setBnFormMsg(text, kind) {
+      const el = bnEl("bn-form-msg");
+      el.textContent = text || "";
+      el.className = "adm-msg" + (kind ? " " + kind : "");
+    }
+
+    function bannerPeriodText(b) {
+      if (!b.startsOn && !b.endsOn) return "상시";
+      return `${b.startsOn || "…"} ~ ${b.endsOn || "…"}`;
+    }
+
+    function bannerInPeriodNow(b) {
+      const today = new Date();
+      const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      return (!b.startsOn || ymd >= b.startsOn) && (!b.endsOn || ymd <= b.endsOn);
+    }
+
+    function bannerRowHtml(b) {
+      const live = b.active && bannerInPeriodNow(b);
+      const conditions = [
+        `<span class="bn-pill">${esc(BN_SEGMENT[b.segment] || b.segment)}</span>`,
+        `<span class="bn-pill">${b.regions.length ? esc(b.regions.join(", ")) : "전체 지역"}</span>`,
+        `<span class="bn-pill">이사 ${esc(BN_MOVE[b.moveWithin] || b.moveWithin)}</span>`,
+        `<span class="bn-pill">${b.slots.length ? "자리: " + esc(b.slots.join(", ")) : "모든 자리"}</span>`,
+      ].join("");
+      return `<tr data-id="${esc(b.id)}">
+        <td><img class="bn-thumb" src="${esc(bnImgSrc(b.imageUrl))}" alt="" /></td>
+        <td style="text-align:left"><b>${esc(b.title)}</b><br /><span class="bn-pill">${esc(BN_CATEGORY[b.category] || b.category)}</span>
+          <a href="${esc(b.linkUrl)}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 underline" style="word-break:break-all">링크 확인</a></td>
+        <td style="text-align:left">${conditions}</td>
+        <td>${esc(bannerPeriodText(b))}</td>
+        <td><span class="bn-pill ${live ? "on" : "off"}">${live ? "노출 중" : b.active ? "기간 밖" : "꺼짐"}</span></td>
+        <td><button type="button" class="adm-btn" style="padding:5px 12px;font-size:12px;border:1px solid #cbd5e1;background:#fff" data-bn-edit="${esc(b.id)}">수정</button>
+            <button type="button" class="adm-btn adm-del" style="padding:5px 12px;font-size:12px" data-bn-del="${esc(b.id)}">삭제</button></td>
+      </tr>`;
+    }
+
+    async function loadBanners() {
+      setBnMsg("불러오는 중...", "");
+      try {
+        bannerList = await CustomHouseAdminBannersApi.listBanners();
+        bnEl("bn-body").innerHTML = bannerList.map(bannerRowHtml).join("");
+        bnEl("bn-empty").classList.toggle("hidden", bannerList.length > 0);
+        bnEl("bn-total").textContent = bannerList.length ? `배너 ${bannerList.length}개 · 노출 중 ${bannerList.filter((b) => b.active && bannerInPeriodNow(b)).length}개` : "";
+        setBnMsg("", "");
+      } catch (err) {
+        setBnMsg(err.message || "배너 목록을 불러오지 못했어요.", "err");
+      }
+    }
+
+    function openBannerForm(banner) {
+      editingBannerId = banner ? banner.id : null;
+      bnEl("bn-form-title").textContent = banner ? "배너 수정" : "배너 추가";
+      bnEl("bn-title").value = banner ? banner.title : "";
+      bnEl("bn-category").value = banner ? banner.category : "MOVING";
+      bnEl("bn-link").value = banner ? banner.linkUrl : "";
+      bnEl("bn-image").value = banner ? banner.imageUrl : "";
+      bnEl("bn-image-file").value = "";
+      bnEl("bn-image-msg").textContent = "";
+      const preview = bnEl("bn-image-preview");
+      preview.classList.toggle("hidden", !banner);
+      if (banner) preview.src = bnImgSrc(banner.imageUrl);
+      bnEl("bn-alt").value = banner && banner.altText ? banner.altText : "";
+      bnEl("bn-segment").value = banner ? banner.segment : "ALL";
+      bnEl("bn-move").value = banner ? banner.moveWithin : "ANY";
+      const chosen = new Set(banner ? banner.regions : []);
+      bnEl("bn-regions").querySelectorAll("input").forEach((c) => { c.checked = chosen.has(c.value); });
+      bnEl("bn-starts").value = banner && banner.startsOn ? banner.startsOn : "";
+      bnEl("bn-ends").value = banner && banner.endsOn ? banner.endsOn : "";
+      bnEl("bn-slots").value = banner ? banner.slots.join(", ") : "";
+      bnEl("bn-sort").value = banner ? banner.sortOrder : 0;
+      bnEl("bn-active").checked = banner ? banner.active : true;
+      setBnFormMsg("", "");
+      bnEl("bn-form").classList.remove("hidden");
+      bnEl("bn-form").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function closeBannerForm() {
+      bnEl("bn-form").classList.add("hidden");
+      editingBannerId = null;
+    }
+
+    bnEl("bn-regions").innerHTML = BN_REGIONS.map((r) => `<label><input type="checkbox" value="${r}" /> ${r}</label>`).join("");
+    bnEl("bn-pv-region").innerHTML += BN_REGIONS.map((r) => `<option value="${r}">${r}</option>`).join("");
+    bnEl("bn-add").addEventListener("click", () => openBannerForm(null));
+    bnEl("bn-reload").addEventListener("click", loadBanners);
+    bnEl("bn-cancel").addEventListener("click", closeBannerForm);
+
+    // 이미지 업로드: 매물 사진 업로드 API를 그대로 쓴다. 로컬/배포 서버 주소가 DB에 남지 않게 "/uploads/..." 경로만 저장한다.
+    bnEl("bn-image-file").addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      bnEl("bn-image-msg").textContent = "업로드 중...";
+      try {
+        const url = await CustomHouseWatchlistApi.uploadListingPhoto(file);
+        const path = url.replace(/^https?:\/\/[^/]+/, "");
+        bnEl("bn-image").value = path;
+        const preview = bnEl("bn-image-preview");
+        preview.src = url;
+        preview.classList.remove("hidden");
+        bnEl("bn-image-msg").textContent = "업로드했어요. 저장하면 배너에 반영돼요.";
+      } catch (err) {
+        bnEl("bn-image-msg").textContent = err.message || "이미지를 올리지 못했어요.";
+      }
+    });
+
+    function readBannerForm() {
+      const slots = bnEl("bn-slots").value.split(",").map((v) => v.trim()).filter(Boolean);
+      return {
+        title: bnEl("bn-title").value.trim(),
+        category: bnEl("bn-category").value,
+        imageUrl: bnEl("bn-image").value.trim(),
+        linkUrl: bnEl("bn-link").value.trim(),
+        altText: bnEl("bn-alt").value.trim() || null,
+        segment: bnEl("bn-segment").value,
+        regions: [...bnEl("bn-regions").querySelectorAll("input:checked")].map((c) => c.value),
+        moveWithin: bnEl("bn-move").value,
+        slots,
+        startsOn: bnEl("bn-starts").value || null,
+        endsOn: bnEl("bn-ends").value || null,
+        active: bnEl("bn-active").checked,
+        sortOrder: Number(bnEl("bn-sort").value || 0),
+      };
+    }
+
+    bnEl("bn-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = readBannerForm();
+      if (!payload.title) return setBnFormMsg("배너 제목을 입력해주세요.", "err");
+      if (!payload.imageUrl) return setBnFormMsg("배너 이미지를 올려주세요.", "err");
+      if (!/^https?:\/\/\S+$/i.test(payload.linkUrl)) return setBnFormMsg("링크는 http:// 또는 https:// 로 시작해야 해요.", "err");
+      const btn = bnEl("bn-save");
+      btn.disabled = true;
+      setBnFormMsg("저장 중...", "");
+      try {
+        if (editingBannerId) await CustomHouseAdminBannersApi.updateBanner(editingBannerId, payload);
+        else await CustomHouseAdminBannersApi.createBanner(payload);
+        closeBannerForm();
+        await loadBanners();
+        setBnMsg("저장했어요. 광고 자리에는 최대 1분 안에 반영돼요.", "ok");
+      } catch (err) {
+        setBnFormMsg(err.message || "저장하지 못했어요.", "err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    bnEl("bn-body").addEventListener("click", async (e) => {
+      const edit = e.target.closest("[data-bn-edit]");
+      if (edit) return openBannerForm(bannerList.find((b) => String(b.id) === edit.dataset.bnEdit));
+      const del = e.target.closest("[data-bn-del]");
+      if (!del) return;
+      const target = bannerList.find((b) => String(b.id) === del.dataset.bnDel);
+      if (!target || !confirm(`"${target.title}" 배너를 삭제할까요? 되돌릴 수 없어요.`)) return;
+      del.disabled = true;
+      try {
+        await CustomHouseAdminBannersApi.deleteBanner(target.id);
+        await loadBanners();
+        setBnMsg("삭제했어요.", "ok");
+      } catch (err) {
+        setBnMsg(err.message || "삭제하지 못했어요.", "err");
+        del.disabled = false;
+      }
+    });
+
+    // 방문자 조건별 미리보기: 실제 광고 자리(ad-slot.js)와 같은 조건식으로 하나를 뽑아 보여준다
+    bnEl("bn-preview").addEventListener("click", async () => {
+      const segment = bnEl("bn-pv-segment").value;
+      const region = bnEl("bn-pv-region").value;
+      const move = bnEl("bn-pv-move").value;
+      const slot = bnEl("bn-pv-slot").value.trim();
+      const known = segment || region || move;
+      const profile = CustomHouseAdTargeting.buildProfile({
+        loggedIn: !!known,
+        workRegion: region || null,
+        moveSchedule: move || null,
+        desiredRent: segment === "SAVING" ? 40 : segment === "PREMIUM" ? 70 : null,
+        affordableRent: segment ? 46 : null,
+      });
+      const live = bannerList.filter((b) => b.active && bannerInPeriodNow(b));
+      const candidates = live.filter((b) => CustomHouseAdTargeting.matchBanner(b, profile, slot));
+      const box = bnEl("bn-pv-box");
+      box.innerHTML = "";
+      const el = document.createElement("div");
+      el.dataset.adSlot = slot || "preview";
+      el.dataset.adKind = "direct";
+      el.dataset.adSize = "banner";
+      box.appendChild(el);
+      const shown = await CustomHouseAdSlot.mount(el, { profile, banners: live });
+      bnEl("bn-pv-info").textContent = shown
+        ? `이 조건에 맞는 노출 가능 배너 ${candidates.length}개 중 무작위 1개를 보여줘요. 다시 누르면 다른 배너가 나올 수 있어요.`
+        : `이 조건에 맞는 노출 가능 배너가 없어서 광고 자리가 비어요(접혀요). 노출 중인 배너 ${live.length}개 중 조건이 맞는 것이 0개예요.`;
     });
 
     // ---------- 시작 ----------

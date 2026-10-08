@@ -16,7 +16,6 @@ const fs = require("fs");
 const path = require("path");
 
 const kakaoMapAppKey = process.env.KAKAO_MAP_APP_KEY || "";
-
 const content = `window.CUSTOMHOUSE_CONFIG = {
   KAKAO_MAP_APP_KEY: "${kakaoMapAppKey}",
 };

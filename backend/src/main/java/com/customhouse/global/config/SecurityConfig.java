@@ -64,6 +64,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/mypage/**").authenticated()
                         .requestMatchers("/api/payments/**").authenticated()
                         .requestMatchers("/api/ads/**").authenticated()
+                        // 직접 배너 광고 목록은 공개 (비로그인 방문자에게도 광고 자리가 채워진다). 등록/수정/삭제는 /api/admin/banners (ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/api/banners").permitAll()
                         .requestMatchers("/api/watchlist/**").authenticated()
                         // 추천 매물 허위매물 신고: 신고 수 조회(카드에 "허위매물 주의" 표시용)와 실거래 참고 조회는
                         // 공개, 신고는 로그인 필요
