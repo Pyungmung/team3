@@ -176,11 +176,26 @@
     }
   }
 
+  // 실거래 조회는 동시에 REF_CONCURRENCY건만 보내고 나머지는 줄을 세운다(2026-10-12). 카드 10장이 한꺼번에 그려지며 서로 다른 자치구의
+  // 조회가 동시에 나가면 무료 AI 엔진(메모리 512MB)이 한 번에 너무 많은 국토부 자료를 올리다 죽는다. 실패하면 2초 뒤 1번 자동으로 다시 시도한다.
+  // task-queue.js를 못 불러온 페이지에서는 예전처럼 바로 호출한다.
+  const REF_CONCURRENCY = 3;
+  const REF_RETRY_DELAY_MS = 2000;
+  const _TQ = window.CustomHouseTaskQueue;
+  const _refQueue = _TQ ? _TQ.createTaskQueue(REF_CONCURRENCY) : null;
+
+  function _fetchReference(el) {
+    // 줄에서 기다리는 사이 목록이 다시 그려져 카드가 화면에서 사라졌으면 호출하지 않는다.
+    const task = () => (el.isConnected ? CustomHouseWatchlistApi.getListingReference(el.dataset.refListingId) : Promise.resolve(null));
+    return _refQueue ? _TQ.runQueuedWithRetry(_refQueue, task, { retries: 1, delayMs: REF_RETRY_DELAY_MS }) : task();
+  }
+
   async function _loadReference(el) {
     const body = el.querySelector("[data-ref-body]");
     const summary = el.querySelector("summary");
     try {
-      const result = await CustomHouseWatchlistApi.getListingReference(el.dataset.refListingId);
+      const result = await _fetchReference(el);
+      if (!el.isConnected) return;
       const list = result?.transactions || [];
       const scope = result?.scope || "none";
       if (scope === "deleted") {
@@ -200,7 +215,15 @@
         : `<div class="text-gray-400">최근 2년간 실거래 내역을 찾지 못했어요.</div>`;
     } catch (e) {
       body.innerHTML = `<div class="text-gray-400">실거래 정보를 불러오지 못했어요. <button type="button" class="underline" data-ref-retry>다시 시도</button></div>`;
-      body.querySelector("[data-ref-retry]")?.addEventListener("click", () => _loadReference(el), { once: true });
+      body.querySelector("[data-ref-retry]")?.addEventListener(
+        "click",
+        () => {
+          // 누르면 바로 "불러오는 중…"으로 바꿔서 눌렸다는 걸 보여준다 (예전엔 서버가 아직 안 깨어 있으면 같은 실패 문구가 곧바로 다시 떠서 안 눌린 것처럼 보였다).
+          body.innerHTML = `<div class="text-gray-400">불러오는 중…</div>`;
+          _loadReference(el);
+        },
+        { once: true }
+      );
     }
   }
 

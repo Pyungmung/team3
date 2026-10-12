@@ -65,12 +65,30 @@ def iter_listings(regions: list[str] | None = None):
 
 
 def get_listing(listing_id: str) -> dict | None:
-    """매물등록번호(예: SEOCHO-202609-0001)로 1건 조회. 번호 앞부분으로 자치구 파일을 찾는다."""
+    """매물등록번호(예: SEOCHO-202609-0001)로 1건 조회. 번호 앞부분으로 자치구 파일을 찾는다.
+
+    그 자치구가 이미 메모리에 올라와 있으면 거기서 찾는다. 아직 안 올라와 있으면 구 전체(약 13MB, 한 번 올라가면 서버가 꺼질 때까지 안 지워짐)를
+    올리지 않고 파일을 한 줄씩 훑어 그 한 건만 읽는다 (2026-10-12). 실거래/통근/새로고침이 서로 다른 자치구 매물을 한꺼번에 조회하면
+    구마다 13MB씩 쌓여 무료 서버(512MB)가 메모리 초과로 죽었다."""
     prefix = listing_id.split("-", 1)[0].lower()
     region = schema.ENG_DISTRICT.get(prefix)
     if region is None:
         return None
-    return next((x for x in load_district(region) if x["listing_id"] == listing_id), None)
+    with _lock:
+        loaded = region in _cache
+    if loaded:
+        return next((x for x in load_district(region) if x["listing_id"] == listing_id), None)
+
+    path = csv_path(region)
+    id_column = schema.LISTING_COLUMNS[0]  # "매물등록번호"
+    try:
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            for row in csv.DictReader(f):
+                if row.get(id_column) == listing_id:
+                    return schema.row_to_listing(row)
+    except FileNotFoundError:
+        return None
+    return None
 
 
 def next_listing_id(region: str) -> str:

@@ -36,6 +36,7 @@ import logging
 import threading
 import time
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
@@ -219,33 +220,81 @@ def _fetch_one(lawd_cd: str, property_type: str, deal_ymd: str) -> list[dict]:
 # fetch_neighborhood_transactions(동 단위)로 대신 보여준다 - listing_reference.py의 엔드포인트가
 # 이 우선순위로 호출한다.
 # ---------------------------------------------------------------------------------------------
-_reference_cache: dict[tuple, tuple[float, list[dict]]] = {}
+# 2026-10-12: 무료 서버(메모리 512MB)가 메모리 초과로 죽는 일이 있어 두 가지를 걸었다.
+#  1) 동시 조회 제한 - 한 (자치구+유형) 조회는 24개월치 raw 자료를 통째로 메모리에 올린다. 리포트가 서로 다른 자치구의 카드 10장을 한꺼번에 조회하면
+#     그 묶음 10개가 동시에 올라가 메모리를 넘겼다. 캐시에 없는 대량 조회는 REFERENCE_FETCH_CONCURRENCY건만 동시에 하고 나머지는 차례를 기다린다.
+#  2) 캐시 크기 제한 - 예전엔 6시간 동안 계속 쌓이기만 했다. 가장 오래 안 쓴 것부터 지우는(LRU) 최대 개수를 둔다.
+REFERENCE_FETCH_CONCURRENCY = 2
+REFERENCE_FETCH_WAIT_SEC = 100  # 차례를 이만큼 기다려도 못 받으면 오류로 돌려준다(화면이 다시 시도한다)
+REFERENCE_CACHE_MAX_ENTRIES = 8  # (자치구+유형+개월수) 묶음 최대 개수 - 한 묶음이 가장 크다
+SIGNATURE_CACHE_MAX_ENTRIES = 48  # (자치구+유형+계약월) 한 달치 묶음 최대 개수
+
+_reference_cache: "OrderedDict[tuple, tuple[float, list[dict]]]" = OrderedDict()
 _reference_cache_lock = threading.Lock()
+_reference_fetch_gate = threading.BoundedSemaphore(REFERENCE_FETCH_CONCURRENCY)
+# 같은 묶음(자치구+유형)을 동시에 두 번 받지 않게 묶음마다 자물쇠를 둔다 - 먼저 온 요청이 받아 오는 동안 같은 묶음 요청은 문지기 자리를 차지하지 않고
+# 기다렸다가 캐시를 쓴다. 묶음 종류(자치구 25 x 유형 4)가 정해져 있어 자물쇠 표가 커질 일은 없다.
+_reference_key_locks: dict[tuple, threading.Lock] = {}
+_reference_key_locks_guard = threading.Lock()
+
+
+def _cache_get(cache: "OrderedDict", lock: threading.Lock, key: tuple):
+    """TTL 안의 캐시 값을 돌려주고(없거나 만료면 None) 쓴 항목을 '최근 사용'으로 올린다."""
+    with lock:
+        cached = cache.get(key)
+        if cached is None:
+            return None
+        if time.time() - cached[0] >= CACHE_TTL_SEC:
+            del cache[key]
+            return None
+        cache.move_to_end(key)
+        return cached[1]
+
+
+def _cache_put(cache: "OrderedDict", lock: threading.Lock, key: tuple, records: list[dict], max_entries: int) -> None:
+    """캐시에 넣고, 최대 개수를 넘으면 가장 오래 안 쓴 항목부터 지운다."""
+    with lock:
+        cache[key] = (time.time(), records)
+        cache.move_to_end(key)
+        while len(cache) > max_entries:
+            cache.popitem(last=False)
 
 
 def _fetch_reference_records(lawd_cd: str, property_type: str, months: int) -> list[dict]:
     """(법정동코드, 매물유형)의 최근 N개월 실거래 raw item 목록 (캐시됨). fetch_reference_transactions/
     fetch_neighborhood_transactions이 공유해서 쓴다."""
     cache_key = (lawd_cd, property_type, months)
-    with _reference_cache_lock:
-        cached = _reference_cache.get(cache_key)
-    if cached and time.time() - cached[0] < CACHE_TTL_SEC:
-        return cached[1]
+    hit = _cache_get(_reference_cache, _reference_cache_lock, cache_key)
+    if hit is not None:
+        return hit
 
-    def _fetch(deal_ymd: str) -> list[dict]:
+    with _reference_key_locks_guard:
+        key_lock = _reference_key_locks.setdefault(cache_key, threading.Lock())
+    with key_lock:
+        # 같은 묶음을 먼저 받아 오던 요청이 있었다면 그 사이 캐시에 들어갔을 수 있다.
+        hit = _cache_get(_reference_cache, _reference_cache_lock, cache_key)
+        if hit is not None:
+            return hit
+
+        # 캐시에 없으면 대량 조회 - 동시에 REFERENCE_FETCH_CONCURRENCY건까지만 한다.
+        if not _reference_fetch_gate.acquire(timeout=REFERENCE_FETCH_WAIT_SEC):
+            raise MolitApiError("실거래 조회 차례를 기다리다 시간이 초과됐습니다 (동시 조회가 많음)")
         try:
-            return _fetch_one(lawd_cd, property_type, deal_ymd)
-        except MolitApiError as e:
-            logger.warning(str(e))
-            return None
+            def _fetch(deal_ymd: str) -> list[dict]:
+                try:
+                    return _fetch_one(lawd_cd, property_type, deal_ymd)
+                except MolitApiError as e:
+                    logger.warning(str(e))
+                    return None
 
-    results = list(_HTTP_POOL.map(_fetch, _recent_deal_ymds(months)))
-    had_error = any(r is None for r in results)
-    records = [item for r in results if r is not None for item in r]
-    if not had_error:
-        with _reference_cache_lock:
-            _reference_cache[cache_key] = (time.time(), records)
-    return records
+            results = list(_HTTP_POOL.map(_fetch, _recent_deal_ymds(months)))
+            had_error = any(r is None for r in results)
+            records = [item for r in results if r is not None for item in r]
+            if not had_error:
+                _cache_put(_reference_cache, _reference_cache_lock, cache_key, records, REFERENCE_CACHE_MAX_ENTRIES)
+            return records
+        finally:
+            _reference_fetch_gate.release()
 
 
 def _sort_recent(records: list[dict]) -> list[dict]:
@@ -292,23 +341,21 @@ def _num(raw) -> int | None:
 # 때와 달리(2026-10-01) 매물 카드가 뜨자마자 자동으로 불러오므로, 캐시가 없으면 스크롤 한 배치(10건)
 # 마다 캐시 없는 국토부 API 호출이 그대로 나간다 - 같은 자치구·유형 단독다가구는 계약월이 겹치는
 # 경우가 많아 이 캐시로 상당수 호출을 나눠 쓸 수 있다.
-_signature_cache: dict[tuple, tuple[float, list[dict]]] = {}
+_signature_cache: "OrderedDict[tuple, tuple[float, list[dict]]]" = OrderedDict()
 _signature_cache_lock = threading.Lock()
 
 
 def _fetch_one_cached(lawd_cd: str, property_type: str, deal_ymd: str) -> list[dict]:
     cache_key = (lawd_cd, property_type, deal_ymd)
-    with _signature_cache_lock:
-        cached = _signature_cache.get(cache_key)
-    if cached and time.time() - cached[0] < CACHE_TTL_SEC:
-        return cached[1]
+    hit = _cache_get(_signature_cache, _signature_cache_lock, cache_key)
+    if hit is not None:
+        return hit
     try:
         records = _fetch_one(lawd_cd, property_type, deal_ymd)
     except MolitApiError as e:
         logger.warning(str(e))
         return []
-    with _signature_cache_lock:
-        _signature_cache[cache_key] = (time.time(), records)
+    _cache_put(_signature_cache, _signature_cache_lock, cache_key, records, SIGNATURE_CACHE_MAX_ENTRIES)
     return records
 
 
